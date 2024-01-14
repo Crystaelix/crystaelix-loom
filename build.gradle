@@ -23,12 +23,12 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	}
 }
 
-group = "gg.essential"
+group = "dev.crystaelix"
 archivesBaseName = project.name
 def baseVersion = '1.3'
 
 def ENV = System.getenv()
-version = baseVersion + ".polyfrost.3"
+version = baseVersion + ".0"
 
 logger.lifecycle(":building plugin v${version}")
 
@@ -211,7 +211,7 @@ codenarc {
 gradlePlugin {
 	plugins {
 		fabricLoom {
-			id = 'gg.essential.loom'
+			id = 'dev.crystaelix.loom'
 			implementationClass = 'net.fabricmc.loom.bootstrap.LoomGradlePluginBootstrap'
 		}
 	}
