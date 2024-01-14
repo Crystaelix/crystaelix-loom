@@ -169,7 +169,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.argument("undefined")
 
 					.property("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString())
-					.property("mixin.env.remapRefMap", "true");
+					.property("mixin.env.remapRefMap", "true")
+
+					.property("net.minecraftforge.gradle.GradleStart.srg.notch-srg", getExtension().getMappingConfiguration().officialToSrgSrg.toAbsolutePath().toString())
+					.property("net.minecraftforge.gradle.GradleStart.csvDir", getExtension().getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString());
 
 			for (String config : PropertyUtil.getAndFinalize(getExtension().getForge().getMixinConfigs())) {
 				launchConfig.argument("--mixin").argument(config);

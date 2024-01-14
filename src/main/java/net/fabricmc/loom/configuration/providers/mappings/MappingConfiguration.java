@@ -89,7 +89,10 @@ public class MappingConfiguration {
 	public final Path tinyMappingsJar;
 	public Path tinyMappingsWithSrg;
 	public final Map<String, Path> mixinTinyMappings; // The mixin mappings have other names in intermediary.
+	public final Path fieldsCsv; // CCL: fields csv
+	public final Path methodsCsv; // CCL: methods csv
 	public final Path srgToNamedSrg; // FORGE: srg to named in srg file format
+	public final Path officialToSrgSrg; // CCL: official to srg in srg file format
 	private final Path unpickDefinitions;
 
 	private boolean hasUnpickDefinitions;
@@ -106,7 +109,10 @@ public class MappingConfiguration {
 		this.unpickDefinitions = mappingsWorkingDir.resolve("mappings.unpick");
 		this.tinyMappingsWithSrg = mappingsWorkingDir.resolve("mappings-srg.tiny");
 		this.mixinTinyMappings = new HashMap<>();
+		this.fieldsCsv = mappingsWorkingDir.resolve("fields.csv");
+		this.methodsCsv = mappingsWorkingDir.resolve("methods.csv");
 		this.srgToNamedSrg = mappingsWorkingDir.resolve("mappings-srg-named.srg");
+		this.officialToSrgSrg = mappingsWorkingDir.resolve("mappings-official-srg.srg");
 	}
 
 	public static MappingConfiguration create(Project project, SharedServiceManager serviceManager, DependencyInfo dependency, MinecraftProvider minecraftProvider) {
@@ -187,6 +193,13 @@ public class MappingConfiguration {
 			}
 		}
 
+		if (isMCP(inputJar) && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || minecraftProvider.refreshDeps())) {
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(inputJar, false)) {
+				Files.copy(fs.getPath("fields.csv"), fieldsCsv);
+				Files.copy(fs.getPath("methods.csv"), methodsCsv);
+			}
+		}
+
 		if (Files.notExists(tinyMappingsJar) || minecraftProvider.refreshDeps()) {
 			Files.deleteIfExists(tinyMappingsJar);
 			ZipUtils.add(tinyMappingsJar, "mappings/mappings.tiny", Files.readAllBytes(tinyMappings));
@@ -234,6 +247,13 @@ public class MappingConfiguration {
 				try (var serviceManager = new ScopedSharedServiceManager()) {
 					TinyMappingsService mappingsService = getMappingsService(serviceManager, true);
 					SrgNamedWriter.writeTo(srgToNamedSrg, mappingsService.getMappingTree(), "srg", "named", extension.isLegacyForge());
+				}
+			}
+
+			if (Files.notExists(officialToSrgSrg) || extension.refreshDeps()) {
+				try (var serviceManager = new ScopedSharedServiceManager()) {
+					TinyMappingsService mappingsService = getMappingsService(serviceManager, true);
+					SrgNamedWriter.writeTo(officialToSrgSrg, mappingsService.getMappingTree(), "official", "srg", extension.isLegacyForge());
 				}
 			}
 		}
