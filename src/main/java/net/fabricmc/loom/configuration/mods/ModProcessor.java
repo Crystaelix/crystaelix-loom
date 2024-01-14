@@ -45,6 +45,8 @@ import dev.architectury.tinyremapper.InputTag;
 import dev.architectury.tinyremapper.NonClassCopyMode;
 import dev.architectury.tinyremapper.OutputConsumerPath;
 import dev.architectury.tinyremapper.TinyRemapper;
+import dev.architectury.tinyremapper.extension.mixin.MixinExtension;
+
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.Usage;
@@ -182,6 +184,10 @@ public class ModProcessor {
 		if (kotlinClasspathService != null) {
 			kotlinRemapperClassloader = KotlinRemapperClassloader.create(kotlinClasspathService);
 			builder.extension(kotlinRemapperClassloader.getTinyRemapperExtension());
+		}
+
+		if (extension.isLegacyForge()) {
+			builder.extension(new MixinExtension());
 		}
 
 		final TinyRemapper remapper = builder.build();
