@@ -60,9 +60,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			assetsDirectory = new File(assetsDirectory, "/legacy/" + versionInfo.id());
 		}
 
+		boolean quilt = getExtension().isQuilt();
 		final LaunchConfig launchConfig = new LaunchConfig()
-				.property(!getExtension().isQuilt() ? "fabric.development" : "loader.development", "true")
-				.property(!getExtension().isQuilt() ? "fabric.remapClasspathFile" : "loader.remapClasspathFile", getExtension().getFiles().getRemapClasspathFile().getAbsolutePath())
+				.property(!quilt ? "fabric.development" : "loader.development", "true")
+				.property(!quilt ? "fabric.remapClasspathFile" : "loader.remapClasspathFile", getExtension().getFiles().getRemapClasspathFile().getAbsolutePath())
 				.property("log4j.configurationFile", getAllLog4JConfigFiles())
 				.property("log4j2.formatMsgNoLookups", "true");
 
@@ -84,12 +85,12 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 		if (!getExtension().isForge()) {
 			if (getExtension().areEnvironmentSourceSetsSplit()) {
-				launchConfig.property("client", "fabric.gameJarPath.client", getGameJarPath("client"));
-				launchConfig.property("fabric.gameJarPath", getGameJarPath("common"));
+				launchConfig.property("client", !quilt ? "fabric.gameJarPath.client" : "loader.gameJarPath.client", getGameJarPath("client"));
+				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getGameJarPath("common"));
 			}
 
 			if (!getExtension().getMods().isEmpty()) {
-				launchConfig.property("fabric.classPathGroups", getClassPathGroups());
+				launchConfig.property(!quilt ? "fabric.classPathGroups" : "loader.classPathGroups", getClassPathGroups());
 			}
 		}
 
