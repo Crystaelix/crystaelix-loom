@@ -1,16 +1,5 @@
 package dev.architectury.loom.metadata;
 
-import com.google.common.collect.ImmutableSet;
-import com.google.gson.JsonArray;
-
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-
-import net.fabricmc.loom.LoomGradlePlugin;
-import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
-
-import org.jetbrains.annotations.Nullable;
-
 import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,12 +8,26 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Set;
 
+import org.jetbrains.annotations.Nullable;
+
+import com.google.common.collect.ImmutableSet;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+
+import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
+
 public class ModInfoJson implements ModMetadataFile {
 	public static final String FILE_PATH = "mcmod.info";
 	private final JsonArray json;
 
-	private ModInfoJson(JsonArray array) {
-		this.json = array;
+	private ModInfoJson(JsonElement json) {
+		if (json.isJsonArray()) {
+			this.json = json.getAsJsonArray();
+		} else {
+			this.json = json.getAsJsonObject().getAsJsonArray("modList");
+		}
 	}
 
 	public static ModInfoJson of(byte[] utf8) {
@@ -32,7 +35,7 @@ public class ModInfoJson implements ModMetadataFile {
 	}
 
 	public static ModInfoJson of(String text) {
-		return of(LoomGradlePlugin.GSON.fromJson(text, JsonArray.class));
+		return of(JsonParser.parseString(text));
 	}
 
 	public static ModInfoJson of(Path path) throws IOException {
@@ -43,7 +46,7 @@ public class ModInfoJson implements ModMetadataFile {
 		return of(file.toPath());
 	}
 
-	public static ModInfoJson of(JsonArray json) {
+	public static ModInfoJson of(JsonElement json) {
 		return new ModInfoJson(json);
 	}
 
