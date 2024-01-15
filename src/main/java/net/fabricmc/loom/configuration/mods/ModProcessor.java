@@ -270,7 +270,12 @@ public class ModProcessor {
 			remapJarManifestEntries(output);
 
 			if (extension.isForge()) {
-				AtRemapper.remap(project.getLogger(), output, mappings);
+				if (extension.isLegacyForge()) {
+					AtRemapper.remapLegacy(project.getLogger(), output, mappings);
+				}
+				else {
+					AtRemapper.remap(project.getLogger(), output, mappings);
+				}
 				CoreModClassRemapper.remapJar(output, mappings, project.getLogger());
 			}
 

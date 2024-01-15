@@ -24,6 +24,7 @@
 
 package net.fabricmc.loom.util.srg;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
@@ -32,7 +33,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.UnaryOperator;
+import java.util.jar.Manifest;
 
 import org.gradle.api.logging.Logger;
 
@@ -40,6 +43,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.mappingio.tree.MappingTree;
+import net.fabricmc.mappingio.tree.MappingTree.ClassMapping;
 
 /**
  * Remaps AT classes from SRG to Yarn.
@@ -94,6 +98,82 @@ public final class AtRemapper {
 				}
 
 				Files.write(atPath, String.join("\n", output).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+			}
+		}
+	}
+
+	public static void remapLegacy(Logger logger, Path jar, MappingTree mappings) throws IOException {
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar, false)) {
+			Path manifestPath = fs.getPath("META-INF/MANIFEST.MF");
+
+			if (Files.exists(manifestPath)) {
+				Manifest manifest = new Manifest(new ByteArrayInputStream(Files.readAllBytes(manifestPath)));
+				String atList = manifest.getMainAttributes().getValue(Constants.LegacyForge.ACCESS_TRANSFORMERS_MANIFEST_KEY);
+
+				if (atList == null) {
+					return;
+				}
+
+				for (String atName : atList.split(" ")) {
+					Path atPath = fs.getPath("META-INF", atName);
+
+					if (Files.exists(atPath)) {
+						String atContent = Files.readString(atPath, StandardCharsets.UTF_8);
+
+						String[] lines = atContent.split("\n");
+						List<String> output = new ArrayList<>(lines.length);
+
+						for (int i = 0; i < lines.length; i++) {
+							String line = lines[i].trim();
+
+							if (line.startsWith("#") || line.isBlank()) {
+								output.add(i, line);
+								continue;
+							}
+
+							String[] parts = line.split("\\s+");
+
+							if (parts.length < 2) {
+								logger.warn("Invalid AT Line: " + line);
+								output.add(i, line);
+								continue;
+							}
+
+							String className = parts[1].replace('.', '/');
+							Optional<ClassMapping> classMapping = CollectionUtil.find(
+									mappings.getClasses(),
+									def -> def.getName("srg").equals(className)
+							);
+							parts[1] = classMapping.map(def -> def.getName("named")).orElse(className).replace('/', '.');
+
+							if (parts.length >= 3) {
+								if (parts[2].contains("(")) {
+									String methodName = parts[2].substring(0, parts[2].indexOf('('));
+									String descriptor = parts[2].substring(parts[2].indexOf('('));
+									parts[2] = classMapping.flatMap(def -> CollectionUtil.find(
+											def.getMethods(),
+											mDef -> mDef.getName("srg").equals(methodName)
+									)).map(def -> def.getName("named")).orElse(methodName) + remapDescriptor(descriptor, s -> {
+										return CollectionUtil.find(
+												mappings.getClasses(),
+												def -> def.getName("srg").equals(s)
+										).map(def -> def.getName("named")).orElse(s);
+									});
+								}
+								else {
+									parts[2] = classMapping.flatMap(def -> CollectionUtil.find(
+											def.getFields(),
+											fDef -> fDef.getName("srg").equals(parts[2])
+									)).map(def -> def.getName("named")).orElse(parts[2]);
+								}
+							}
+
+							output.add(i, String.join(" ", parts));
+						}
+
+						Files.write(atPath, String.join("\n", output).getBytes(StandardCharsets.UTF_8), StandardOpenOption.CREATE);
+					}
+				}
 			}
 		}
 	}

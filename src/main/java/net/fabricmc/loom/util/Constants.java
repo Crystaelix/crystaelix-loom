@@ -202,5 +202,6 @@ public class Constants {
 		public static final String LAUNCH_WRAPPER = "net.minecraft.launchwrapper.Launch";
 		public static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
 		public static final String FML_SERVER_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLServerTweaker";
+		public static final String ACCESS_TRANSFORMERS_MANIFEST_KEY = "FMLAT";
 	}
 }
