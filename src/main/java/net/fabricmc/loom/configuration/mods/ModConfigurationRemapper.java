@@ -181,7 +181,7 @@ public class ModConfigurationRemapper {
 			// TODO: With the same artifacts being considered multiple times for their different
 			//   usage attributes, this should probably not process them multiple times even with refreshDeps.
 			final List<ModDependency> toRemap = modDependencies.stream()
-					.filter(dependency -> refreshDeps || dependency.isCacheInvalid(project, null))
+					.filter(dependency -> refreshDeps || dependency.isCacheInvalid(project))
 					.toList();
 
 			if (!toRemap.isEmpty()) {
@@ -291,6 +291,7 @@ public class ModConfigurationRemapper {
 			sourceRemapper.scheduleRemapSources(sourcesInput.toFile(), output.toFile(), false, true, () -> {
 				try {
 					dependency.copyToCache(project, output, "sources");
+					dependency.deleteWorkingFile("sources");
 				} catch (IOException e) {
 					throw new UncheckedIOException("Failed to apply sources to local cache for: " + dependency, e);
 				}

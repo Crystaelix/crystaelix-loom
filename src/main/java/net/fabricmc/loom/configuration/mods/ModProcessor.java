@@ -29,7 +29,6 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.List;
@@ -222,14 +221,14 @@ public class ModProcessor {
 			remapper.readInputsAsync(tag, info.getInputFile());
 			tagMap.put(info, tag);
 
-			Files.deleteIfExists(getRemappedOutput(info));
+			info.deleteWorkingFile();
 		}
 
 		try {
 			// Apply this in a second loop as we need to ensure all the inputs are on the classpath before remapping.
 			for (ModDependency dependency : remapList) {
 				try {
-					OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(getRemappedOutput(dependency)).build();
+					OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(dependency.getWorkingFile()).build();
 
 					outputConsumer.addNonClassFiles(dependency.getInputFile(), NonClassCopyMode.FIX_META_INF, remapper);
 					outputConsumerMap.put(dependency, outputConsumer);
@@ -261,7 +260,7 @@ public class ModProcessor {
 		for (ModDependency dependency : remapList) {
 			outputConsumerMap.get(dependency).close();
 
-			final Path output = getRemappedOutput(dependency);
+			final Path output = dependency.getWorkingFile();
 			final Pair<byte[], String> accessWidener = accessWidenerMap.get(dependency);
 
 			if (accessWidener != null) {
@@ -281,7 +280,8 @@ public class ModProcessor {
 				CoreModClassRemapper.remapJar(output, mappings, project.getLogger());
 			}
 
-			dependency.copyToCache(project, output, null);
+			dependency.copyToCache(project, output);
+			dependency.deleteWorkingFile();
 		}
 	}
 
@@ -295,10 +295,6 @@ public class ModProcessor {
 		manifest.read(new ByteArrayInputStream(manifestFile));
 		String accessTransformers = manifest.getMainAttributes().getValue("FMLAT");
 		ZipUtils.transform(jar, Stream.of(accessTransformers.split(" ")).map(at -> "META-INF/" + at).map(at -> new Pair<>(at, ats -> AtRemapper.remap(ats, mappings, "srg", "named"))));
-	}
-
-	private static Path getRemappedOutput(ModDependency dependency) {
-		return dependency.getWorkingFile(null);
 	}
 
 	private void remapJarManifestEntries(Path jar) throws IOException {

@@ -28,6 +28,7 @@ import java.io.File;
 import java.nio.file.Path;
 
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Dependency;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -45,7 +46,14 @@ public class ForgeProvider extends DependencyProvider {
 	@Override
 	public void provide(DependencyInfo dependency) throws Exception {
 		version = new ForgeVersion(dependency.getResolvedVersion());
-		addDependency(dependency.getDepString() + ":userdev", Constants.Configurations.FORGE_USERDEV);
+		Dependency dep = dependency.getDependency();
+
+		if ("net.minecraftforge".equals(dep.getGroup()) && "forge".equals(dep.getName()) && "1.12.2".equals(version.getMinecraftVersion()) && version.getBuildNumber() > 2847) {
+			addDependency(dependency.getDepString() + ":userdev3", Constants.Configurations.FORGE_USERDEV);
+		} else {
+			addDependency(dependency.getDepString() + ":userdev", Constants.Configurations.FORGE_USERDEV);
+		}
+
 		addDependency(dependency.getDepString() + ":installer", Constants.Configurations.FORGE_INSTALLER);
 	}
 
@@ -84,14 +92,14 @@ public class ForgeProvider extends DependencyProvider {
 	public static Path getForgeCache(Project project) {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final String version = extension.getForgeProvider().getVersion().getCombined();
-		return LoomGradleExtension.get(project).getMinecraftProvider()
-				.dir("forge/" + version).toPath();
+		return LoomGradleExtension.get(project).getMinecraftProvider().dir("forge/" + version).toPath();
 	}
 
 	public static final class ForgeVersion {
 		private final String combined;
 		private final String minecraftVersion;
 		private final String forgeVersion;
+		private final int buildNumber;
 
 		public ForgeVersion(String combined) {
 			this.combined = combined;
@@ -99,6 +107,7 @@ public class ForgeProvider extends DependencyProvider {
 			if (combined == null) {
 				this.minecraftVersion = "NO_VERSION";
 				this.forgeVersion = "NO_VERSION";
+				this.buildNumber = -1;
 				return;
 			}
 
@@ -111,6 +120,21 @@ public class ForgeProvider extends DependencyProvider {
 				this.minecraftVersion = "NO_VERSION";
 				this.forgeVersion = combined;
 			}
+
+			int dotIndex = forgeVersion.lastIndexOf('.');
+			int build;
+
+			try {
+				if (dotIndex >= 0) {
+					build = Integer.parseInt(forgeVersion.substring(dotIndex + 1, forgeVersion.length()));
+				} else {
+					build = -1;
+				}
+			} catch (NumberFormatException e) {
+				build = -1;
+			}
+
+			this.buildNumber = build;
 		}
 
 		public String getCombined() {
@@ -123,6 +147,10 @@ public class ForgeProvider extends DependencyProvider {
 
 		public String getForgeVersion() {
 			return forgeVersion;
+		}
+
+		public int getBuildNumber() {
+			return buildNumber;
 		}
 	}
 }

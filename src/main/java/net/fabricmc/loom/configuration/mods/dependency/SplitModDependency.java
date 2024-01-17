@@ -69,6 +69,10 @@ public final class SplitModDependency extends ModDependency {
 
 	@Override
 	public void copyToCache(Project project, Path path, @Nullable String variant) throws IOException {
+		if (variant == null) {
+			variant = classifier;
+		}
+
 		// Split dependencies build with loom 0.12 do not contain the required data to split the sources
 		if (target == JarSplitter.Target.SPLIT && variant != null) {
 			final JarSplitter.Target artifactTarget = new JarSplitter(path).analyseTarget();

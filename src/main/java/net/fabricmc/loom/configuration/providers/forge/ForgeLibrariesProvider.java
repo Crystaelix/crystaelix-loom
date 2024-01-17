@@ -65,7 +65,7 @@ public class ForgeLibrariesProvider {
 
 		// Collect all dependencies with possible relocations, such as Mixin.
 		for (JsonElement lib : extension.getForgeUserdevProvider().getJson().get("libraries").getAsJsonArray()) {
-			if (extension.isLegacyForge()) {
+			if (lib.isJsonObject()) {
 				lib = lib.getAsJsonObject().get("name");
 			}
 

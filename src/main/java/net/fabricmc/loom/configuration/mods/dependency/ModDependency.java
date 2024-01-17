@@ -25,6 +25,7 @@
 package net.fabricmc.loom.configuration.mods.dependency;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 
 import org.gradle.api.Project;
@@ -59,9 +60,23 @@ public abstract sealed class ModDependency permits SplitModDependency, SimpleMod
 	public abstract boolean isCacheInvalid(Project project, @Nullable String variant);
 
 	/**
+	 * Returns true when the cache is invalid.
+	 */
+	public boolean isCacheInvalid(Project project) {
+		return isCacheInvalid(project, null);
+	}
+
+	/**
 	 * Write an artifact to the local cache.
 	 */
 	public abstract void copyToCache(Project project, Path path, @Nullable String variant) throws IOException;
+
+	/**
+	 * Write an artifact to the local cache.
+	 */
+	public void copyToCache(Project project, Path path) throws IOException {
+		copyToCache(project, path, null);
+	}
 
 	/**
 	 * Apply the dependency to the project.
@@ -91,11 +106,27 @@ public abstract sealed class ModDependency permits SplitModDependency, SimpleMod
 	}
 
 	public Path getWorkingFile(@Nullable String classifier) {
+		if (classifier == null) {
+			classifier = this.classifier;
+		}
+
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final String fileName = classifier == null ? String.format("%s-%s-%s.jar", getRemappedGroup(), name, version)
 													: String.format("%s-%s-%s-%s.jar", getRemappedGroup(), name, version, classifier);
 
 		return extension.getFiles().getProjectBuildCache().toPath().resolve("remapped_working").resolve(fileName);
+	}
+
+	public Path getWorkingFile() {
+		return getWorkingFile(null);
+	}
+
+	public void deleteWorkingFile(@Nullable String classifier) throws IOException {
+		Files.deleteIfExists(getWorkingFile(classifier));
+	}
+
+	public void deleteWorkingFile() throws IOException {
+		deleteWorkingFile(null);
 	}
 
 	@Override

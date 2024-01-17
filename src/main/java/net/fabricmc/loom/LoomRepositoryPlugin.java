@@ -97,7 +97,24 @@ public class LoomRepositoryPlugin implements Plugin<PluginAware> {
 			});
 			repo.metadataSources(sources -> {
 				sources.mavenPom();
+				sources.artifact();
 				sources.ignoreGradleMetadataRedirection();
+			});
+		});
+		repositories.ivy(repo -> {
+			// Old MCP data does not have POMs
+			repo.setName("LegacyMCP");
+			repo.setUrl("https://maven.minecraftforge.net/");
+			repo.patternLayout(layout -> {
+				layout.artifact("[orgPath]/[artifact]/[revision]/[artifact]-[revision](-[classifier])(.[ext])");
+				// also check the zip so people do not have to explicitly specify the extension for older versions
+				layout.artifact("[orgPath]/[artifact]/[revision]/[artifact]-[revision](-[classifier]).zip");
+			});
+			repo.content(descriptor -> {
+				descriptor.includeGroup("de.oceanlabs.mcp");
+			});
+			repo.metadataSources(sources -> {
+				sources.artifact();
 			});
 		});
 
