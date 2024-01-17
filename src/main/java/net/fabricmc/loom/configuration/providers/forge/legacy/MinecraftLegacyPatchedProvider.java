@@ -24,13 +24,9 @@
 
 package net.fabricmc.loom.configuration.providers.forge.legacy;
 
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.StringReader;
-import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -40,6 +36,7 @@ import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
@@ -47,13 +44,8 @@ import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import com.google.common.base.Stopwatch;
-
-import dev.architectury.loom.util.AccessTransformSetMapper;
+import dev.architectury.loom.util.AtRemapper;
 import dev.architectury.loom.util.legacyforge.CoreModManagerTransformer;
-
-import org.cadixdev.at.AccessTransformSet;
-import org.cadixdev.at.io.AccessTransformFormats;
-import org.cadixdev.lorenz.MappingSet;
 import org.gradle.api.Project;
 import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
@@ -71,13 +63,11 @@ import net.fabricmc.loom.configuration.providers.mappings.TinyMappingsService;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
-import net.fabricmc.loom.util.Pair;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.service.SharedServiceManager;
-import net.fabricmc.lorenztiny.TinyMappingsReader;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.stitch.merge.JarMerger;
 
@@ -249,16 +239,18 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		// No clue why FG went the hack route when it's the same project and they could have just added first-party
 		// support for loading both from the classpath right into Forge (it's even really simply to do).
 		// We'll have none of those hacks and instead patch first-party support into Forge.
-		ZipUtils.transform(forgeJar, Stream.of(new Pair<>(CoreModManagerTransformer.FILE, original -> {
+		ZipUtils.transform(forgeJar, Map.of(CoreModManagerTransformer.FILE, original -> {
 			ClassReader reader = new ClassReader(original);
 			ClassWriter writer = new ClassWriter(reader, 0);
 			reader.accept(new CoreModManagerTransformer(writer), 0);
 			return writer.toByteArray();
-		})));
+		}));
 
 		// Remap the legacy srg access transformers into modern style official ones so `accessTransform` picks them up
-		String ats = new String(ZipUtils.unpack(forgeJar, "forge_at.cfg"), StandardCharsets.UTF_8);
-		ats = remapAts(serviceManager, ats);
+		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, true);
+		MappingTree mappingTree = mappingsService.getMappingTree();
+		byte[] ats = ZipUtils.unpack(forgeJar, "forge_at.cfg");
+		ats = AtRemapper.remap(ats, mappingTree, "srg", "official");
 		ZipUtils.add(forgeJar, Constants.Forge.ACCESS_TRANSFORMER_PATH, ats);
 
 		logger.lifecycle(":patched forge in " + stopwatch.stop());
@@ -302,23 +294,6 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		modifyClasses(minecraftMergedPatchedJar, SideAnnotationMerger::new);
 
 		logger.info(":merged jars in " + stopwatch);
-	}
-
-	private String remapAts(SharedServiceManager serviceManager, String ats) throws Exception {
-		AccessTransformSet accessTransformSet = AccessTransformSet.create();
-		AccessTransformFormats.FML.read(new StringReader(ats), accessTransformSet);
-
-		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, true);
-		MappingTree mappingTree = mappingsService.getMappingTree();
-		MappingSet mappingSet = new TinyMappingsReader(mappingTree, "srg", "official").read();
-		accessTransformSet = AccessTransformSetMapper.remap(accessTransformSet, mappingSet);
-
-		StringWriter remappedOut = new StringWriter();
-		// TODO the extra BufferedWriter wrapper and closing can be removed once https://github.com/CadixDev/at/issues/6 is fixed
-		BufferedWriter writer = new BufferedWriter(remappedOut);
-		AccessTransformFormats.FML.write(writer, accessTransformSet);
-		writer.close();
-		return remappedOut.toString();
 	}
 
 	private void modifyClasses(Path jarFile, Function<ClassVisitor, ClassVisitor> func) throws Exception {

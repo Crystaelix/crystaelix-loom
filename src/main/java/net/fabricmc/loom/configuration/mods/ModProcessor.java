@@ -38,9 +38,11 @@ import java.util.Map;
 import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Stream;
 
 import com.google.common.base.Stopwatch;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.util.AtRemapper;
 import dev.architectury.tinyremapper.InputTag;
 import dev.architectury.tinyremapper.NonClassCopyMode;
 import dev.architectury.tinyremapper.OutputConsumerPath;
@@ -49,6 +51,7 @@ import dev.architectury.tinyremapper.extension.mixin.MixinExtension;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.Usage;
+import org.slf4j.Logger;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.RemapConfigurationSettings;
@@ -66,8 +69,8 @@ import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.kotlin.KotlinClasspathService;
 import net.fabricmc.loom.util.kotlin.KotlinRemapperClassloader;
 import net.fabricmc.loom.util.service.SharedServiceManager;
-import net.fabricmc.loom.util.srg.AtRemapper;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
+import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class ModProcessor {
@@ -270,9 +273,9 @@ public class ModProcessor {
 
 			if (extension.isForge()) {
 				if (extension.isLegacyForge()) {
-					AtRemapper.remapLegacy(project.getLogger(), output, mappings);
+					remapLegacyAts(project.getLogger(), output, mappings);
 				} else {
-					AtRemapper.remap(project.getLogger(), output, mappings);
+					remapAts(project.getLogger(), output, mappings);
 				}
 
 				CoreModClassRemapper.remapJar(output, mappings, project.getLogger());
@@ -280,6 +283,18 @@ public class ModProcessor {
 
 			dependency.copyToCache(project, output, null);
 		}
+	}
+
+	private void remapAts(Logger logger, Path jar, MappingTree mappings) throws IOException {
+		ZipUtils.transform(jar, Map.of(Constants.Forge.ACCESS_TRANSFORMER_PATH, ats -> AtRemapper.remap(ats, mappings, "srg", "named")));
+	}
+
+	private void remapLegacyAts(Logger logger, Path jar, MappingTree mappings) throws IOException {
+		byte[] manifestFile = ZipUtils.unpack(jar, "META-INF/MANIFEST.MF");
+		Manifest manifest = new Manifest();
+		manifest.read(new ByteArrayInputStream(manifestFile));
+		String accessTransformers = manifest.getMainAttributes().getValue("FMLAT");
+		ZipUtils.transform(jar, Stream.of(accessTransformers.split(" ")).map(at -> "META-INF/" + at).map(at -> new Pair<>(at, ats -> AtRemapper.remap(ats, mappings, "srg", "named"))));
 	}
 
 	private static Path getRemappedOutput(ModDependency dependency) {
