@@ -24,9 +24,6 @@
 
 package net.fabricmc.loom.configuration.providers.forge;
 
-import static java.nio.file.StandardOpenOption.CREATE;
-import static java.nio.file.StandardOpenOption.TRUNCATE_EXISTING;
-
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
@@ -38,20 +35,19 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
 import java.util.zip.ZipEntry;
 
-import lzma.sdk.lzma.Decoder;
-import lzma.sdk.lzma.Encoder;
-import lzma.streams.LzmaInputStream;
-import lzma.streams.LzmaOutputStream;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
+import org.apache.commons.compress.java.util.jar.Pack200;
 import org.apache.commons.io.IOUtils;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
-import net.fabricmc.loom.configuration.providers.forge.fg2.Pack200Provider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 
@@ -99,11 +95,11 @@ public class PatchProvider extends DependencyProvider {
 
 	private void splitAndConvertLegacyPatches(Path joinedLegacyPatches) throws IOException {
 		try (JarInputStream in = new JarInputStream(new ByteArrayInputStream(unpack200Lzma(joinedLegacyPatches)));
-				OutputStream clientFileOut = Files.newOutputStream(clientPatches, CREATE, TRUNCATE_EXISTING);
-				LzmaOutputStream clientLzmaOut = new LzmaOutputStream(clientFileOut, new Encoder());
+				OutputStream clientFileOut = Files.newOutputStream(clientPatches, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				LZMACompressorOutputStream clientLzmaOut = new LZMACompressorOutputStream(clientFileOut);
 				JarOutputStream clientJarOut = new JarOutputStream(clientLzmaOut);
-				OutputStream serverFileOut = Files.newOutputStream(serverPatches, CREATE, TRUNCATE_EXISTING);
-				LzmaOutputStream serverLzmaOut = new LzmaOutputStream(serverFileOut, new Encoder());
+				OutputStream serverFileOut = Files.newOutputStream(serverPatches, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+				LZMACompressorOutputStream serverLzmaOut = new LZMACompressorOutputStream(serverFileOut);
 				JarOutputStream serverJarOut = new JarOutputStream(serverLzmaOut);
 		) {
 			for (JarEntry entry; (entry = in.getNextJarEntry()) != null;) {
@@ -140,20 +136,14 @@ public class PatchProvider extends DependencyProvider {
 		ByteArrayOutputStream bytes = new ByteArrayOutputStream();
 
 		try (JarOutputStream jarOut = new JarOutputStream(bytes)) {
-			Pack200Provider provider = getExtension().getForge().getPack200Provider().getOrNull();
-
-			if (provider == null) {
-				throw new IllegalStateException("No provider for Pack200 has been found. Did you declare a provider?");
-			}
-
-			provider.unpack(in, jarOut);
+			Pack200.newUnpacker().unpack(in, jarOut);
 		}
 
 		return bytes.toByteArray();
 	}
 
 	private byte[] unpack200Lzma(InputStream in) throws IOException {
-		try (LzmaInputStream lzmaIn = new LzmaInputStream(in, new Decoder())) {
+		try (LZMACompressorInputStream lzmaIn = new LZMACompressorInputStream(in)) {
 			return unpack200(lzmaIn);
 		}
 	}

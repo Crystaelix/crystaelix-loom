@@ -32,8 +32,6 @@ import org.gradle.api.provider.Property;
 import org.gradle.api.provider.SetProperty;
 import org.jetbrains.annotations.ApiStatus;
 
-import net.fabricmc.loom.configuration.providers.forge.fg2.Pack200Provider;
-
 /**
  * This is the forge extension api available exposed to build scripts.
  */
@@ -113,8 +111,6 @@ public interface ForgeExtensionAPI {
 	 * @return the property
 	 */
 	Property<Boolean> getUseForgeLoggerConfig();
-
-	Property<Pack200Provider> getPack200Provider();
 
 	/**
 	 * A list of mod IDs for mods applied for data generation.

@@ -125,8 +125,8 @@ dependencies {
 	// Forge mods.toml parsing
 	implementation ('com.electronwill.night-config:toml:3.6.6')
 
-	// Legacy Forge patches
-	implementation ('com.github.jponge:lzma-java:1.3')
+	// Legacy forge lzma and pack200 parsing
+	implementation ('org.apache.commons:commons-compress:1.25.0')
 
 	// Testing
 	testImplementation(gradleTestKit())
@@ -139,8 +139,6 @@ dependencies {
 	}
 	testImplementation 'org.mockito:mockito-core:5.2.0'
 	testImplementation 'com.microsoft.java:com.microsoft.java.debug.core:0.46.0'
-
-	runtimeOnly 'dev.architectury.architectury-pack200:dev.architectury.architectury-pack200.gradle.plugin:0.1.3'
 
 	compileOnly 'org.jetbrains:annotations:24.0.1'
 	testCompileOnly 'org.jetbrains:annotations:24.0.1'
