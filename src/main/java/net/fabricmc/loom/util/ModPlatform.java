@@ -24,9 +24,13 @@
 
 package net.fabricmc.loom.util;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Locale;
+import java.util.StringJoiner;
 import java.util.function.Supplier;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 
@@ -36,7 +40,12 @@ import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 public enum ModPlatform {
 	FABRIC(false),
 	FORGE(false),
-	QUILT(true);
+	QUILT(true),
+	LEGACY_FORGE(true);
+
+	public static final ModPlatform[] FORGE_LIKE = {FORGE, LEGACY_FORGE};
+	public static final ModPlatform[] MODERN_FORGE_LIKE = {FORGE};
+	public static final ModPlatform[] SRG_FORGE_LIKE = {FORGE, LEGACY_FORGE};
 
 	boolean experimental;
 
@@ -48,20 +57,47 @@ public enum ModPlatform {
 		return experimental;
 	}
 
-	public static void assertPlatform(Project project, ModPlatform platform) {
-		assertPlatform(LoomGradleExtension.get(project), platform);
+	public boolean isForgeLike() {
+		return ArrayUtils.contains(FORGE_LIKE, this);
 	}
 
-	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform platform) {
-		assertPlatform(extension, platform, () -> {
-			String msg = "Loom is not running on %s.%nYou can switch to it by adding 'loom.platform = %s' to your gradle.properties";
-			String name = platform.name().toLowerCase(Locale.ROOT);
-			return msg.formatted(name, name);
-		});
+	public boolean isModernForgeLike() {
+		return ArrayUtils.contains(MODERN_FORGE_LIKE, this);
 	}
 
-	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform platform, Supplier<String> message) {
-		if (extension.getPlatform().get() != platform) {
+	public static void assertPlatform(Project project, ModPlatform... platforms) {
+		assertPlatform(LoomGradleExtension.get(project), platforms);
+	}
+
+	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform... platforms) {
+		if (platforms.length == 1) {
+			assertPlatform(extension, () -> {
+				String msg = "Loom is not running on %s.%nYou can switch to it by adding 'loom.platform = %s' to your gradle.properties";
+				String name = platforms[0].name().toLowerCase(Locale.ROOT);
+				return msg.formatted(name, name, platforms);
+			});
+			return;
+		}
+
+		assertPlatform(extension, () -> {
+			String msg = "Loom is not running on any of %s.%nYou can switch to it by any of the following: Add any of %s to your gradle.properties";
+			List<String> names = Arrays.stream(platforms).map(Enum::name).toList();
+
+			StringJoiner platformList = new StringJoiner(", ");
+			StringJoiner loomPlatform = new StringJoiner(", ");
+
+			for (String name : names) {
+				String lowercaseName = name.toLowerCase(Locale.ROOT);
+				platformList.add(lowercaseName);
+				loomPlatform.add("'loom.platform = " + lowercaseName + "'");
+			}
+
+			return msg.formatted("[" + platformList + "]", "[" + loomPlatform + "]");
+		}, platforms);
+	}
+
+	public static void assertPlatform(LoomGradleExtensionAPI extension, Supplier<String> message, ModPlatform... platforms) {
+		if (!ArrayUtils.contains(platforms, extension.getPlatform().get())) {
 			throw new GradleException(message.get());
 		}
 	}

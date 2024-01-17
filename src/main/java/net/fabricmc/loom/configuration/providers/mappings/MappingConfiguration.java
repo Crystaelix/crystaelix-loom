@@ -130,7 +130,7 @@ public class MappingConfiguration {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		String mappingsIdentifier;
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			mappingsIdentifier = FieldMigratedMappingConfiguration.createForgeMappingsIdentifier(extension, mappingsName, version, getMappingsClassifier(dependency, jarInfo.v2()), minecraftProvider.minecraftVersion());
 		} else {
 			mappingsIdentifier = createMappingsIdentifier(mappingsName, version, getMappingsClassifier(dependency, jarInfo.v2()), minecraftProvider.minecraftVersion());
@@ -144,7 +144,7 @@ public class MappingConfiguration {
 
 		MappingConfiguration mappingConfiguration;
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			mappingConfiguration = new FieldMigratedMappingConfiguration(mappingsIdentifier, workingDir);
 		} else {
 			mappingConfiguration = new MappingConfiguration(mappingsIdentifier, workingDir);
@@ -238,7 +238,7 @@ public class MappingConfiguration {
 
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			if (!extension.shouldGenerateSrgTiny()) {
 				throw new IllegalStateException("We have to generate srg tiny in a forge environment!");
 			}
@@ -322,7 +322,7 @@ public class MappingConfiguration {
 
 			MappingsMerger.mergeAndSaveMappings(baseTinyMappings, tinyMappings, intermediateMappingsService);
 		} else {
-			if (LoomGradleExtension.get(project).isForge()) {
+			if (LoomGradleExtension.get(project).isForgeLike()) {
 				// (2022-09-11) This is due to ordering issues.
 				// To complete V1 mappings, we need the full MC jar.
 				// On Forge, producing the full MC jar needs the list of all Forge dependencies

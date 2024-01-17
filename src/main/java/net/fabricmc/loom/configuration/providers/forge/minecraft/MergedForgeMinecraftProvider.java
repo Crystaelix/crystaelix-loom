@@ -59,7 +59,7 @@ public final class MergedForgeMinecraftProvider extends MergedMinecraftProvider 
 	@Override
 	public MinecraftPatchedProvider getPatchedProvider() {
 		if (this.patchedProvider == null) {
-			if (LoomGradleExtension.get(getProject()).isModernForge()) {
+			if (LoomGradleExtension.get(getProject()).isModernForgeLike()) {
 				this.patchedProvider = new MinecraftPatchedProvider(getProject(), this, MinecraftPatchedProvider.Type.MERGED);
 			} else {
 				this.patchedProvider = new MinecraftLegacyPatchedProvider(getProject(), this, MinecraftPatchedProvider.Type.MERGED);

@@ -38,14 +38,14 @@ public interface ForgeMinecraftProvider {
 	MinecraftPatchedProvider getPatchedProvider();
 
 	static MergedMinecraftProvider createMerged(ConfigContext context) {
-		return LoomGradleExtension.get(context.project()).isForge() ? new MergedForgeMinecraftProvider(context) : new MergedMinecraftProvider(context);
+		return LoomGradleExtension.get(context.project()).isForgeLike() ? new MergedForgeMinecraftProvider(context) : new MergedMinecraftProvider(context);
 	}
 
 	static SingleJarMinecraftProvider createServerOnly(ConfigContext context) {
-		return LoomGradleExtension.get(context.project()).isForge() ? SingleJarForgeMinecraftProvider.server(context) : SingleJarMinecraftProvider.server(context);
+		return LoomGradleExtension.get(context.project()).isForgeLike() ? SingleJarForgeMinecraftProvider.server(context) : SingleJarMinecraftProvider.server(context);
 	}
 
 	static SingleJarMinecraftProvider createClientOnly(ConfigContext context) {
-		return LoomGradleExtension.get(context.project()).isForge() ? SingleJarForgeMinecraftProvider.client(context) : SingleJarMinecraftProvider.client(context);
+		return LoomGradleExtension.get(context.project()).isForgeLike() ? SingleJarForgeMinecraftProvider.client(context) : SingleJarMinecraftProvider.client(context);
 	}
 }

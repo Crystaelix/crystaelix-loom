@@ -135,7 +135,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 			configureDecompileTasks(configContext);
 
-			if (extension.isForge()) {
+			if (extension.isForgeLike()) {
 				if (extension.isDataGenEnabled()) {
 					getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").resources(files -> {
 						files.srcDir(getProject().file("src/generated/resources"));
@@ -168,7 +168,7 @@ public abstract class CompileConfiguration implements Runnable {
 		getTasks().withType(AbstractCopyTask.class).configureEach(abstractCopyTask -> abstractCopyTask.setFilteringCharset(StandardCharsets.UTF_8.name()));
 		getTasks().withType(JavaCompile.class).configureEach(javaCompile -> javaCompile.getOptions().setEncoding(StandardCharsets.UTF_8.name()));
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			// Create default mod from main source set
 			extension.mods(mods -> {
 				final SourceSet main = getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
@@ -191,7 +191,7 @@ public abstract class CompileConfiguration implements Runnable {
 		// Provide the vanilla mc jars -- TODO share across getProject()s.
 		final MinecraftProvider minecraftProvider = jarConfiguration.getMinecraftProviderFunction().apply(configContext);
 
-		if (extension.isForge() && !(minecraftProvider instanceof ForgeMinecraftProvider)) {
+		if (extension.isForgeLike() && !(minecraftProvider instanceof ForgeMinecraftProvider)) {
 			throw new UnsupportedOperationException("Using Forge with split jars is not supported!");
 		}
 
@@ -208,7 +208,7 @@ public abstract class CompileConfiguration implements Runnable {
 			});
 		}
 
-		if (extension.isModernForge()) {
+		if (extension.isModernForgeLike()) {
 			// Add Forge dev-time dependencies
 			project.getDependencies().add(Constants.Configurations.FORGE_EXTRA, Constants.Dependencies.FORGE_RUNTIME + Constants.Dependencies.Versions.FORGE_RUNTIME);
 			project.getDependencies().add(Constants.Configurations.FORGE_EXTRA, Constants.Dependencies.UNPROTECT + Constants.Dependencies.Versions.UNPROTECT);
@@ -219,7 +219,7 @@ public abstract class CompileConfiguration implements Runnable {
 		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceManager(), mappingsDep, minecraftProvider);
 		extension.setMappingConfiguration(mappingConfiguration);
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			ForgeLibrariesProvider.provide(mappingConfiguration, project);
 			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
 		}
@@ -227,7 +227,7 @@ public abstract class CompileConfiguration implements Runnable {
 		mappingConfiguration.setupPost(project);
 		mappingConfiguration.applyToProject(getProject(), mappingsDep);
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			extension.setForgeRunsProvider(ForgeRunsProvider.create(project));
 		}
 
@@ -255,7 +255,7 @@ public abstract class CompileConfiguration implements Runnable {
 		extension.setNamedMinecraftProvider(namedMinecraftProvider);
 		namedMinecraftProvider.provide(provideContext);
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			final SrgMinecraftProvider<?> srgMinecraftProvider = jarConfiguration.getSrgMinecraftProviderBiFunction().apply(project, minecraftProvider);
 			extension.setSrgMinecraftProvider(srgMinecraftProvider);
 			srgMinecraftProvider.provide(provideContext);
@@ -278,7 +278,7 @@ public abstract class CompileConfiguration implements Runnable {
 			extension.addMinecraftJarProcessor(InterfaceInjectionProcessor.class, "fabric-loom:interface-inject", interfaceInjection.getEnableDependencyInterfaceInjection().get());
 		}
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			extension.addMinecraftJarProcessor(AccessTransformerJarProcessor.class, "loom:access-transformer", configContext.project(), extension.getForge().getAccessTransformers());
 		}
 	}
@@ -372,7 +372,7 @@ public abstract class CompileConfiguration implements Runnable {
 		DependencyProviders dependencyProviders = new DependencyProviders();
 		extension.setDependencyProviders(dependencyProviders);
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			dependencyProviders.addProvider(new ForgeProvider(project));
 			dependencyProviders.addProvider(new ForgeUserdevProvider(project));
 		}
@@ -381,7 +381,7 @@ public abstract class CompileConfiguration implements Runnable {
 			dependencyProviders.addProvider(new SrgProvider(project));
 		}
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 			dependencyProviders.addProvider(new McpConfigProvider(project));
 			dependencyProviders.addProvider(new PatchProvider(project));

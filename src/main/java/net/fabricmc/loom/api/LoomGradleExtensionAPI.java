@@ -232,8 +232,24 @@ public interface LoomGradleExtensionAPI {
 
 	Provider<ModPlatform> getPlatform();
 
+	default boolean isForgeLike() {
+		return getPlatform().get().isForgeLike();
+	}
+
+	default boolean isModernForgeLike() {
+		return getPlatform().get().isModernForgeLike();
+	}
+
 	default boolean isForge() {
 		return getPlatform().get() == ModPlatform.FORGE;
+	}
+
+	default boolean isLegacyForge() {
+		return getPlatform().get() == ModPlatform.LEGACY_FORGE;
+	}
+
+	default boolean isFabric() {
+		return getPlatform().get() == ModPlatform.FABRIC;
 	}
 
 	default boolean isQuilt() {
@@ -257,7 +273,7 @@ public interface LoomGradleExtensionAPI {
 	 *
 	 * @return the Forge extension
 	 * @throws UnsupportedOperationException if running on another platform
-	 * @see #isForge()
+	 * @see #isForgeLike()
 	 */
 	ForgeExtensionAPI getForge();
 

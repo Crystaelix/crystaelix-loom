@@ -194,7 +194,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 		Files.deleteIfExists(remappedJars.outputJarPath());
 
-		final Set<String> classNames = extension.isForge() ? InnerClassRemapper.readClassNames(remappedJars.inputJar()) : Set.of();
+		final Set<String> classNames = extension.isForgeLike() ? InnerClassRemapper.readClassNames(remappedJars.inputJar()) : Set.of();
 		final Map<String, String> remappedSignatures = SignatureFixerApplyVisitor.getRemappedSignatures(getTargetNamespace() == MappingsNamespace.INTERMEDIARY, mappingConfiguration, getProject(), configContext.serviceManager(), toM);
 		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceManager(), fromM, toM, true, (builder) -> {
 			builder.extraPostApplyVisitor(new SignatureFixerApplyVisitor(remappedSignatures));
@@ -219,7 +219,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 		getMavenHelper(remappedJars.name()).savePom();
 
-		if (extension.isForgeAndOfficial()) {
+		if (extension.isForgeLikeAndOfficial()) {
 			try (var serviceManager = new ScopedSharedServiceManager()) {
 				TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(serviceManager, true);
 				MemoryMappingTree mappingsWithSrg = mappingsService.getMappingTree();

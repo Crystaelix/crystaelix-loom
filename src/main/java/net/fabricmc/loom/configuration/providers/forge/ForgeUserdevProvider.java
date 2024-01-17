@@ -48,7 +48,7 @@ public class ForgeUserdevProvider extends DependencyProvider {
 	private JsonObject json;
 	Path joinedPatches;
 	BinaryPatcherConfig binaryPatcherConfig;
-	private Boolean isLegacyForge;
+	private Boolean fg3;
 
 	public ForgeUserdevProvider(Project project) {
 		super(project);
@@ -85,9 +85,9 @@ public class ForgeUserdevProvider extends DependencyProvider {
 			json = new Gson().fromJson(reader, JsonObject.class);
 		}
 
-		isLegacyForge = !json.has("mcp");
+		fg3 = json.has("mcp");
 
-		if (!isLegacyForge) {
+		if (fg3) {
 			addDependency(json.get("mcp").getAsString(), Constants.Configurations.MCP_CONFIG);
 			addDependency(json.get("mcp").getAsString(), Constants.Configurations.SRG);
 			addDependency(json.get("universal").getAsString(), Constants.Configurations.FORGE_UNIVERSAL);
@@ -111,7 +111,11 @@ public class ForgeUserdevProvider extends DependencyProvider {
 			addLegacyMCPRepo();
 
 			binaryPatcherConfig = new BinaryPatcherConfig("net.minecraftforge:binarypatcher:1.1.1:fatjar",
-					List.of("--clean", "{clean}", "--output", "{output}", "--apply", "{patch}"));
+					List.of(
+							"--clean", "{clean}",
+							"--output", "{output}",
+							"--apply", "{patch}"
+					));
 		}
 	}
 
@@ -130,14 +134,6 @@ public class ForgeUserdevProvider extends DependencyProvider {
 			});
 			repo.metadataSources(IvyArtifactRepository.MetadataSources::artifact);
 		});
-	}
-
-	public boolean isLegacyForge() {
-		if (isLegacyForge == null) {
-			throw new IllegalArgumentException("Not yet resolved.");
-		}
-
-		return isLegacyForge;
 	}
 
 	public File getUserdevJar() {

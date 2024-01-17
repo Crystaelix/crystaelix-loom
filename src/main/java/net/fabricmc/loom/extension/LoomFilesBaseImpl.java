@@ -70,12 +70,12 @@ public abstract class LoomFilesBaseImpl implements LoomFiles {
 
 	@Override
 	public File getRemappedModCache() {
-		return createFile(getRootProjectPersistentCache(), "deobfedDeps");
+		return createFile(getUserCache(), "deobfedDeps");
 	}
 
 	@Override
 	public File getNativesDirectory(Project project) {
-		return createFile(getRootProjectPersistentCache(), "natives/" + LoomGradleExtension.get(project).getMinecraftProvider().minecraftVersion());
+		return createFile(getUserCache(), "natives/" + LoomGradleExtension.get(project).getMinecraftProvider().minecraftVersion());
 	}
 
 	@Override

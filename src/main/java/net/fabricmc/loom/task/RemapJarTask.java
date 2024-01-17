@@ -141,13 +141,13 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 
 		getClasspath().from(getProject().getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
 		getAddNestedDependencies().convention(true).finalizeValueOnRead();
-		getReadMixinConfigsFromManifest().convention(LoomGradleExtension.get(getProject()).isForge()).finalizeValueOnRead();
+		getReadMixinConfigsFromManifest().convention(LoomGradleExtension.get(getProject()).isForgeLike()).finalizeValueOnRead();
 		getInjectAccessWidener().convention(false);
 
 		Configuration includeConfiguration = getProject().getConfigurations().getByName(Constants.Configurations.INCLUDE);
 		IncludedJarFactory factory = new IncludedJarFactory(this);
 
-		if (!LoomGradleExtension.get(getProject()).isForge()) {
+		if (!LoomGradleExtension.get(getProject()).isForgeLike()) {
 			getNestedJars().from(factory.getNestedJars(includeConfiguration));
 		} else {
 			Provider<Pair<List<LazyNestedFile>, TaskDependency>> forgeNestedJars = factory.getForgeNestedJars(includeConfiguration);
@@ -194,7 +194,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 			if (getAddNestedDependencies().get()) {
 				params.getNestedJars().from(getNestedJars());
 
-				if (extension.isForge()) {
+				if (extension.isForgeLike()) {
 					params.getForgeNestedJars().set(getForgeNestedJars());
 				}
 			}
@@ -208,7 +208,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 
 			if (mixinAp) {
 				setupLegacyMixinRefmapRemapping(params);
-			} else if (extension.isForge()) {
+			} else if (extension.isForgeLike()) {
 				throw new RuntimeException("Forge must have useLegacyMixinAp enabled");
 			}
 
@@ -324,7 +324,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 				addNestedJars();
 				ModBuildExtensions.convertAwToAt(getParameters().getAtAccessWideners(), outputFile, getParameters().getMappingBuildServiceUuid());
 
-				if (getParameters().getPlatform().get() != ModPlatform.FORGE) {
+				if (!getParameters().getPlatform().get().isForgeLike()) {
 					modifyJarManifest();
 				}
 

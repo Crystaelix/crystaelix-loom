@@ -70,7 +70,7 @@ public final class TinyRemapperHelper {
 
 	public static TinyRemapper getTinyRemapper(Project project, SharedServiceManager serviceManager, String fromM, String toM, boolean fixRecords, Consumer<TinyRemapper.Builder> builderConsumer, Set<String> fromClassNames) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		boolean srg = (fromM.equals(MappingsNamespace.SRG.toString()) || toM.equals(MappingsNamespace.SRG.toString())) && extension.isForge();
+		boolean srg = (fromM.equals(MappingsNamespace.SRG.toString()) || toM.equals(MappingsNamespace.SRG.toString())) && extension.isForgeLike();
 		MemoryMappingTree mappingTree = extension.getMappingConfiguration().getMappingsService(serviceManager, srg).getMappingTree();
 
 		if (fixRecords && !mappingTree.getSrcNamespace().equals(fromM)) {
@@ -81,7 +81,7 @@ public final class TinyRemapperHelper {
 
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
 				.logUnknownInvokeDynamic(false)
-				.ignoreConflicts(extension.isForge())
+				.ignoreConflicts(extension.isForgeLike())
 				.cacheMappings(true)
 				.threads(Runtime.getRuntime().availableProcessors())
 				.logger(project.getLogger()::lifecycle)
@@ -98,7 +98,7 @@ public final class TinyRemapperHelper {
 					return next;
 				});
 
-		if (extension.isForge()) {
+		if (extension.isForgeLike()) {
 			if (!fromClassNames.isEmpty()) {
 				builder.withMappings(InnerClassRemapper.of(fromClassNames, mappingTree, fromM, toM));
 			}

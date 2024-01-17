@@ -192,7 +192,7 @@ public abstract class GenerateSourcesTask extends AbstractLoomTask {
 		}
 
 		// Inject Forge's own sources
-		if (getExtension().isForge()) {
+		if (getExtension().isForgeLike()) {
 			try (var serviceManager = new ScopedSharedServiceManager()) {
 				ForgeSourcesRemapper.addForgeSources(getProject(), serviceManager, getOutputJar().get().getAsFile().toPath());
 			}
@@ -296,7 +296,7 @@ public abstract class GenerateSourcesTask extends AbstractLoomTask {
 			params.getClassPath().setFrom(getProject().getConfigurations().getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES));
 
 			// Architectury
-			params.getForge().set(getExtension().isForge());
+			params.getForge().set(getExtension().isForgeLike());
 		});
 
 		try {
@@ -470,7 +470,7 @@ public abstract class GenerateSourcesTask extends AbstractLoomTask {
 	}
 
 	private Path getMappings() {
-		Path inputMappings = getExtension().isForge() ? getExtension().getMappingConfiguration().tinyMappingsWithSrg : getExtension().getMappingConfiguration().tinyMappings;
+		Path inputMappings = getExtension().isForgeLike() ? getExtension().getMappingConfiguration().tinyMappingsWithSrg : getExtension().getMappingConfiguration().tinyMappings;
 
 		MemoryMappingTree mappingTree = new MemoryMappingTree();
 

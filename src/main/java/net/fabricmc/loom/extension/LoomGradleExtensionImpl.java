@@ -93,7 +93,7 @@ public class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implemen
 		this.mixinApExtension = project.getObjects().newInstance(MixinExtensionImpl.class, project);
 		this.loomFiles = files;
 		this.unmappedMods = project.files();
-		this.forgeExtension = Suppliers.memoize(() -> isForge() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
+		this.forgeExtension = Suppliers.memoize(() -> isForgeLike() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
 
 		// Setup the default intermediate mappings provider.
 		setIntermediateMappingsProvider(IntermediaryMappingsProvider.class, provider -> {
@@ -289,7 +289,7 @@ public class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implemen
 
 	@Override
 	public ForgeExtensionAPI getForge() {
-		ModPlatform.assertPlatform(this, ModPlatform.FORGE);
+		ModPlatform.assertPlatform(this, ModPlatform.FORGE_LIKE);
 		return forgeExtension.get();
 	}
 
@@ -305,13 +305,13 @@ public class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implemen
 
 	@Override
 	public ForgeRunsProvider getForgeRunsProvider() {
-		ModPlatform.assertPlatform(this, ModPlatform.FORGE);
+		ModPlatform.assertPlatform(this, ModPlatform.FORGE_LIKE);
 		return forgeRunsProvider;
 	}
 
 	@Override
 	public void setForgeRunsProvider(ForgeRunsProvider forgeRunsProvider) {
-		ModPlatform.assertPlatform(this, ModPlatform.FORGE);
+		ModPlatform.assertPlatform(this, ModPlatform.FORGE_LIKE);
 		this.forgeRunsProvider = forgeRunsProvider;
 	}
 }

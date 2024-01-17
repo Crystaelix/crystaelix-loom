@@ -35,7 +35,7 @@ public final class IntermediaryNamespaces {
 	 */
 	public static String intermediary(Project project) {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		return extension.isForge() ? "srg" : "intermediary";
+		return extension.isForgeLike() ? "srg" : "intermediary";
 	}
 
 	/**

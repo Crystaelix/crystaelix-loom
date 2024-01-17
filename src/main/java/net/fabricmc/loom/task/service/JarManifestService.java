@@ -103,7 +103,7 @@ public abstract class JarManifestService implements BuildService<JarManifestServ
 
 	private static Provider<MixinVersion> getMixinVersion(Project project) {
 		return project.getConfigurations().named(Constants.Configurations.LOADER_DEPENDENCIES).map(configuration -> {
-			if (LoomGradleExtension.get(project).isForge()) return new MixinVersion("unknown", "unknown");
+			if (LoomGradleExtension.get(project).isForgeLike()) return new MixinVersion("unknown", "unknown");
 
 			// Not super ideal that this uses the mod compile classpath, should prob look into making this not a thing at somepoint
 			Optional<Dependency> dependency = configuration

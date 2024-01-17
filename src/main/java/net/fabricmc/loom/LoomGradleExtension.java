@@ -101,7 +101,7 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 		case INTERMEDIARY -> getIntermediaryMinecraftProvider().getMinecraftJarPaths();
 		case OFFICIAL -> getMinecraftProvider().getMinecraftJars();
 		case SRG -> {
-			ModPlatform.assertPlatform(this, ModPlatform.FORGE, () -> "SRG jars are only available on Forge.");
+			ModPlatform.assertPlatform(this, () -> "SRG jars are only available on Forge.", ModPlatform.SRG_FORGE_LIKE);
 			yield getSrgMinecraftProvider().getMinecraftJarPaths();
 		}
 		};
@@ -149,20 +149,12 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 		return isForge() && !getForge().getDataGenMods().isEmpty();
 	}
 
-	default boolean isForgeAndOfficial() {
-		return isForge() && getMcpConfigProvider().isOfficial();
+	default boolean isForgeLikeAndOfficial() {
+		return isForgeLike() && getMcpConfigProvider().isOfficial();
 	}
 
-	default boolean isForgeAndNotOfficial() {
-		return isForge() && !getMcpConfigProvider().isOfficial();
-	}
-
-	default boolean isLegacyForge() {
-		return isForge() && getForgeUserdevProvider().isLegacyForge();
-	}
-
-	default boolean isModernForge() {
-		return isForge() && !isLegacyForge();
+	default boolean isForgeLikeAndNotOfficial() {
+		return isForgeLike() && !getMcpConfigProvider().isOfficial();
 	}
 
 	DependencyProviders getDependencyProviders();

@@ -17,11 +17,11 @@ import com.google.gson.JsonParser;
 
 import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
 
-public class ModInfoJson implements ModMetadataFile {
+public class McModInfo implements ModMetadataFile {
 	public static final String FILE_PATH = "mcmod.info";
 	private final JsonArray json;
 
-	private ModInfoJson(JsonElement json) {
+	private McModInfo(JsonElement json) {
 		if (json.isJsonArray()) {
 			this.json = json.getAsJsonArray();
 		} else {
@@ -29,24 +29,24 @@ public class ModInfoJson implements ModMetadataFile {
 		}
 	}
 
-	public static ModInfoJson of(byte[] utf8) {
+	public static McModInfo of(byte[] utf8) {
 		return of(new String(utf8, StandardCharsets.UTF_8));
 	}
 
-	public static ModInfoJson of(String text) {
+	public static McModInfo of(String text) {
 		return of(JsonParser.parseString(text));
 	}
 
-	public static ModInfoJson of(Path path) throws IOException {
+	public static McModInfo of(Path path) throws IOException {
 		return of(Files.readString(path, StandardCharsets.UTF_8));
 	}
 
-	public static ModInfoJson of(File file) throws IOException {
+	public static McModInfo of(File file) throws IOException {
 		return of(file.toPath());
 	}
 
-	public static ModInfoJson of(JsonElement json) {
-		return new ModInfoJson(json);
+	public static McModInfo of(JsonElement json) {
+		return new McModInfo(json);
 	}
 
 	@Override
@@ -89,7 +89,7 @@ public class ModInfoJson implements ModMetadataFile {
 
 	@Override
 	public boolean equals(Object o) {
-		return o == this || o instanceof ModInfoJson modInfoJson && modInfoJson.json.equals(json);
+		return o == this || o instanceof McModInfo modInfoJson && modInfoJson.json.equals(json);
 	}
 
 	@Override

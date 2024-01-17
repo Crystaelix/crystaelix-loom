@@ -75,7 +75,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.property("client", "org.lwjgl.librarypath", nativesPath);
 		}
 
-		if (!getExtension().isModernForge()) {
+		if (!getExtension().isModernForgeLike()) {
 			launchConfig
 					.argument("client", "--assetIndex")
 					.argument("client", getExtension().getMinecraftProvider().getVersionInfo().assetIndex().fabricId(getExtension().getMinecraftProvider().minecraftVersion()))
@@ -83,7 +83,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.argument("client", assetsDirectory.getAbsolutePath());
 		}
 
-		if (!getExtension().isForge()) {
+		if (!getExtension().isForgeLike()) {
 			if (getExtension().areEnvironmentSourceSetsSplit()) {
 				launchConfig.property("client", !quilt ? "fabric.gameJarPath.client" : "loader.gameJarPath.client", getGameJarPath("client"));
 				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getGameJarPath("common"));
@@ -100,7 +100,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.argument("client", "Architectury Loom");
 		}
 
-		if (getExtension().isModernForge()) {
+		if (getExtension().isModernForgeLike()) {
 			// Find the mapping files for Unprotect to use for figuring out
 			// which classes are from Minecraft.
 			String unprotectMappings = getProject().getConfigurations()

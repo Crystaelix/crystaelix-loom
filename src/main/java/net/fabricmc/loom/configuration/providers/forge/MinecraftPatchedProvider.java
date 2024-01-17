@@ -436,7 +436,7 @@ public class MinecraftPatchedProvider {
 		copyMissingClasses(minecraftSrgJar, minecraftPatchedSrgJar);
 		deleteParameterNames(minecraftPatchedSrgJar);
 
-		if (getExtension().isForgeAndNotOfficial()) {
+		if (getExtension().isForgeLikeAndNotOfficial()) {
 			fixParameterAnnotation(minecraftPatchedSrgJar);
 		}
 

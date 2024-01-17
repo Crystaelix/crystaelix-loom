@@ -78,7 +78,7 @@ public abstract class MinecraftProvider {
 		final DependencyInfo dependency = DependencyInfo.create(getProject(), Constants.Configurations.MINECRAFT);
 		minecraftVersion = dependency.getDependency().getVersion();
 
-		if (getExtension().shouldGenerateSrgTiny() && !getExtension().isForge()) {
+		if (getExtension().shouldGenerateSrgTiny() && !getExtension().isForgeLike()) {
 			getProject().getDependencies().add(Constants.Configurations.SRG, "de.oceanlabs.mcp:mcp_config:" + minecraftVersion);
 		}
 

@@ -120,7 +120,7 @@ public class ForgeSourcesRemapper {
 		List<Path> forgeInstallerSources = new ArrayList<>();
 		Path legacySourcesZip = null;
 
-		if (extension.isModernForge()) {
+		if (extension.isModernForgeLike()) {
 			String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
 
 			for (File file : DependencyDownloader.download(project, sourceDependency)) {

@@ -125,7 +125,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 				.convention(true);
 		this.transitiveAccessWideners.finalizeValueOnRead();
 		this.modProvidedJavadoc = project.getObjects().property(Boolean.class)
-				.convention(project.provider(() -> !isForge()));
+				.convention(project.provider(() -> !isForgeLike()));
 		this.modProvidedJavadoc.finalizeValueOnRead();
 		this.intermediary = project.getObjects().property(String.class)
 				.convention("https://maven.fabricmc.net/net/fabricmc/intermediary/%1$s/intermediary-%1$s-v2.jar");
@@ -441,7 +441,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 			return generateSrgTiny;
 		}
 
-		return isForge();
+		return isForgeLike();
 	}
 
 	@Override

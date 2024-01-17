@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -68,11 +69,8 @@ public class ForgeRunsProvider {
 
 	private void readTemplates() {
 		if (extension.isLegacyForge()) {
-			extension.getRunConfigs().configureEach(config -> {
-				if (Constants.Forge.UNDETERMINED_MAIN_CLASS.equals(config.getDefaultMainClass())) {
-					config.setDefaultMainClass(Constants.LegacyForge.LAUNCH_WRAPPER);
-				}
-			});
+			templates.add(new ForgeRunTemplate("client", Constants.LegacyForge.LAUNCH_WRAPPER, List.of(), List.of(), Map.of(), Map.of()));
+			templates.add(new ForgeRunTemplate("server", Constants.LegacyForge.LAUNCH_WRAPPER, List.of(), List.of(), Map.of(), Map.of()));
 			return;
 		}
 

@@ -166,13 +166,12 @@ public final class FabricModJsonFactory {
 	}
 
 	public static boolean isModJar(Path input, ModPlatform platform) {
-		if (platform == ModPlatform.FORGE) {
-			return ZipUtils.contains(input, "META-INF/mods.toml") || ZipUtils.contains(input, "mcmod.info");
-		} else if (platform == ModPlatform.QUILT) {
-			return ZipUtils.contains(input, "quilt.mod.json") || isModJar(input, ModPlatform.FABRIC);
-		}
-
-		return ZipUtils.contains(input, FABRIC_MOD_JSON);
+		return switch (platform) {
+		case FABRIC -> ZipUtils.contains(input, FABRIC_MOD_JSON);
+		case FORGE -> ZipUtils.contains(input, "META-INF/mods.toml");
+		case QUILT -> ZipUtils.contains(input, "quilt.mod.json") || isModJar(input, ModPlatform.FABRIC);
+		case LEGACY_FORGE -> ZipUtils.contains(input, "mcmod.info");
+		};
 	}
 
 	public static boolean isNestableModJar(File file, ModPlatform platform) {
@@ -190,12 +189,11 @@ public final class FabricModJsonFactory {
 			return true;
 		}
 
-		if (platform == ModPlatform.FORGE) {
-			return Files.exists(fs.getPath("META-INF/mods.toml")) || Files.exists(fs.getPath("mcmod.info"));
-		} else if (platform == ModPlatform.QUILT) {
-			return Files.exists(fs.getPath("quilt.mod.json")) || containsMod(fs, ModPlatform.FABRIC);
-		}
-
-		return Files.exists(fs.getPath(FABRIC_MOD_JSON));
+		return switch (platform) {
+		case FABRIC -> Files.exists(fs.getPath(FABRIC_MOD_JSON));
+		case FORGE -> Files.exists(fs.getPath("META-INF/mods.toml"));
+		case QUILT -> Files.exists(fs.getPath("quilt.mod.json")) || containsMod(fs, ModPlatform.FABRIC);
+		case LEGACY_FORGE -> Files.exists(fs.getPath("mcmod.info"));
+		};
 	}
 }

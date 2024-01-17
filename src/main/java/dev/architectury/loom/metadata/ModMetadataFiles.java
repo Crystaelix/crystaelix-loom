@@ -25,7 +25,7 @@ public final class ModMetadataFiles {
 	private static final Map<String, Function<byte[], ModMetadataFile>> SINGLE_FILE_METADATA_TYPES = ImmutableMap.<String, Function<byte[], ModMetadataFile>>builder()
 			.put(QuiltModJson.FILE_NAME, QuiltModJson::of)
 			.put(ArchitecturyCommonJson.FILE_NAME, ArchitecturyCommonJson::of)
-			.put(ModInfoJson.FILE_PATH, onError(ModInfoJson::of, "Could not load mcmod.info", () -> new ErroringModMetadataFile("mcmod.info")))
+			.put(McModInfo.FILE_PATH, onError(McModInfo::of, "Could not load mcmod.info", () -> new ErroringModMetadataFile("mcmod.info")))
 			.put(ModsToml.FILE_PATH, onError(ModsToml::of, "Could not load mods.toml", () -> new ErroringModMetadataFile("mods.toml")))
 			.build();
 

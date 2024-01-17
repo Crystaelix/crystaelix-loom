@@ -66,12 +66,12 @@ public class PatchProvider extends DependencyProvider {
 		if (Files.notExists(clientPatches) || Files.notExists(serverPatches) || refreshDeps()) {
 			getProject().getLogger().info(":extracting forge patches");
 
-			Path installerJar = getExtension().isModernForge()
+			Path installerJar = getExtension().isModernForgeLike()
 					? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
 					: getExtension().getForgeUniversalProvider().getForge().toPath();
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
-				if (getExtension().isModernForge()) {
+				if (getExtension().isModernForgeLike()) {
 					Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
 					Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
 				} else {
