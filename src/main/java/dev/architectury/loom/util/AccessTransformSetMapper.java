@@ -22,7 +22,7 @@
  * THE SOFTWARE.
  */
 
-package net.fabricmc.loom.util.srg;
+package dev.architectury.loom.util;
 
 import java.util.Objects;
 import java.util.Optional;

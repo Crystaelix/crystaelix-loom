@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.providers.forge.fg2;
+package net.fabricmc.loom.configuration.providers.forge.legacy;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -47,6 +47,10 @@ import java.util.jar.Manifest;
 import java.util.stream.Stream;
 
 import com.google.common.base.Stopwatch;
+
+import dev.architectury.loom.util.AccessTransformSetMapper;
+import dev.architectury.loom.util.legacyforge.CoreModManagerTransformer;
+
 import org.cadixdev.at.AccessTransformSet;
 import org.cadixdev.at.io.AccessTransformFormats;
 import org.cadixdev.lorenz.MappingSet;
@@ -71,10 +75,8 @@ import net.fabricmc.loom.util.Pair;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
-import net.fabricmc.loom.util.legacyforge.CoreModManagerTransformer;
 import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.service.SharedServiceManager;
-import net.fabricmc.loom.util.srg.AccessTransformSetMapper;
 import net.fabricmc.lorenztiny.TinyMappingsReader;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.stitch.merge.JarMerger;

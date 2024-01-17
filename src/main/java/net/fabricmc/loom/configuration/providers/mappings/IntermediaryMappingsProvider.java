@@ -83,7 +83,7 @@ public abstract class IntermediaryMappingsProvider extends IntermediateMappingsP
 			digest.reset();
 			digest.update(value.getBytes(StandardCharsets.UTF_8));
 			return String.format("%040x", new BigInteger(1, digest.digest()));
-		} catch (Exception e){
+		} catch (Exception e) {
 			e.printStackTrace();
 			return "";
 		}

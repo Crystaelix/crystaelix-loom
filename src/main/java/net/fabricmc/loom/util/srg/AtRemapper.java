@@ -159,8 +159,7 @@ public final class AtRemapper {
 												def -> def.getName("srg").equals(s)
 										).map(def -> def.getName("named")).orElse(s);
 									});
-								}
-								else {
+								} else {
 									parts[2] = classMapping.flatMap(def -> CollectionUtil.find(
 											def.getFields(),
 											fDef -> fDef.getName("srg").equals(parts[2])

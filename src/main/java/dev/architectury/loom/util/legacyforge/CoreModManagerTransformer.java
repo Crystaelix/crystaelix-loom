@@ -1,4 +1,4 @@
-package net.fabricmc.loom.util.legacyforge;
+package dev.architectury.loom.util.legacyforge;
 
 import static org.objectweb.asm.Opcodes.AALOAD;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;
@@ -171,7 +171,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitJumpInsn(GOTO, label15);
 			methodVisitor.visitLabel(label17);
 			methodVisitor.visitLineNumber(705, label17);
-			methodVisitor.visitFrame(Opcodes.F_APPEND,1, new Object[] {"java/io/File"}, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_APPEND, 1, new Object[] {"java/io/File"}, 0, null);
 			methodVisitor.visitInsn(ACONST_NULL);
 			methodVisitor.visitVarInsn(ASTORE, 6);
 			Label label18 = new Label();
@@ -233,7 +233,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitVarInsn(ALOAD, 10);
 			methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/FileInputStream", "close", "()V", false);
 			methodVisitor.visitLabel(label24);
-			methodVisitor.visitFrame(Opcodes.F_CHOP,1, null, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_CHOP, 1, null, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 8);
 			methodVisitor.visitInsn(ATHROW);
 			methodVisitor.visitLabel(label4);
@@ -260,7 +260,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitInsn(ATHROW);
 			methodVisitor.visitLabel(label19);
 			methodVisitor.visitLineNumber(713, label19);
-			methodVisitor.visitFrame(Opcodes.F_CHOP,3, null, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_CHOP, 3, null, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 5);
 			methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/io/File", "getName", "()Ljava/lang/String;", false);
 			methodVisitor.visitLdcInsn("jar");
@@ -313,7 +313,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitMethodInsn(INVOKESTATIC, "net/minecraftforge/fml/common/asm/transformers/ModAccessTransformer", "addJar", "(Ljava/util/jar/JarFile;Ljava/lang/String;)V", false);
 			methodVisitor.visitLabel(label6);
 			methodVisitor.visitLineNumber(722, label6);
-			methodVisitor.visitFrame(Opcodes.F_APPEND,3, new Object[] {"java/lang/Throwable", "java/lang/Throwable", "java/util/jar/JarFile"}, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_APPEND, 3, new Object[] {"java/lang/Throwable", "java/lang/Throwable", "java/util/jar/JarFile"}, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 9);
 			methodVisitor.visitJumpInsn(IFNULL, label22);
 			methodVisitor.visitVarInsn(ALOAD, 9);
@@ -328,7 +328,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitVarInsn(ALOAD, 9);
 			methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/jar/JarFile", "close", "()V", false);
 			methodVisitor.visitLabel(label32);
-			methodVisitor.visitFrame(Opcodes.F_CHOP,1, null, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_CHOP, 1, null, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 7);
 			methodVisitor.visitInsn(ATHROW);
 			methodVisitor.visitLabel(label9);
@@ -355,7 +355,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitInsn(ATHROW);
 			methodVisitor.visitLabel(label22);
 			methodVisitor.visitLineNumber(724, label22);
-			methodVisitor.visitFrame(Opcodes.F_CHOP,2, null, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_CHOP, 2, null, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 6);
 			methodVisitor.visitJumpInsn(IFNULL, label15);
 			Label label35 = new Label();
@@ -393,7 +393,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			Label label41 = new Label();
 			methodVisitor.visitJumpInsn(GOTO, label41);
 			methodVisitor.visitLabel(label40);
-			methodVisitor.visitFrame(Opcodes.F_APPEND,2, new Object[] {"java/lang/String", "java/lang/Integer"}, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_APPEND, 2, new Object[] {"java/lang/String", "java/lang/Integer"}, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 8);
 			methodVisitor.visitLabel(label41);
 			methodVisitor.visitFrame(Opcodes.F_SAME1, 0, null, 1, new Object[] {"java/lang/Integer"});
@@ -413,7 +413,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitJumpInsn(GOTO, label15);
 			methodVisitor.visitLabel(label37);
 			methodVisitor.visitLineNumber(732, label37);
-			methodVisitor.visitFrame(Opcodes.F_CHOP,1, null, 0, null);
+			methodVisitor.visitFrame(Opcodes.F_CHOP, 1, null, 0, null);
 			methodVisitor.visitVarInsn(ALOAD, 6);
 			methodVisitor.visitMethodInsn(INVOKEVIRTUAL, "java/util/jar/Manifest", "getMainAttributes", "()Ljava/util/jar/Attributes;", false);
 			methodVisitor.visitLdcInsn("FMLCorePlugin");

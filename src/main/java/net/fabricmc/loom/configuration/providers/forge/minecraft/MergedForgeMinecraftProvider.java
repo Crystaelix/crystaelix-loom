@@ -31,7 +31,7 @@ import java.util.List;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
-import net.fabricmc.loom.configuration.providers.forge.fg2.MinecraftLegacyPatchedProvider;
+import net.fabricmc.loom.configuration.providers.forge.legacy.MinecraftLegacyPatchedProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MergedMinecraftProvider;
 
 public final class MergedForgeMinecraftProvider extends MergedMinecraftProvider implements ForgeMinecraftProvider {

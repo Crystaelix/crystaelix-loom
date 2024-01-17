@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.jetbrains.annotations.Nullable;
-
 import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
@@ -54,14 +53,17 @@ public class ModInfoJson implements ModMetadataFile {
 	public Set<String> getIds() {
 		if (json.isEmpty()) return Set.of();
 		final ImmutableSet.Builder<String> modIds = ImmutableSet.builder();
+
 		for (JsonElement mod : json.asList()) {
 			if (mod.isJsonObject()) {
 				JsonObject modObject = mod.getAsJsonObject();
+
 				if (modObject.has("modid")) {
 					modIds.add(modObject.get("modid").getAsString());
 				}
 			}
 		}
+
 		return modIds.build();
 	}
 

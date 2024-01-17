@@ -121,9 +121,11 @@ public class MinecraftLibraryProvider {
 
 	private List<Library> processLibraries(List<Library> libraries) {
 		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), JavaVersion.current());
+
 		if (libraryContext.usesLWJGL3()) {
 			isLWJGL3 = true;
 		}
+
 		return processorManager.processLibraries(libraries, libraryContext);
 	}
 
