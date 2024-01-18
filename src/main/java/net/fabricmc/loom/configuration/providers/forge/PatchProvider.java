@@ -31,6 +31,7 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PushbackInputStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,7 +40,6 @@ import java.nio.file.StandardOpenOption;
 import java.util.jar.JarEntry;
 import java.util.jar.JarInputStream;
 import java.util.jar.JarOutputStream;
-import java.util.zip.ZipEntry;
 
 import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
 import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
@@ -116,16 +116,22 @@ public class PatchProvider extends DependencyProvider {
 					continue;
 				}
 
-				out.putNextEntry(new ZipEntry(name));
+				out.putNextEntry(new JarEntry(name));
 
-				// Converting from legacy format to modern (v1) format
-				DataInputStream dataIn = new DataInputStream(in);
-				DataOutputStream dataOut = new DataOutputStream(out);
-				dataOut.writeByte(1); // version
-				dataIn.readUTF(); // unused patch name (presumably always the same as the obf class name)
-				dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // obf class name
-				dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // srg class name
-				IOUtils.copy(in, out); // remainder is unchanged
+				PushbackInputStream pushbackIn = new PushbackInputStream(in);
+
+				if (pushbackIn.read() == 1) { // Check version, long class name unlikely
+					pushbackIn.unread(1);
+				} else { // Convert from legacy format to modern (v1) format
+					DataInputStream dataIn = new DataInputStream(pushbackIn);
+					DataOutputStream dataOut = new DataOutputStream(out);
+					dataOut.writeByte(1); // version
+					dataIn.readUTF(); // unused patch name (presumably always the same as the obf class name)
+					dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // obf class name
+					dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // srg class name
+				}
+
+				IOUtils.copy(pushbackIn, out); // remainder is unchanged
 
 				out.closeEntry();
 			}
