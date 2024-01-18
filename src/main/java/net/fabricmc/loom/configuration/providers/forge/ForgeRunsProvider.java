@@ -68,7 +68,7 @@ public class ForgeRunsProvider {
 	}
 
 	private void readTemplates() {
-		if (extension.isLegacyForge()) {
+		if (!json.has("runs")) {
 			templates.add(new ForgeRunTemplate("client", Constants.LegacyForge.LAUNCH_WRAPPER, List.of(), List.of(), Map.of(), Map.of()));
 			templates.add(new ForgeRunTemplate("server", Constants.LegacyForge.LAUNCH_WRAPPER, List.of(), List.of(), Map.of(), Map.of()));
 			return;
@@ -164,6 +164,8 @@ public class ForgeRunsProvider {
 					.collect(Collectors.joining(File.pathSeparator));
 		} else if (key.equals("mcp_mappings")) {
 			string = "loom.stub";
+		} else if (key.equals("mcp_to_srg")) {
+			string = extension.getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString();
 		} else if (json.has(key)) {
 			JsonElement element = json.get(key);
 

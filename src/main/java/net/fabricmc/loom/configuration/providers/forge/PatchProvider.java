@@ -120,9 +120,10 @@ public class PatchProvider extends DependencyProvider {
 
 				PushbackInputStream pushbackIn = new PushbackInputStream(in);
 
-				if (pushbackIn.read() == 1) { // Check version, long class name unlikely
-					pushbackIn.unread(1);
-				} else { // Convert from legacy format to modern (v1) format
+				int read = pushbackIn.read();
+				pushbackIn.unread(read);
+				if (read != 1) { // Check version, long class name unlikely
+					// Convert from legacy format to modern (v1) format
 					DataInputStream dataIn = new DataInputStream(pushbackIn);
 					DataOutputStream dataOut = new DataOutputStream(out);
 					dataOut.writeByte(1); // version
