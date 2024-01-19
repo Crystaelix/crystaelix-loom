@@ -31,6 +31,9 @@ night-config = "3.6.6"
 datafixerupper = "6.0.8"
 at = "1.0.1"
 
+# Legacy Forge libraries
+commons-compress = "1.25.0"
+
 [libraries]
 # Loom compile libraries
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
@@ -64,6 +67,9 @@ forge-diffpatch = { module = "net.minecraftforge:DiffPatch", version.ref = "forg
 night-config-toml = { module = "com.electronwill.night-config:toml", version.ref = "night-config" }
 datafixerupper = { module = "com.mojang:datafixerupper", version.ref = "datafixerupper" }
 at = { module = "dev.architectury:at", version.ref = "at" }
+
+# Legacy Forge support
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
 
 [plugins]
 kotlin = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }

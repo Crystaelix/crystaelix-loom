@@ -43,3 +43,7 @@ access-transformers-new = { module = "net.minecraftforge:accesstransformers", ve
 unprotect = { module = "io.github.juuxel:unprotect", version.ref = "unprotect" }
 asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 union-relauncher = { module = "io.github.juuxel:union-relauncher", version.ref = "union-relauncher" }
+
+# Legacy Forge Runtime depedencies
+commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }
+

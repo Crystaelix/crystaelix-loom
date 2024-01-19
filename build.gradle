@@ -192,6 +192,9 @@ dependencies {
 	// Forge mods.toml parsing
 	implementation libs.night.config.toml
 
+	// Legacy Forge patch parsing
+	implementation libs.commons.compress
+
 	// Testing
 	testImplementation(gradleTestKit())
 	testImplementation(testLibs.spock) {
