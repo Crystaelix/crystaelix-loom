@@ -181,9 +181,9 @@ dependencies {
 	compileOnly libs.kotlin.gradle.plugin
 
 	// Forge patches
-	implementation libs.forge.installer.tools
+	implementation libs.forge.installertools
 	implementation libs.lorenz
-	implementation libs.mcinjector
+	implementation libs.forge.autorenamingtool
 	implementation libs.opencsv
 	implementation libs.forge.diffpatch
 	implementation libs.datafixerupper
@@ -467,7 +467,7 @@ task printActionsTestName(type: PrintActionsTestName) {
 /**
  * Replaces invalid characters in test names for GitHub Actions artifacts.
  */
-class PrintActionsTestName extends DefaultTask {
+abstract class PrintActionsTestName extends DefaultTask {
 	@Input
 	@Option(option = "name", description = "The test name")
 	String testName
