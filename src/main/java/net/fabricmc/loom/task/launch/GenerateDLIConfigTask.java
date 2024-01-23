@@ -29,7 +29,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,13 +76,15 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.property("client", "org.lwjgl.librarypath", nativesPath);
 		}
 
-		if (!getExtension().isForgeLike()) {
+		if (!getExtension().isModernForgeLike()) {
 			launchConfig
 					.argument("client", "--assetIndex")
 					.argument("client", getExtension().getMinecraftProvider().getVersionInfo().assetIndex().fabricId(getExtension().getMinecraftProvider().minecraftVersion()))
 					.argument("client", "--assetsDir")
 					.argument("client", assetsDirectory.getAbsolutePath());
+		}
 
+		if (!getExtension().isForgeLike()) {
 			if (getExtension().areEnvironmentSourceSetsSplit()) {
 				launchConfig.property("client", !quilt ? "fabric.gameJarPath.client" : "loader.gameJarPath.client", getGameJarPath("client"));
 				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getGameJarPath("common"));
@@ -131,23 +133,69 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 							.argument("data", getProject().file("src/generated/resources").getAbsolutePath());
 				}
 
-				launchConfig.property("mixin.env.remapRefMap", "true");
+				launchConfig
+						.property("mixin.env.remapRefMap", "true")
+						// Just in case
+						.property("mixin.env.refMapRemappingFile", getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString());
 
 				if (PropertyUtil.getAndFinalize(getExtension().getForge().getUseCustomMixin())) {
 					// See mixin remapper service in forge-runtime
 					launchConfig
 							.property("architectury.mixinRemapper.sourceNamespace", intermediateNs)
 							.property("architectury.mixinRemapper.mappingsPath", mappingsPath);
-				} else {
-					launchConfig.property("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString());
 				}
 
 				Set<String> mixinConfigs = PropertyUtil.getAndFinalize(getExtension().getForge().getMixinConfigs());
 
 				if (!mixinConfigs.isEmpty()) {
 					for (String config : mixinConfigs) {
-						launchConfig.argument("-mixin.config");
-						launchConfig.argument(config);
+						launchConfig
+								.argument("-mixin.config")
+								.argument(config);
+					}
+				}
+			}
+
+			if (getExtension().isLegacyForgeLike()) {
+				if (getExtension().getForgeProvider().getVersion().cpwFml()) {
+					launchConfig
+							.argument("client", "--tweakClass")
+							.argument("client", Constants.LegacyForge.CPW_FML_TWEAKER)
+							.argument("server", "--tweakClass")
+							.argument("server", Constants.LegacyForge.CPW_FML_SERVER_TWEAKER);
+				} else {
+					launchConfig
+							.argument("client", "--tweakClass")
+							.argument("client", Constants.LegacyForge.FML_TWEAKER)
+							.argument("server", "--tweakClass")
+							.argument("server", Constants.LegacyForge.FML_SERVER_TWEAKER);
+				}
+
+				launchConfig
+						.argument("--accessToken")
+						.argument("0")
+						.argument("--userProperties")
+						.argument("{}");
+
+				String srgPath = !getExtension().isCleanroom()
+						? getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString()
+						: getExtension().getMappingConfiguration().srgToNamedTsrg.toAbsolutePath().toString();
+
+				launchConfig
+						.property("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", srgPath)
+						.property("net.minecraftforge.gradle.GradleStart.srg.notch-srg", getExtension().getMappingConfiguration().officialToSrgSrg.toAbsolutePath().toString())
+						.property("net.minecraftforge.gradle.GradleStart.srgDir", getExtension().getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString())
+						.property("net.minecraftforge.gradle.GradleStart.csvDir", getExtension().getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString())
+						.property("mixin.env.remapRefMap", "true")
+						.property("mixin.env.refMapRemappingFile", srgPath);
+
+				Set<String> mixinConfigs = PropertyUtil.getAndFinalize(getExtension().getForge().getMixinConfigs());
+
+				if (!mixinConfigs.isEmpty()) {
+					for (String config : mixinConfigs) {
+						launchConfig
+								.argument("-mixin.config")
+								.argument(config);
 					}
 				}
 			}
@@ -210,7 +258,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	}
 
 	public static class LaunchConfig {
-		private final Map<String, List<String>> values = new HashMap<>();
+		private final Map<String, List<String>> values = new LinkedHashMap<>();
 
 		public LaunchConfig property(String key, String value) {
 			return property("common", key, value);

@@ -101,6 +101,9 @@ public abstract class CompileConfiguration implements Runnable {
 			javadoc.setClasspath(main.getOutput().plus(main.getCompileClasspath()));
 		});
 
+		LoomDependencyManager dependencyManager = new LoomDependencyManager();
+		extension.setDependencyManager(dependencyManager);
+
 		afterEvaluationWithService((serviceManager) -> {
 			final ConfigContext configContext = new ConfigContextImpl(getProject(), serviceManager, extension);
 
@@ -119,8 +122,6 @@ public abstract class CompileConfiguration implements Runnable {
 				throw ExceptionUtil.createDescriptiveWrapper(RuntimeException::new, "Failed to setup Minecraft", e);
 			}
 
-			LoomDependencyManager dependencyManager = new LoomDependencyManager();
-			extension.setDependencyManager(dependencyManager);
 			dependencyManager.handleDependencies(getProject(), serviceManager);
 
 			releaseLock();
@@ -215,10 +216,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 		if (extension.isForgeLike()) {
 			extension.setForgeRunsProvider(ForgeRunsProvider.create(project));
-		}
-
-		if (minecraftProvider instanceof ForgeMinecraftProvider patched) {
-			patched.getPatchedProvider().remapJar();
+			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().remapJar();
 		}
 
 		// Provide the remapped mc jars
@@ -241,7 +239,7 @@ public abstract class CompileConfiguration implements Runnable {
 		extension.setNamedMinecraftProvider(namedMinecraftProvider);
 		namedMinecraftProvider.provide(provideContext);
 
-		if (extension.isForge()) {
+		if (extension.isSrgForgeLike()) {
 			final SrgMinecraftProvider<?> srgMinecraftProvider = jarConfiguration.getSrgMinecraftProviderBiFunction().apply(project, minecraftProvider);
 			extension.setSrgMinecraftProvider(srgMinecraftProvider);
 			srgMinecraftProvider.provide(provideContext);
@@ -380,9 +378,9 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		if (extension.isForgeLike()) {
+			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 			dependencyProviders.addProvider(new McpConfigProvider(project));
 			dependencyProviders.addProvider(new PatchProvider(project));
-			dependencyProviders.addProvider(new ForgeUniversalProvider(project));
 		}
 
 		dependencyProviders.handleDependencies(project);

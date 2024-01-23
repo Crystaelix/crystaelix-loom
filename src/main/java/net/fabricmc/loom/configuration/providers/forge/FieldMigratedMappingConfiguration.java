@@ -98,17 +98,17 @@ public final class FieldMigratedMappingConfiguration extends MappingConfiguratio
 		super.setup(project, serviceManager, minecraftProvider, inputJar);
 	}
 
-	public static String createForgeMappingsIdentifier(LoomGradleExtension extension, String mappingsName, String version, String classifier, String minecraftVersion) {
-		final String base = FieldMigratedMappingConfiguration.createMappingsIdentifier(mappingsName, version, classifier, minecraftVersion);
-		final String platform = extension.getPlatform().get().id();
-		final String forgeVersion = extension.getForgeProvider().getVersion().getCombined();
-		return base + "-" + platform + "-" + forgeVersion;
-	}
-
 	@Override
 	protected void manipulateMappings(Project project, Path mappingsJar) throws IOException {
-		Stopwatch stopwatch = Stopwatch.createStarted();
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
+
+		if (extension.isLegacyForgeLike()) {
+			// Legacy forge patches are in official namespace, so if the type of a field is changed by them, then that
+			// is effectively a new field and not traceable to any mapping. Therefore this does not apply to it.
+			return;
+		}
+
+		Stopwatch stopwatch = Stopwatch.createStarted();
 		this.rawTinyMappings = tinyMappings;
 		this.rawTinyMappingsWithSrg = tinyMappingsWithSrg;
 		this.rawTinyMappingsWithMojang = tinyMappingsWithMojang;

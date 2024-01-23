@@ -159,7 +159,7 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 	public static void executeAt(Project project, Path input, Path output, AccessTransformerConfiguration configuration) throws IOException {
 		boolean serverBundleMetadataPresent = LoomGradleExtension.get(project).getMinecraftProvider().getServerBundleMetadata() != null;
 		FileCollection classpath = new DependencyDownloader(project)
-				.add((serverBundleMetadataPresent ? LoomVersions.ACCESS_TRANSFORMERS_NEW : LoomVersions.ACCESS_TRANSFORMERS).mavenNotation())
+				.add(LoomVersions.ACCESS_TRANSFORMERS.mavenNotation())
 				.add(LoomVersions.ASM.mavenNotation())
 				.download();
 		List<String> args = new ArrayList<>();

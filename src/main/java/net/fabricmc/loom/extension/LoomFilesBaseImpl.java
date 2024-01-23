@@ -70,7 +70,7 @@ public abstract class LoomFilesBaseImpl implements LoomFiles {
 
 	@Override
 	public File getRemappedModCache() {
-		return createFile(getRootProjectPersistentCache(), "remapped_mods");
+		return createFile(getUserCache(), "deobfedDeps");
 	}
 
 	@Override

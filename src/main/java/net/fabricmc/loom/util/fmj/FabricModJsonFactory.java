@@ -36,8 +36,11 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import com.google.gson.JsonObject;
+import dev.architectury.loom.metadata.McModInfo;
 import dev.architectury.loom.metadata.ModMetadataFile;
 import dev.architectury.loom.metadata.ModMetadataFiles;
+import dev.architectury.loom.metadata.ModsToml;
+import dev.architectury.loom.metadata.QuiltModJson;
 import org.gradle.api.tasks.SourceSet;
 import org.jetbrains.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -166,13 +169,12 @@ public final class FabricModJsonFactory {
 	}
 
 	public static boolean isModJar(Path input, ModPlatform platform) {
-		if (platform.isForgeLike()) {
-			return ZipUtils.contains(input, "META-INF/mods.toml");
-		} else if (platform == ModPlatform.QUILT) {
-			return ZipUtils.contains(input, "quilt.mod.json") || isModJar(input, ModPlatform.FABRIC);
-		}
-
-		return ZipUtils.contains(input, FABRIC_MOD_JSON);
+		return switch (platform) {
+		case FABRIC -> ZipUtils.contains(input, FABRIC_MOD_JSON);
+		case FORGE, NEOFORGE -> ZipUtils.contains(input, ModsToml.FILE_PATH);
+		case QUILT -> ZipUtils.contains(input, QuiltModJson.FILE_NAME) || isModJar(input, ModPlatform.FABRIC);
+		case LEGACYFORGE, CLEANROOM -> ZipUtils.contains(input, McModInfo.FILE_PATH);
+		};
 	}
 
 	public static boolean isNestableModJar(File file, ModPlatform platform) {
@@ -190,12 +192,11 @@ public final class FabricModJsonFactory {
 			return true;
 		}
 
-		if (platform.isForgeLike()) {
-			return Files.exists(fs.getPath("META-INF/mods.toml"));
-		} else if (platform == ModPlatform.QUILT) {
-			return Files.exists(fs.getPath("quilt.mod.json")) || containsMod(fs, ModPlatform.FABRIC);
-		}
-
-		return Files.exists(fs.getPath(FABRIC_MOD_JSON));
+		return switch (platform) {
+		case FABRIC -> Files.exists(fs.getPath(FABRIC_MOD_JSON));
+		case FORGE, NEOFORGE -> Files.exists(fs.getPath(ModsToml.FILE_PATH));
+		case QUILT -> Files.exists(fs.getPath(QuiltModJson.FILE_NAME)) || containsMod(fs, ModPlatform.FABRIC);
+		case LEGACYFORGE, CLEANROOM -> Files.exists(fs.getPath(McModInfo.FILE_PATH));
+		};
 	}
 }

@@ -35,11 +35,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
+import dev.architectury.loom.util.McpMappingsScanner;
 import org.apache.commons.io.IOUtils;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.srg.tsrg.TSrgReader;
@@ -236,13 +238,14 @@ public class MCPReader {
 			}
 		}
 
-		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcpJar, false)) {
-			Path fields = fs.getPath("fields.csv");
-			Path methods = fs.getPath("methods.csv");
-			Path params = fs.getPath("params.csv");
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcpJar)) {
+			McpMappingsScanner scan = new McpMappingsScanner(fs);
+			Optional<Path> fields = scan.get("fields.csv");
+			Optional<Path> methods = scan.get("methods.csv");
+			Optional<Path> params = scan.get("params.csv");
 			Pattern paramsPattern = Pattern.compile("p_[^\\d]*(\\d+)_(\\d)+_?");
 
-			try (CSVReader reader = new CSVReader(Files.newBufferedReader(fields, StandardCharsets.UTF_8))) {
+			try (CSVReader reader = new CSVReader(Files.newBufferedReader(fields.get(), StandardCharsets.UTF_8))) {
 				reader.readNext();
 				String[] line;
 
@@ -262,7 +265,7 @@ public class MCPReader {
 				}
 			}
 
-			try (CSVReader reader = new CSVReader(Files.newBufferedReader(methods, StandardCharsets.UTF_8))) {
+			try (CSVReader reader = new CSVReader(Files.newBufferedReader(methods.get(), StandardCharsets.UTF_8))) {
 				reader.readNext();
 				String[] line;
 
@@ -282,8 +285,8 @@ public class MCPReader {
 				}
 			}
 
-			if (Files.exists(params)) {
-				try (CSVReader reader = new CSVReader(Files.newBufferedReader(params, StandardCharsets.UTF_8))) {
+			if (params.isPresent()) {
+				try (CSVReader reader = new CSVReader(Files.newBufferedReader(params.get(), StandardCharsets.UTF_8))) {
 					reader.readNext();
 					String[] line;
 

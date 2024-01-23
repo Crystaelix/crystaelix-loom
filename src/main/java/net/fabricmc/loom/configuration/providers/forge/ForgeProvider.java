@@ -26,8 +26,14 @@ package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.File;
 import java.nio.file.Path;
+import java.util.Set;
 
+import dev.architectury.loom.forge.ForgeVersion;
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Dependency;
+import org.gradle.api.artifacts.ExcludeRule;
+import org.gradle.api.artifacts.ModuleDependency;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -37,7 +43,8 @@ import net.fabricmc.loom.util.ModPlatform;
 
 public class ForgeProvider extends DependencyProvider {
 	private final ModPlatform platform;
-	private ForgeVersion version = new ForgeVersion(null);
+	private ForgeVersion version = new ForgeVersion("unresolved", "unresolved", "unresolved");
+	private Set<ExcludeRule> excludeRules = Set.of();
 	private File globalCache;
 
 	public ForgeProvider(Project project) {
@@ -47,8 +54,19 @@ public class ForgeProvider extends DependencyProvider {
 
 	@Override
 	public void provide(DependencyInfo dependency) throws Exception {
-		version = new ForgeVersion(dependency.getResolvedVersion());
-		addDependency(dependency.getDepString() + ":userdev", Constants.Configurations.FORGE_USERDEV);
+		Dependency dep = dependency.getDependency();
+		version = new ForgeVersion(dep.getGroup(), dep.getName(), dependency.getResolvedVersion());
+
+		if (dep instanceof ModuleDependency moduleDependency) {
+			excludeRules = Set.copyOf(moduleDependency.getExcludeRules());
+		}
+
+		if (version.userdev3()) {
+			addDependency(dependency.getDepString() + ":userdev3", Constants.Configurations.FORGE_USERDEV);
+		} else {
+			addDependency(dependency.getDepString() + ":userdev", Constants.Configurations.FORGE_USERDEV);
+		}
+
 		addDependency(dependency.getDepString() + ":installer", Constants.Configurations.FORGE_INSTALLER);
 
 		if (getExtension().isForge() && version.getMajorVersion() >= Constants.Forge.MIN_UNION_RELAUNCHER_VERSION) {
@@ -71,7 +89,13 @@ public class ForgeProvider extends DependencyProvider {
 
 	@Override
 	public String getTargetConfig() {
-		return platform == ModPlatform.NEOFORGE ? Constants.Configurations.NEOFORGE : Constants.Configurations.FORGE;
+		return switch (platform) {
+		case FORGE -> Constants.Configurations.FORGE;
+		case NEOFORGE -> Constants.Configurations.NEOFORGE;
+		case LEGACYFORGE -> Constants.Configurations.LEGACYFORGE;
+		case CLEANROOM -> Constants.Configurations.CLEANROOM;
+		default -> throw new GradleException("Forge provider can only be used on Forge-like platforms!");
+		};
 	}
 
 	/**
@@ -83,66 +107,6 @@ public class ForgeProvider extends DependencyProvider {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final ModPlatform platform = extension.getPlatform().get();
 		final String version = extension.getForgeProvider().getVersion().getCombined();
-		return LoomGradleExtension.get(project).getMinecraftProvider()
-				.dir(platform.id() + "/" + version).toPath();
-	}
-
-	public static final class ForgeVersion {
-		private final String combined;
-		private final String minecraftVersion;
-		private final String forgeVersion;
-		private final int majorVersion;
-
-		public ForgeVersion(String combined) {
-			this.combined = combined;
-
-			if (combined == null) {
-				this.minecraftVersion = "NO_VERSION";
-				this.forgeVersion = "NO_VERSION";
-				this.majorVersion = -1;
-				return;
-			}
-
-			int hyphenIndex = combined.indexOf('-');
-
-			if (hyphenIndex != -1) {
-				this.minecraftVersion = combined.substring(0, hyphenIndex);
-				this.forgeVersion = combined.substring(hyphenIndex + 1);
-			} else {
-				this.minecraftVersion = "NO_VERSION";
-				this.forgeVersion = combined;
-			}
-
-			int dotIndex = forgeVersion.indexOf('.');
-			int major;
-
-			try {
-				if (dotIndex >= 0) {
-					major = Integer.parseInt(forgeVersion.substring(0, dotIndex));
-				} else {
-					major = Integer.parseInt(forgeVersion);
-				}
-			} catch (NumberFormatException e) {
-				major = -1;
-			}
-
-			this.majorVersion = major;
-		}
-
-		public String getCombined() {
-			return combined;
-		}
-
-		public String getMinecraftVersion() {
-			return minecraftVersion;
-		}
-
-		public String getForgeVersion() {
-			return forgeVersion;
-		}
-
-		public int getMajorVersion() {
-			return majorVersion;
-		}
+		return LoomGradleExtension.get(project).getMinecraftProvider().dir(platform.id() + "/" + version).toPath();
 	}
 }

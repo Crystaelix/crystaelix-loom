@@ -30,6 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import dev.architectury.loom.legacyforge.LegacyPatchConverter;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -51,11 +52,23 @@ public class PatchProvider extends DependencyProvider {
 		if (Files.notExists(clientPatches) || Files.notExists(serverPatches) || refreshDeps()) {
 			getProject().getLogger().info(":extracting forge patches");
 
-			Path installerJar = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath();
+			Path installerJar = getExtension().isModernForgeLike()
+					? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
+					: getExtension().getForgeUniversalProvider().getForge().toPath();
 
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
-				Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
-				Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar)) {
+				if (getExtension().isModernForgeLike()) {
+					Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
+					Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
+				} else {
+					byte[] patches = Files.readAllBytes(fs.getPath("binpatches.pack.lzma"));
+					Files.write(clientPatches, LegacyPatchConverter.convert(
+							getProject().getLogger(), patches, "binpatch/client/"
+					));
+					Files.write(serverPatches, LegacyPatchConverter.convert(
+							getProject().getLogger(), patches, "binpatch/server/"
+					));
+				}
 			}
 		}
 	}

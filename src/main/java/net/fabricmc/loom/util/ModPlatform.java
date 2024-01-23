@@ -24,9 +24,12 @@
 
 package net.fabricmc.loom.util;
 
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
+import org.apache.commons.lang3.ArrayUtils;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 
@@ -37,10 +40,18 @@ public enum ModPlatform {
 	FABRIC("Fabric", false),
 	FORGE("Forge", false),
 	QUILT("Quilt", true),
-	NEOFORGE("NeoForge", true);
+	NEOFORGE("NeoForge", true),
+	LEGACYFORGE("LegacyForge", true),
+	CLEANROOM("Cleanroom", true);
+
+	public static final ModPlatform[] FABRIC_LIKE = {FABRIC, QUILT};
+	public static final ModPlatform[] FORGE_LIKE = {FORGE, NEOFORGE, LEGACYFORGE, CLEANROOM};
+	public static final ModPlatform[] MODERN_FORGE_LIKE = {FORGE, NEOFORGE};
+	public static final ModPlatform[] SRG_FORGE_LIKE = {FORGE, LEGACYFORGE, CLEANROOM};
+	public static final ModPlatform[] LEGACY_FORGE_LIKE = {LEGACYFORGE, CLEANROOM};
 
 	private final String displayName;
-	boolean experimental;
+	final boolean experimental;
 
 	ModPlatform(String displayName, boolean experimental) {
 		this.displayName = displayName;
@@ -62,34 +73,63 @@ public enum ModPlatform {
 		return experimental;
 	}
 
+	public boolean isFabricLike() {
+		return ArrayUtils.contains(FABRIC_LIKE, this);
+	}
+
 	public boolean isForgeLike() {
-		return this == FORGE || this == NEOFORGE;
+		return ArrayUtils.contains(FORGE_LIKE, this);
 	}
 
-	public static void assertPlatform(Project project, ModPlatform platform) {
-		assertPlatform(LoomGradleExtension.get(project), platform);
+	public boolean isModernForgeLike() {
+		return ArrayUtils.contains(MODERN_FORGE_LIKE, this);
 	}
 
-	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform platform) {
-		assertPlatform(extension, platform, () -> {
-			String msg = "Loom is not running on %s.%nYou can switch to it by adding 'loom.platform = %s' to your gradle.properties";
-			return msg.formatted(platform.displayName(), platform.id());
-		});
+	public boolean isSrgForgeLike() {
+		return ArrayUtils.contains(SRG_FORGE_LIKE, this);
 	}
 
-	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform platform, Supplier<String> message) {
-		if (extension.getPlatform().get() != platform) {
+	public boolean isLegacyForgeLike() {
+		return ArrayUtils.contains(LEGACY_FORGE_LIKE, this);
+	}
+
+	public static void assertPlatform(Project project, ModPlatform... platforms) {
+		assertPlatform(LoomGradleExtension.get(project), platforms);
+	}
+
+	public static void assertPlatform(LoomGradleExtensionAPI extension, ModPlatform... platforms) {
+		if (platforms.length == 1) {
+			assertPlatform(extension, () -> {
+				String currentPlatform = extension.getPlatform().get().displayName();
+				String msg = "Loom is running on %s and not %s.%nYou can switch to it by adding 'loom.platform = %s' to your gradle.properties";
+				return msg.formatted(currentPlatform, platforms[0].displayName(), platforms[0].id());
+			}, platforms);
+			return;
+		}
+
+		assertPlatform(extension, () -> {
+			String msg = "Loom is running on %s and not any of %s.%nYou can switch to it by any of the following: Add any of %s to your gradle.properties";
+			String currentPlatform = extension.getPlatform().get().displayName();
+			String platformList = Arrays.stream(platforms).map(ModPlatform::displayName).collect(Collectors.joining(", "));
+			String loomPlatform = Arrays.stream(platforms).map(ModPlatform::id).collect(Collectors.joining(", "));
+			return msg.formatted(currentPlatform, "[" + platformList + "]", "[" + loomPlatform + "]");
+		}, platforms);
+	}
+
+	public static void assertPlatform(LoomGradleExtensionAPI extension, Supplier<String> message, ModPlatform... platforms) {
+		if (!ArrayUtils.contains(platforms, extension.getPlatform().get())) {
 			throw new GradleException(message.get());
 		}
 	}
 
 	public static void assertForgeLike(LoomGradleExtensionAPI extension) {
-		assertForgeLike(extension, () -> "Loom is not running on a Forge-like platform (Forge or NeoForge).");
+		assertForgeLike(extension, () -> {
+			String msg = "Loom is running on %s and not a Forge-like platform (Forge or NeoForge).";
+			return msg.formatted(extension.getPlatform().get().displayName());
+		});
 	}
 
 	public static void assertForgeLike(LoomGradleExtensionAPI extension, Supplier<String> message) {
-		if (!extension.getPlatform().get().isForgeLike()) {
-			throw new GradleException(message.get());
-		}
+		assertPlatform(extension, message, FORGE_LIKE);
 	}
 }

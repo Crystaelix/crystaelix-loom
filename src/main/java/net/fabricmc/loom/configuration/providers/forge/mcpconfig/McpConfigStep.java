@@ -35,6 +35,18 @@ public record McpConfigStep(String type, String name, Map<String, ConfigValue> c
 	private static final String TYPE_KEY = "type";
 	private static final String NAME_KEY = "name";
 
+	public McpConfigStep(String type, Map<String, ConfigValue> config) {
+		this(type, type, config);
+	}
+
+	public McpConfigStep(String type, String name) {
+		this(type, name, Map.of());
+	}
+
+	public McpConfigStep(String type) {
+		this(type, type, Map.of());
+	}
+
 	public static McpConfigStep fromJson(JsonObject json) {
 		String type = json.get(TYPE_KEY).getAsString();
 		String name = json.has(NAME_KEY) ? json.get(NAME_KEY).getAsString() : type;

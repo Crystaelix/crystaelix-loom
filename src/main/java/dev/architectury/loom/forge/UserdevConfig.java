@@ -3,7 +3,9 @@ package dev.architectury.loom.forge;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 
+import com.mojang.datafixers.util.Either;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
@@ -20,8 +22,12 @@ public record UserdevConfig(
 		BinaryPatcherConfig binpatcher,
 		List<String> libraries,
 		Map<String, ForgeRunTemplate> runs,
-		List<String> sass
+		List<String> sass,
+		List<String> ats,
+		List<String> universalFilters
 ) {
+	public static final Codec<List<String>> STRING_LIST_CODEC = Codec.either(Codec.STRING.listOf(), Codec.STRING)
+			.xmap(either -> either.map(Function.identity(), List::of), Either::left);
 	public static final Codec<UserdevConfig> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			Codec.STRING.fieldOf("mcp").forGetter(UserdevConfig::mcp),
 			Codec.STRING.fieldOf("universal").forGetter(UserdevConfig::universal),
@@ -33,7 +39,9 @@ public record UserdevConfig(
 			BinaryPatcherConfig.CODEC.fieldOf("binpatcher").forGetter(UserdevConfig::binpatcher),
 			Codec.STRING.listOf().fieldOf("libraries").forGetter(UserdevConfig::libraries),
 			ForgeRunTemplate.MAP_CODEC.fieldOf("runs").forGetter(UserdevConfig::runs),
-			Codec.STRING.listOf().optionalFieldOf("sass", List.of()).forGetter(UserdevConfig::sass)
+			Codec.STRING.listOf().optionalFieldOf("sass", List.of()).forGetter(UserdevConfig::sass),
+			STRING_LIST_CODEC.optionalFieldOf("ats", List.of()).forGetter(UserdevConfig::ats),
+			Codec.STRING.listOf().optionalFieldOf("universalFilters", List.of()).forGetter(UserdevConfig::universalFilters)
 	).apply(instance, UserdevConfig::new));
 
 	public record BinaryPatcherConfig(String dependency, List<String> args) {

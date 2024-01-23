@@ -46,6 +46,7 @@ import net.fabricmc.loom.util.gradle.ProgressGroup;
 
 public abstract class MinecraftProvider {
 	private String minecraftVersion;
+	private MinecraftLibraryProvider libraryProvider;
 	private MinecraftMetadataProvider metadataProvider;
 
 	private File workingDir;
@@ -64,11 +65,11 @@ public abstract class MinecraftProvider {
 		this.project = configContext.project();
 	}
 
-	protected boolean provideClient() {
+	public boolean provideClient() {
 		return true;
 	}
 
-	protected boolean provideServer() {
+	public boolean provideServer() {
 		return true;
 	}
 
@@ -97,7 +98,7 @@ public abstract class MinecraftProvider {
 			serverBundleMetadata = BundleMetadata.fromJar(minecraftServerJar.toPath());
 		}
 
-		final MinecraftLibraryProvider libraryProvider = new MinecraftLibraryProvider(this, project);
+		libraryProvider = new MinecraftLibraryProvider(this, project);
 		libraryProvider.provide();
 	}
 
@@ -191,6 +192,10 @@ public abstract class MinecraftProvider {
 
 	public MinecraftVersionMeta getVersionInfo() {
 		return Objects.requireNonNull(metadataProvider, "Metadata provider not setup").getVersionMeta();
+	}
+
+	public MinecraftLibraryProvider getLibraryProvider() {
+		return libraryProvider;
 	}
 
 	public String getJarPrefix() {

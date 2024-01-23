@@ -64,6 +64,7 @@ import net.fabricmc.loom.configuration.RemapConfigurations;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
+import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.GradleMappingContext;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpec;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpecBuilderImpl;
@@ -333,6 +334,14 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
+	public void generatedIntermediateMappings() {
+		setIntermediateMappingsProvider(GeneratedIntermediateMappingsProvider.class, p -> {
+			p.minecraftProvider = () -> LoomGradleExtension.get(getProject()).getMinecraftProvider();
+			p.getRefreshDeps().set(getProject().provider(() -> LoomGradleExtension.get(getProject()).refreshDeps()));
+		});
+	}
+
+	@Override
 	public File getMappingsFile() {
 		return LoomGradleExtension.get(getProject()).getMappingConfiguration().tinyMappings.toFile();
 	}
@@ -464,7 +473,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 			return generateSrgTiny;
 		}
 
-		return isForge();
+		return isSrgForgeLike();
 	}
 
 	@Override

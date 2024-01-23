@@ -28,9 +28,12 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.io.UncheckedIOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -39,6 +42,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import dev.architectury.loom.util.MappingOption;
 import org.apache.commons.io.output.NullOutputStream;
@@ -115,11 +119,26 @@ public class ForgeSourcesRemapper {
 
 	public static void provideForgeSources(Project project, SharedServiceManager serviceManager, BiConsumer<String, byte[]> consumer) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		String sourceDependency = extension.getForgeUserdevProvider().getConfig().sources();
 		List<Path> forgeInstallerSources = new ArrayList<>();
+		Path legacySources = null;
 
-		for (File file : DependencyDownloader.download(project, sourceDependency)) {
-			forgeInstallerSources.add(file.toPath());
+		if (extension.getForgeUserdevProvider().isFG3()) {
+			String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
+
+			for (File file : DependencyDownloader.download(project, sourceDependency, false, false)) {
+				forgeInstallerSources.add(file.toPath());
+			}
+		} else {
+			Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
+
+			if (ZipUtils.contains(userdevJar, "sources.zip")) {
+				byte[] sourcesZip = ZipUtils.unpack(userdevJar, "sources.zip");
+				legacySources = Files.createTempFile("sources", ".jar");
+				Files.deleteIfExists(legacySources);
+				legacySources.toFile().deleteOnExit();
+				Files.write(legacySources, sourcesZip);
+				forgeInstallerSources.add(legacySources);
+			}
 		}
 
 		project.getLogger().lifecycle(":found {} forge source jars", forgeInstallerSources.size());
@@ -127,6 +146,10 @@ public class ForgeSourcesRemapper {
 		project.getLogger().lifecycle(":extracted {} forge source classes", forgeSources.size());
 		remapSources(project, serviceManager, forgeSources);
 		forgeSources.forEach(consumer);
+
+		if (legacySources != null) {
+			Files.deleteIfExists(legacySources);
+		}
 	}
 
 	private static void remapSources(Project project, SharedServiceManager serviceManager, Map<String, byte[]> sources) throws IOException {
@@ -246,6 +269,7 @@ public class ForgeSourcesRemapper {
 		try (FileSystemUtil.Delegate outputFs = FileSystemUtil.getJarFileSystem(tmpOutput, true)) {
 			Path outputFsRoot = outputFs.get().getPath("/");
 			mercury.rewrite(tmpInput, outputFsRoot);
+			fixupLineNumbers(tmpInput, outputFsRoot);
 		} catch (Exception e) {
 			project.getLogger().warn("Could not remap " + tmpInput + " fully!", e);
 		}
@@ -272,5 +296,42 @@ public class ForgeSourcesRemapper {
 
 		taskCompleter.complete();
 		return sources;
+	}
+
+	/**
+	 * Mercury re-organizes imports during remapping, which can result in mismatching line information when debugging.
+	 * This method works around the issue by forcefully re-aligning the output files with the input files by inserting
+	 * empty lines or joining multiple lines into one.
+	 */
+	private static void fixupLineNumbers(Path srcRoot, Path outRoot) throws IOException {
+		Files.walkFileTree(srcRoot, new SimpleFileVisitor<>() {
+			@Override
+			public FileVisitResult visitFile(Path srcPath, BasicFileAttributes attrs) throws IOException {
+				Path outPath = outRoot.resolve(srcRoot.relativize(srcPath).toString());
+				List<String> src = Files.readAllLines(srcPath);
+				List<String> out = Files.readAllLines(outPath);
+				int lastSrc = IntStream.range(0, src.size()).filter(i -> src.get(i).startsWith("import")).max().orElse(0);
+				int lastOut = IntStream.range(0, out.size()).filter(i -> out.get(i).startsWith("import")).max().orElse(0);
+
+				if (lastSrc == lastOut) {
+					return FileVisitResult.CONTINUE;
+				}
+
+				while (lastOut < lastSrc) {
+					out.add(lastOut + 1, "");
+					lastOut++;
+				}
+
+				while (lastSrc < lastOut && lastOut > 0) {
+					out.set(lastOut - 1, out.get(lastOut - 1) + out.get(lastOut));
+					out.remove(lastOut);
+					lastOut--;
+				}
+
+				Files.write(outPath, out);
+
+				return FileVisitResult.CONTINUE;
+			}
+		});
 	}
 }

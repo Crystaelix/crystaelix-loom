@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022-2023 FabricMC
+ * Copyright (c) 2021 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,41 +22,25 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.providers.forge.minecraft;
+package net.fabricmc.loom.util.srg;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
-import net.fabricmc.loom.configuration.ConfigContext;
-import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
-import net.fabricmc.loom.configuration.providers.minecraft.MergedMinecraftProvider;
+import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
 
-public final class MergedForgeMinecraftProvider extends MergedMinecraftProvider implements ForgeMinecraftProvider {
-	private final MinecraftPatchedProvider patchedProvider;
+import net.fabricmc.lorenztiny.TinyMappingsReader;
+import net.fabricmc.mappingio.tree.MappingTree;
 
-	public MergedForgeMinecraftProvider(ConfigContext configContext) {
-		super(configContext);
-		this.patchedProvider = MinecraftPatchedProvider.create(configContext.project(), this, MinecraftPatchedProvider.Type.MERGED);
-	}
+public class TsrgNamedWriter {
+	public static void writeTo(Path srgFile, MappingTree mappings, String from, String to) throws IOException {
+		Files.deleteIfExists(srgFile);
 
-	@Override
-	protected void mergeJars() throws IOException {
-		// Don't merge jars in the superclass
-	}
-
-	@Override
-	public Path getMergedJar() {
-		return patchedProvider.getMinecraftPatchedJar();
-	}
-
-	@Override
-	public List<Path> getMinecraftJars() {
-		return List.of(patchedProvider.getMinecraftPatchedJar());
-	}
-
-	@Override
-	public MinecraftPatchedProvider getPatchedProvider() {
-		return patchedProvider;
+		try (TSrgWriter writer = new TSrgWriter(Files.newBufferedWriter(srgFile))) {
+			try (TinyMappingsReader reader = new TinyMappingsReader(mappings, from, to)) {
+				writer.write(reader.read());
+			}
+		}
 	}
 }

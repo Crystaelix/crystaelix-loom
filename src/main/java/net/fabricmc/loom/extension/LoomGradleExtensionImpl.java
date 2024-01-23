@@ -97,7 +97,7 @@ public class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implemen
 		this.mixinApExtension = project.getObjects().newInstance(MixinExtensionImpl.class, project);
 		this.loomFiles = files;
 		this.unmappedMods = project.files();
-		this.forgeExtension = Suppliers.memoize(() -> isForge() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
+		this.forgeExtension = Suppliers.memoize(() -> isSrgForgeLike() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
 		this.neoForgeExtension = Suppliers.memoize(() -> isNeoForge() ? project.getObjects().newInstance(NeoForgeExtensionImpl.class, project) : null);
 
 		// Setup the default intermediate mappings provider.
@@ -304,7 +304,7 @@ public class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implemen
 
 	@Override
 	public ForgeExtensionAPI getForge() {
-		ModPlatform.assertPlatform(this, ModPlatform.FORGE);
+		ModPlatform.assertPlatform(this, ModPlatform.SRG_FORGE_LIKE);
 		return forgeExtension.get();
 	}
 

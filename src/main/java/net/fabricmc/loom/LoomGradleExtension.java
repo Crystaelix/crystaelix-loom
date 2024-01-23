@@ -106,11 +106,11 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 		case INTERMEDIARY -> getIntermediaryMinecraftProvider().getMinecraftJarPaths();
 		case OFFICIAL -> getMinecraftProvider().getMinecraftJars();
 		case SRG -> {
-			ModPlatform.assertPlatform(this, ModPlatform.FORGE, () -> "SRG jars are only available on Forge.");
+			ModPlatform.assertPlatform(this, () -> "SRG jars are only available on Forge.", ModPlatform.SRG_FORGE_LIKE);
 			yield getSrgMinecraftProvider().getMinecraftJarPaths();
 		}
 		case MOJANG -> {
-			ModPlatform.assertPlatform(this, ModPlatform.NEOFORGE, () -> "Mojang-mapped jars are only available on NeoForge.");
+			ModPlatform.assertPlatform(this, () -> "Mojang-mapped jars are only available on NeoForge.", ModPlatform.NEOFORGE);
 			yield getMojangMappedMinecraftProvider().getMinecraftJarPaths();
 		}
 		};
@@ -197,5 +197,9 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	 */
 	default Path getPlatformMappingFile() {
 		return getMappingConfiguration().getPlatformMappingFile(this);
+	}
+
+	default boolean hasLWJGL3() {
+		return getMinecraftProvider().getLibraryProvider().isLWJGL3();
 	}
 }

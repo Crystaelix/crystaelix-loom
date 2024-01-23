@@ -25,18 +25,27 @@
 package net.fabricmc.loom.configuration.providers.forge.mcpconfig;
 
 import java.io.Reader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.util.McpMappingsScanner;
+import org.cadixdev.lorenz.io.srg.SrgReader;
+import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
+import net.fabricmc.loom.configuration.providers.forge.ConfigValue;
 import net.fabricmc.loom.configuration.providers.forge.DependencyProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
+import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
 
 public class McpConfigProvider extends DependencyProvider {
@@ -64,7 +73,56 @@ public class McpConfigProvider extends DependencyProvider {
 			}
 
 			Files.createDirectory(unpacked);
-			ZipUtils.unpackAll(mcp, unpacked);
+
+			if (ZipUtils.contains(mcp, "config.json")) {
+				ZipUtils.unpackAll(mcp, unpacked);
+			}
+		}
+
+		if (Files.notExists(configJson)) {
+			String version = getExtension().getMinecraftProvider().minecraftVersion();
+			data = new McpConfigData(
+					version,
+					new JsonObject(),
+					"srg.tsrg",
+					false,
+					Map.of(
+							"client", List.of(
+									new McpConfigStep("downloadClient"),
+									new McpConfigStep(
+											"strip",
+											Map.of("input", ConfigValue.of("{downloadClientOutput}"))
+									)
+							),
+							"server", List.of(
+									new McpConfigStep("downloadServer"),
+									new McpConfigStep(
+											"strip",
+											Map.of("input", ConfigValue.of("{downloadServerOutput}"))
+									)
+							)
+					),
+					Map.of()
+			);
+
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcp)) {
+				McpMappingsScanner scan = new McpMappingsScanner(fs);
+				Optional<Path> srgPath = scan.get("joined.tsrg");
+				srgPath = scan.get("joined.srg");
+
+				if (srgPath.isEmpty()) {
+					srgPath = scan.get(getExtension().getMinecraftProvider().provideServer() ? "server.srg" : "client.srg");
+				}
+
+				try (
+						SrgReader reader = new SrgReader(Files.newBufferedReader(srgPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), StandardCharsets.UTF_8));
+						TSrgWriter writer = new TSrgWriter(Files.newBufferedWriter(unpacked.resolve("srg.tsrg")))
+				) {
+					writer.write(reader.read());
+				}
+			}
+
+			return;
 		}
 
 		JsonObject json;

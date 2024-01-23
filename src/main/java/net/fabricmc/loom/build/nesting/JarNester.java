@@ -29,8 +29,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
 import com.google.gson.JsonArray;
@@ -69,7 +69,7 @@ public class JarNester {
 				return;
 			}
 
-			int count = ZipUtils.transformJson(JsonObject.class, modJar.toPath(), Stream.of(platform == ModPlatform.FABRIC ? new Pair<>("fabric.mod.json", json -> {
+			int count = ZipUtils.transformJson(JsonObject.class, modJar.toPath(), platform == ModPlatform.FABRIC ? Map.of("fabric.mod.json", json -> {
 				JsonArray nestedJars = json.getAsJsonArray("jars");
 
 				if (nestedJars == null || !json.has("jars")) {
@@ -98,7 +98,7 @@ public class JarNester {
 				json.add("jars", nestedJars);
 
 				return json;
-			}) : platform == ModPlatform.QUILT ? new Pair<>("quilt.mod.json", json -> {
+			}) : platform == ModPlatform.QUILT ? Map.of("quilt.mod.json", json -> {
 				JsonObject loader;
 
 				if (json.has("quilt_loader")) {
@@ -133,7 +133,7 @@ public class JarNester {
 				loader.add("jars", nestedJars);
 
 				return json;
-			}) : null));
+			}) : Map.of());
 
 			Preconditions.checkState(count > 0, "Failed to transform fabric.mod.json");
 		} catch (IOException e) {

@@ -37,8 +37,7 @@ public class LoomDependencyManager {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
 		SourceRemapper sourceRemapper = new SourceRemapper(project, serviceManager, true);
-		String platformSuffix = extension.isForgeLike() ? "_forge" : extension.isQuilt() ? "_arch_quilt" : "";
-		String mappingsIdentifier = extension.getMappingConfiguration().mappingsIdentifier() + platformSuffix;
+		String mappingsIdentifier = extension.getMappingConfiguration().mappingsIdentifier();
 
 		ModConfigurationRemapper.supplyModConfigurations(project, serviceManager, mappingsIdentifier, extension, sourceRemapper);
 

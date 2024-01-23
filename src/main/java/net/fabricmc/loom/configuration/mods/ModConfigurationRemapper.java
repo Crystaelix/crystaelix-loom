@@ -291,6 +291,7 @@ public class ModConfigurationRemapper {
 			sourceRemapper.scheduleRemapSources(sourcesInput.toFile(), output.toFile(), false, true, () -> {
 				try {
 					dependency.copyToCache(project, output, "sources");
+					dependency.deleteWorkingFile("sources");
 				} catch (IOException e) {
 					throw new UncheckedIOException("Failed to apply sources to local cache for: " + dependency, e);
 				}

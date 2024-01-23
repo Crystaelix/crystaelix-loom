@@ -210,7 +210,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 
 			if (mixinAp) {
 				setupLegacyMixinRefmapRemapping(params);
-			} else if (extension.isForge()) {
+			} else if (extension.isSrgForgeLike()) {
 				throw new RuntimeException("Forge must have useLegacyMixinAp enabled");
 			}
 

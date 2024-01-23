@@ -78,7 +78,9 @@ public final class Aw2At {
 			remapJar.getAtAccessWideners().add(awName);
 		}
 
-		remapJar.getAtAccessWideners().addAll(extension.getForge().getExtraAccessWideners());
+		if (extension.isSrgForgeLike()) {
+			remapJar.getAtAccessWideners().addAll(extension.getForge().getExtraAccessWideners());
+		}
 	}
 
 	/**

@@ -91,7 +91,7 @@ public interface LoomGradleExtensionAPI {
 	NamedDomainObjectContainer<RunConfigSettings> getRunConfigs();
 
 	/**
-	 * {@return the value of {@link #getRunConfigs}}
+	 * @return the value of {@link #getRunConfigs}.
 	 * This is an alias for it that matches {@link #runs}.
 	 */
 	default NamedDomainObjectContainer<RunConfigSettings> getRuns() {
@@ -187,6 +187,12 @@ public interface LoomGradleExtensionAPI {
 	}
 
 	/**
+	 * An Experimental option to provide generated intermediate mappings, to be used for game versions without any intermediate mappings.
+	 */
+	@ApiStatus.Experimental
+	void generatedIntermediateMappings();
+
+	/**
 	 * Returns the tiny mappings file used to remap the game and mods.
 	 */
 	File getMappingsFile();
@@ -239,12 +245,40 @@ public interface LoomGradleExtensionAPI {
 		return getPlatform().get().isForgeLike();
 	}
 
+	default boolean isModernForgeLike() {
+		return getPlatform().get().isModernForgeLike();
+	}
+
+	default boolean isSrgForgeLike() {
+		return getPlatform().get().isSrgForgeLike();
+	}
+
+	default boolean isLegacyForgeLike() {
+		return getPlatform().get().isLegacyForgeLike();
+	}
+
 	default boolean isForge() {
 		return getPlatform().get() == ModPlatform.FORGE;
 	}
 
 	default boolean isNeoForge() {
 		return getPlatform().get() == ModPlatform.NEOFORGE;
+	}
+
+	default boolean isLegacyForge() {
+		return getPlatform().get() == ModPlatform.LEGACYFORGE;
+	}
+
+	default boolean isCleanroom() {
+		return getPlatform().get() == ModPlatform.CLEANROOM;
+	}
+
+	default boolean isFabricLike() {
+		return getPlatform().get().isFabricLike();
+	}
+
+	default boolean isFabric() {
+		return getPlatform().get() == ModPlatform.FABRIC;
 	}
 
 	default boolean isQuilt() {
@@ -284,4 +318,41 @@ public interface LoomGradleExtensionAPI {
 	NeoForgeExtensionAPI getNeoForge();
 
 	void neoForge(Action<NeoForgeExtensionAPI> action);
+
+	/**
+	 * Gets the Forge extension used to configure legacy Forge details. Alias of {@link #getForge()}.
+	 *
+	 * @return the Forge extension
+	 * @throws UnsupportedOperationException if running on another platform
+	 * @see #isLegacyForge()
+	 */
+	default ForgeExtensionAPI getLegacyForge() {
+		return getForge();
+	}
+
+	/**
+	 * Alias of {@link #forge(Action)}.
+	 */
+	default void legacyForge(Action<ForgeExtensionAPI> action) {
+		forge(action);
+	}
+
+	/**
+	 * Gets the Forge extension used to configure Cleanroom details. Alias of {@link #getForge()}.
+	 *
+	 * @return the Forge extension
+	 * @throws UnsupportedOperationException if running on another platform
+	 * @see #getForge()
+	 * @see #isCleanroom()
+	 */
+	default ForgeExtensionAPI getCleanroom() {
+		return getForge();
+	}
+
+	/**
+	 * Alias of {@link #forge(Action)}.
+	 */
+	default void cleanroom(Action<ForgeExtensionAPI> action) {
+		forge(action);
+	}
 }

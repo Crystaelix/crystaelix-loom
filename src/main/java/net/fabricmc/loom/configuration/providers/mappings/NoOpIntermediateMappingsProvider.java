@@ -46,6 +46,6 @@ public abstract class NoOpIntermediateMappingsProvider extends IntermediateMappi
 
 	@Override
 	public @NotNull String getName() {
-		return "empty-intermediate";
+		return "empty";
 	}
 }

@@ -77,6 +77,8 @@ public class Constants {
 		public static final String MCP_CONFIG = "mcp";
 		public static final String FORGE = "forge";
 		public static final String NEOFORGE = "neoForge";
+		public static final String LEGACYFORGE = "legacyForge";
+		public static final String CLEANROOM = "cleanroom";
 		public static final String FORGE_USERDEV = "forgeUserdev";
 		public static final String FORGE_INSTALLER = "forgeInstaller";
 		public static final String FORGE_UNIVERSAL = "forgeUniversal";
@@ -87,7 +89,7 @@ public class Constants {
 		public static final String FORGE_DEPENDENCIES = "forgeDependencies";
 		/**
 		 * "Extra" runtime dependencies on Forge. Contains the Minecraft resources
-		 * and {@linkplain Dependencies#FORGE_RUNTIME the Architectury Loom runtime}.
+		 * and the Architectury Loom runtime.
 		 */
 		public static final String FORGE_EXTRA = "forgeExtra";
 		/**
@@ -167,5 +169,14 @@ public class Constants {
 
 		private Forge() {
 		}
+	}
+
+	public static final class LegacyForge {
+		public static final String LAUNCH_WRAPPER = "net.minecraft.launchwrapper.Launch";
+		public static final String FML_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLTweaker";
+		public static final String CPW_FML_TWEAKER = "cpw.mods.fml.common.launcher.FMLTweaker";
+		public static final String FML_SERVER_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLServerTweaker";
+		public static final String CPW_FML_SERVER_TWEAKER = "cpw.mods.fml.common.launcher.FMLServerTweaker";
+		public static final String ACCESS_TRANSFORMERS_MANIFEST_KEY = "FMLAT";
 	}
 }

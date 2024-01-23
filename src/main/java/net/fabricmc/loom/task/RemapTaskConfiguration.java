@@ -104,7 +104,7 @@ public abstract class RemapTaskConfiguration implements Runnable {
 		trySetupSourceRemapping();
 
 		getProject().afterEvaluate(p -> {
-			if (extension.isForge()) {
+			if (extension.isSrgForgeLike()) {
 				if (PropertyUtil.getAndFinalize(extension.getForge().getConvertAccessWideners())) {
 					Aw2At.setup(getProject(), remapJarTask);
 				}

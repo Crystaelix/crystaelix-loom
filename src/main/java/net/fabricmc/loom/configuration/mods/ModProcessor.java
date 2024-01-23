@@ -41,6 +41,7 @@ import java.util.regex.Pattern;
 
 import com.google.common.base.Stopwatch;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.legacyforge.LegacyForgeModDependencies;
 import dev.architectury.loom.neoforge.NeoForgeModDependencies;
 import dev.architectury.loom.util.MappingOption;
 import dev.architectury.tinyremapper.InputTag;
@@ -188,9 +189,8 @@ public class ModProcessor {
 			builder.extension(kotlinRemapperClassloader.getTinyRemapperExtension());
 		}
 
-		if (extension.isNeoForge()) {
-			builder.extension(new MixinExtension());
-		}
+		// This is required for mods that use @Shadow and @Overwrite, so enable for now
+		builder.extension(new MixinExtension());
 
 		final TinyRemapper remapper = builder.build();
 
@@ -275,6 +275,9 @@ public class ModProcessor {
 				if (extension.isNeoForge()) {
 					// NeoForge: Fully map ATs
 					NeoForgeModDependencies.remapAts(output, mappings, fromM, toM);
+				} else if (extension.isLegacyForgeLike()) {
+					// Legacy Forge: Fully map ATs
+					LegacyForgeModDependencies.remapAts(output, mappings, fromM, toM);
 				} else {
 					// Forge: only map class names, the rest are mapped srg -> named at runtime
 					AtClassRemapper.remap(project, output, mappings);
@@ -284,6 +287,10 @@ public class ModProcessor {
 			}
 
 			dependency.copyToCache(project, output, null);
+		}
+
+		for (ModDependency dependency : remapList) {
+			dependency.deleteWorkingFile();
 		}
 	}
 

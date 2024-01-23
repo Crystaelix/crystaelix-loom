@@ -44,7 +44,7 @@ public final class IntermediaryNamespaces {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		return switch (extension.getPlatform().get()) {
 		case FABRIC, QUILT -> MappingsNamespace.INTERMEDIARY;
-		case FORGE -> MappingsNamespace.SRG;
+		case FORGE, LEGACYFORGE, CLEANROOM -> MappingsNamespace.SRG;
 		case NEOFORGE -> MappingsNamespace.MOJANG;
 		};
 	}

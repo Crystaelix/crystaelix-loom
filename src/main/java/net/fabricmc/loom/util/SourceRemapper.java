@@ -199,7 +199,7 @@ public class SourceRemapper {
 			mercury.getClassPath().add(intermediaryJar);
 		}
 
-		if (extension.isForge()) {
+		if (extension.isSrgForgeLike()) {
 			for (Path srgJar : extension.getMinecraftJars(MappingsNamespace.SRG)) {
 				mercury.getClassPath().add(srgJar);
 			}
@@ -210,7 +210,10 @@ public class SourceRemapper {
 		}
 
 		Set<File> files = project.getConfigurations()
-				.detachedConfiguration(project.getDependencies().create(LoomVersions.JETBRAINS_ANNOTATIONS.mavenNotation()))
+				.detachedConfiguration(
+						project.getDependencies().create(LoomVersions.JAVAX_ANNOTATIONS.mavenNotation()),
+						project.getDependencies().create(LoomVersions.JETBRAINS_ANNOTATIONS.mavenNotation())
+				)
 				.resolve();
 
 		for (File file : files) {

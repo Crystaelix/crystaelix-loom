@@ -34,13 +34,18 @@ import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 import com.google.common.base.Stopwatch;
+import dev.architectury.loom.util.McpMappingsScanner;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.output.NullOutputStream;
+import org.cadixdev.lorenz.io.srg.SrgReader;
+import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
 import org.gradle.api.Project;
 import org.gradle.api.logging.LogLevel;
 
@@ -52,7 +57,7 @@ import net.fabricmc.loom.configuration.providers.mappings.GradleMappingContext;
 import net.fabricmc.loom.configuration.providers.mappings.mojmap.MojangMappingLayer;
 import net.fabricmc.loom.configuration.providers.mappings.mojmap.MojangMappingsSpec;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.srg.Tsrg2Utils;
 import net.fabricmc.loom.util.srg.Tsrg2Writer;
 import net.fabricmc.mappingio.MappingReader;
@@ -80,7 +85,29 @@ public class SrgProvider extends DependencyProvider {
 
 		if (!Files.exists(srg) || refreshDeps()) {
 			Path srgZip = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve srg")).toPath();
-			Files.write(srg, ZipUtils.unpack(srgZip, "config/joined.tsrg"));
+
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(srgZip)) {
+				McpMappingsScanner scan = new McpMappingsScanner(fs);
+				Optional<Path> srgPath = scan.get("joined.tsrg");
+
+				if (srgPath.isPresent()) {
+					Files.copy(srgPath.get(), srg, StandardCopyOption.REPLACE_EXISTING);
+				} else {
+					// FG2-era MCP uses the older SRG format, convert it on the fly
+					srgPath = scan.get("joined.srg");
+
+					if (srgPath.isEmpty()) {
+						srgPath = scan.get(getExtension().getMinecraftProvider().provideServer() ? "server.srg" : "client.srg");
+					}
+
+					try (
+							SrgReader reader = new SrgReader(Files.newBufferedReader(srgPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), StandardCharsets.UTF_8));
+							TSrgWriter writer = new TSrgWriter(Files.newBufferedWriter(srg))
+					) {
+						writer.write(reader.read());
+					}
+				}
+			}
 		}
 
 		try (BufferedReader reader = Files.newBufferedReader(srg)) {

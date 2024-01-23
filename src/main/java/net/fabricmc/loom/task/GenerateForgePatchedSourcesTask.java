@@ -37,7 +37,6 @@ import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;
 import codechicken.diffpatch.util.PatchMode;
 import com.google.common.base.Stopwatch;
-import dev.architectury.loom.forge.ForgeTools;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -56,6 +55,7 @@ import net.fabricmc.loom.configuration.sources.ForgeSourcesRemapper;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ForgeToolExecutor;
+import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.SourceRemapper;
 import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.service.SharedServiceManager;
@@ -167,12 +167,18 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 	}
 
 	private void stripSideAnnotations(Path input, Path output) throws IOException {
+		final ForgeUserdevProvider userdevProvider = getExtension().getForgeUserdevProvider();
+		final List<String> sass = userdevProvider.getConfig().sass();
+
+		if (sass.isEmpty()) {
+			Files.copy(input, output, StandardCopyOption.REPLACE_EXISTING);
+			return;
+		}
+
 		final Stopwatch stopwatch = Stopwatch.createStarted();
 		getLogger().lifecycle(":stripping side annotations");
 
 		try (var tempFiles = new TempFiles()) {
-			final ForgeUserdevProvider userdevProvider = getExtension().getForgeUserdevProvider();
-			final List<String> sass = userdevProvider.getConfig().sass();
 			final List<Path> sasPaths = new ArrayList<>();
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(userdevProvider.getUserdevJar(), false)) {
@@ -188,7 +194,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 				}
 			}
 
-			final FileCollection classpath = DependencyDownloader.download(getProject(), ForgeTools.SIDE_STRIPPER, false, true);
+			final FileCollection classpath = DependencyDownloader.download(getProject(), LoomVersions.MERGETOOL.mavenNotation() + ":fatjar", false, true);
 
 			ForgeToolExecutor.exec(getProject(), spec -> {
 				spec.setClasspath(classpath);

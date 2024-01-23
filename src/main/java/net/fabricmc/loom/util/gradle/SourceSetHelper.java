@@ -223,11 +223,6 @@ public final class SourceSetHelper {
 
 	private static List<File> getBinDirClasspath(File projectDir, SourceSetReference reference) {
 		final File binDir = new File(projectDir, "bin");
-
-		if (!binDir.exists()) {
-			return Collections.emptyList();
-		}
-
 		return Collections.singletonList(new File(binDir, reference.sourceSet().getName()));
 	}
 

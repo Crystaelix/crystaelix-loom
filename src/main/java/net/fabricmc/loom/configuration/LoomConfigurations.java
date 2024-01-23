@@ -120,12 +120,11 @@ public abstract class LoomConfigurations implements Runnable {
 
 		if (extension.isForgeLike()) {
 			// Set up Forge and NeoForge configurations
-			if (extension.isForge()) {
-				// Forge-specific configurations
-				registerNonTransitive(Constants.Configurations.FORGE, Role.RESOLVABLE);
-			} else if (extension.isNeoForge()) {
-				// NeoForge-specific configurations
-				registerNonTransitive(Constants.Configurations.NEOFORGE, Role.RESOLVABLE);
+			switch (extension.getPlatform().get()) {
+			case FORGE -> registerNonTransitive(Constants.Configurations.FORGE, Role.RESOLVABLE);
+			case NEOFORGE -> registerNonTransitive(Constants.Configurations.NEOFORGE, Role.RESOLVABLE);
+			case LEGACYFORGE -> registerNonTransitive(Constants.Configurations.LEGACYFORGE, Role.RESOLVABLE);
+			case CLEANROOM -> registerNonTransitive(Constants.Configurations.CLEANROOM, Role.RESOLVABLE);
 			}
 
 			registerNonTransitive(Constants.Configurations.FORGE_USERDEV, Role.RESOLVABLE);
