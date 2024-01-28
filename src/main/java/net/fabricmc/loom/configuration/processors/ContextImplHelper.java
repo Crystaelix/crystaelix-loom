@@ -28,12 +28,11 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Path;
 
-import dev.architectury.tinyremapper.TinyRemapper;
-
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.util.LazyCloseable;
 import net.fabricmc.loom.util.TinyRemapperHelper;
+import net.fabricmc.tinyremapper.TinyRemapper;
 
 public final class ContextImplHelper {
 	private ContextImplHelper() {
@@ -43,7 +42,6 @@ public final class ContextImplHelper {
 		return new LazyCloseable<>(() -> {
 			try {
 				TinyRemapper tinyRemapper = TinyRemapperHelper.getTinyRemapper(configContext.project(), configContext.serviceManager(), from.toString(), to.toString());
-				tinyRemapper.readClassPath(TinyRemapperHelper.getMinecraftCompileLibraries(configContext.project()));
 
 				for (Path minecraftJar : configContext.extension().getMinecraftJars(MappingsNamespace.INTERMEDIARY)) {
 					tinyRemapper.readClassPath(minecraftJar);

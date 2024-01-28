@@ -56,13 +56,8 @@ import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.UserdevConfig;
 import dev.architectury.loom.util.MappingOption;
 import dev.architectury.loom.util.TempFiles;
-import dev.architectury.tinyremapper.InputTag;
-import dev.architectury.tinyremapper.MetaInfFixer;
-import dev.architectury.tinyremapper.OutputConsumerPath;
-import dev.architectury.tinyremapper.TinyRemapper;
 import net.minecraftforge.fart.api.Transformer;
 import org.gradle.api.Project;
-import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.Logger;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
@@ -84,7 +79,6 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ForgeToolExecutor;
-import net.fabricmc.loom.util.MappingsProviderVerbose;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
@@ -95,6 +89,10 @@ import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import net.fabricmc.tinyremapper.InputTag;
+import net.fabricmc.tinyremapper.MetaInfFixer;
+import net.fabricmc.tinyremapper.OutputConsumerPath;
+import net.fabricmc.tinyremapper.TinyRemapper;
 
 public class MinecraftPatchedProvider {
 	protected static final String LOOM_PATCH_VERSION_KEY = "Loom-Patch-Version";
@@ -236,26 +234,21 @@ public class MinecraftPatchedProvider {
 	}
 
 	private TinyRemapper buildRemapper(SharedServiceManager serviceManager, Path input, String from, String to) throws IOException {
-		Path[] libraries = TinyRemapperHelper.getMinecraftCompileLibraries(project);
 		final MappingOption mappingOption = MappingOption.forPlatform(getExtension());
 		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
 		MemoryMappingTree mappings = mappingsService.getMappingTree();
 
 		TinyRemapper remapper = TinyRemapper.newRemapper()
-				.logger(logger::lifecycle)
-				.logUnknownInvokeDynamic(false)
 				.withMappings(TinyRemapperHelper.create(mappings, from, to, true))
 				.withMappings(InnerClassRemapper.of(InnerClassRemapper.readClassNames(input), mappings, from, to))
 				.renameInvalidLocals(true)
 				.rebuildSourceFilenames(true)
 				.build();
 
-		if (project.getGradle().getStartParameter().getLogLevel().compareTo(LogLevel.LIFECYCLE) < 0) {
-			MappingsProviderVerbose.saveFile(remapper);
-		}
+		//if (project.getGradle().getStartParameter().getLogLevel().compareTo(LogLevel.LIFECYCLE) < 0) {
+		//	MappingsProviderVerbose.saveFile(remapper);
+		//}
 
-		remapper.readClassPath(libraries);
-		remapper.prepareClasses();
 		return remapper;
 	}
 

@@ -29,8 +29,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
-import dev.architectury.tinyremapper.TinyRemapper;
-import dev.architectury.tinyremapper.api.TrClass;
 import org.gradle.api.Project;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.commons.Remapper;
@@ -40,6 +38,8 @@ import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.api.TrClass;
 
 public record SignatureFixerApplyVisitor(Map<String, String> signatureFixes) implements TinyRemapper.ApplyVisitorProvider {
 	@Override

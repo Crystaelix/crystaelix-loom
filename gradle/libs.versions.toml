@@ -3,16 +3,15 @@ kotlin = "1.9.0"
 asm = "9.6"
 commons-io = "2.15.1"
 gson = "2.10.1"
-jackson = "2.15.2"
 guava = "33.0.0-jre"
 
 stitch = "0.6.2"
-tiny-remapper = "1.10.24"
+tiny-remapper = "0.10.0"
 access-widener = "2.1.0"
-mapping-io = "0.4.2"
+mapping-io = "0.5.1"
 lorenz-tiny = "4.0.2"
 mercury = "0.1.4.17"
-kotlinx-metadata = "0.7.0"
+kotlinx-metadata = "0.8.0"
 
 # Plugins
 spotless = "6.20.0"
@@ -44,11 +43,10 @@ asm-util = { module = "org.ow2.asm:asm-util", version.ref = "asm" }
 
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
-jackson = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }
 guava = { module = "com.google.guava:guava", version.ref = "guava" }
 
 fabric-stitch = { module = "net.fabricmc:stitch", version.ref = "stitch" }
-fabric-tiny-remapper = { module = "dev.architectury:tiny-remapper", version.ref = "tiny-remapper" }
+fabric-tiny-remapper = { module = "net.fabricmc:tiny-remapper", version.ref = "tiny-remapper" }
 fabric-access-widener = { module = "net.fabricmc:access-widener", version.ref = "access-widener" }
 fabric-mapping-io = { module = "net.fabricmc:mapping-io", version.ref = "mapping-io" }
 fabric-lorenz-tiny = { module = "net.fabricmc:lorenz-tiny", version.ref = "lorenz-tiny" }

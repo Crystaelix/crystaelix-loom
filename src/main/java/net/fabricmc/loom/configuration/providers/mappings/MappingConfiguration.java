@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2016-2022 FabricMC
+ * Copyright (c) 2016-2023 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -75,7 +75,7 @@ import net.fabricmc.loom.util.srg.SrgNamedWriter;
 import net.fabricmc.loom.util.srg.TsrgNamedWriter;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.mappingio.format.Tiny2Writer;
+import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.stitch.Command;
 import net.fabricmc.stitch.commands.CommandProposeFieldNames;
@@ -137,7 +137,7 @@ public class MappingConfiguration {
 		final TinyJarInfo jarInfo = TinyJarInfo.get(inputJar);
 		jarInfo.minecraftVersionId().ifPresent(id -> {
 			if (!minecraftProvider.minecraftVersion().equals(id)) {
-				LOGGER.warn("The mappings (%s) were not build for minecraft version (%s) produce with caution.".formatted(dependency.getDepString(), minecraftProvider.minecraftVersion()));
+				LOGGER.warn("The mappings (%s) were not built for Minecraft version %s, proceed with caution.".formatted(dependency.getDepString(), minecraftProvider.minecraftVersion()));
 			}
 		});
 
@@ -229,7 +229,7 @@ public class MappingConfiguration {
 				final Stopwatch stopwatch = Stopwatch.createStarted();
 				final MappingContext context = new GradleMappingContext(project, "tmp-neoforge");
 
-				try (Tiny2Writer writer = new Tiny2Writer(Files.newBufferedWriter(tinyMappingsWithMojang), false)) {
+				try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(tinyMappingsWithMojang), false)) {
 					ForgeMappingsMerger.mergeMojang(context, tinyMappings, null, true).accept(writer);
 				}
 
@@ -243,7 +243,7 @@ public class MappingConfiguration {
 				Stopwatch stopwatch = Stopwatch.createStarted();
 				ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForgeLike() ? null : ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
 
-				try (Tiny2Writer writer = new Tiny2Writer(Files.newBufferedWriter(tinyMappingsWithSrg), false)) {
+				try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(tinyMappingsWithSrg), false)) {
 					ForgeMappingsMerger.mergeSrg(getRawSrgFile(project), tinyMappings, extraMappings, true).accept(writer);
 				}
 
@@ -412,7 +412,7 @@ public class MappingConfiguration {
 
 	private static boolean areMappingsV2(Path path) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
-			return MappingReader.detectFormat(reader) == MappingFormat.TINY_2;
+			return MappingReader.detectFormat(reader) == MappingFormat.TINY_2_FILE;
 		} catch (NoSuchFileException e) {
 			// TODO: just check the mappings version when Parser supports V1 in readMetadata()
 			return false;
@@ -422,9 +422,9 @@ public class MappingConfiguration {
 	private static boolean areMappingsMergedV2(Path path) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(path)) {
 			reader.mark(4096); // == DETECT_HEADER_LEN
-			boolean isTinyV2 = MappingReader.detectFormat(reader) == MappingFormat.TINY_2;
+			boolean isTinyV2 = MappingReader.detectFormat(reader) == MappingFormat.TINY_2_FILE;
 			reader.reset();
-			return isTinyV2 && MappingReader.getNamespaces(reader, MappingFormat.TINY_2).containsAll(Arrays.asList("named", "intermediary", "official"));
+			return isTinyV2 && MappingReader.getNamespaces(reader, MappingFormat.TINY_2_FILE).containsAll(Arrays.asList("named", "intermediary", "official"));
 		} catch (NoSuchFileException e) {
 			return false;
 		}
@@ -468,7 +468,7 @@ public class MappingConfiguration {
 
 		try (Reader reader = Files.newBufferedReader(recordSignaturesJsonPath, StandardCharsets.UTF_8)) {
 			//noinspection unchecked
-			signatureFixes = LoomGradlePlugin.OBJECT_MAPPER.readValue(reader, Map.class);
+			signatureFixes = LoomGradlePlugin.GSON.fromJson(reader, Map.class);
 		}
 	}
 

@@ -53,7 +53,7 @@ import net.fabricmc.mappingio.adapter.MappingNsRenamer;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.adapter.RegularAsFlatMappingVisitor;
 import net.fabricmc.mappingio.format.MappingFormat;
-import net.fabricmc.mappingio.format.TsrgReader;
+import net.fabricmc.mappingio.format.srg.TsrgFileReader;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MappingTreeView;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
@@ -400,7 +400,7 @@ public final class ForgeMappingsMerger {
 	private static MemoryMappingTree readSrg(Path srg) throws IOException {
 		try (BufferedReader reader = Files.newBufferedReader(srg)) {
 			MemoryMappingTree output = new MemoryMappingTree();
-			TsrgReader.read(reader, new ForwardingMappingVisitor(output) {
+			TsrgFileReader.read(reader, new ForwardingMappingVisitor(output) {
 				// Override the namespaces to be official -> srg
 				@Override
 				public void visitNamespaces(String srcNamespace, List<String> dstNamespaces) throws IOException {
@@ -419,7 +419,7 @@ public final class ForgeMappingsMerger {
 		}
 
 		public static ExtraMappings ofMojmapTsrg(Path path) {
-			return new ExtraMappings(path, MappingFormat.TSRG2, MappingsNamespace.OFFICIAL.toString(), MappingsNamespace.NAMED.toString());
+			return new ExtraMappings(path, MappingFormat.TSRG_2_FILE, MappingsNamespace.OFFICIAL.toString(), MappingsNamespace.NAMED.toString());
 		}
 	}
 

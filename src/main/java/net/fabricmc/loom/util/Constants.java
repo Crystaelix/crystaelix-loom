@@ -28,7 +28,7 @@ import org.objectweb.asm.Opcodes;
 
 public class Constants {
 	public static final String PLUGIN_ID = "dev.architectury.loom";
-	public static final boolean PLUGIN_BETA = false;
+	public static final boolean PLUGIN_BETA = true;
 	public static final boolean PLUGIN_DEPRECATED = false;
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";
 	public static final String RESOURCES_BASE = "https://resources.download.minecraft.net/";
@@ -153,6 +153,26 @@ public class Constants {
 		public static final String DISABLE_PROJECT_DEPENDENT_MODS = "fabric.loom.disableProjectDependentMods";
 		public static final String LIBRARY_PROCESSORS = "fabric.loom.libraryProcessors";
 		public static final String ALLOW_MISMATCHED_PLATFORM_VERSION = "loom.allowMismatchedPlatformVersion";
+	}
+
+	public static final class Manifest {
+		public static final String PATH = "META-INF/MANIFEST.MF";
+
+		public static final String REMAP_KEY = "Fabric-Loom-Remap";
+		public static final String MIXIN_REMAP_TYPE = "Fabric-Loom-Mixin-Remap-Type";
+		public static final String MAPPING_NAMESPACE = "Fabric-Mapping-Namespace";
+		public static final String SPLIT_ENV = "Fabric-Loom-Split-Environment";
+		public static final String SPLIT_ENV_NAME = "Fabric-Loom-Split-Environment-Name";
+		public static final String CLIENT_ENTRIES = "Fabric-Loom-Client-Only-Entries";
+		public static final String JAR_TYPE = "Fabric-Jar-Type";
+		public static final String GRADLE_VERSION = "Fabric-Gradle-Version";
+		public static final String LOOM_VERSION = "Fabric-Loom-Version";
+		public static final String MIXIN_COMPILE_EXTENSIONS_VERSION = "Fabric-Mixin-Compile-Extensions-Version";
+		public static final String MINECRAFT_VERSION = "Fabric-Minecraft-Version";
+		public static final String TINY_REMAPPER_VERSION = "Fabric-Tiny-Remapper-Version";
+		public static final String FABRIC_LOADER_VERSION = "Fabric-Loader-Version";
+		public static final String MIXIN_VERSION = "Fabric-Mixin-Version";
+		public static final String MIXIN_GROUP = "Fabric-Mixin-Group";
 	}
 
 	public static final class Forge {

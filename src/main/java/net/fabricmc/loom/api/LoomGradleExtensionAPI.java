@@ -46,6 +46,8 @@ import net.fabricmc.loom.api.decompilers.DecompilerOptions;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
 import net.fabricmc.loom.api.mappings.layered.spec.LayeredMappingSpecBuilder;
 import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
+import net.fabricmc.loom.api.remapping.RemapperExtension;
+import net.fabricmc.loom.api.remapping.RemapperParameters;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
@@ -231,6 +233,13 @@ public interface LoomGradleExtensionAPI {
 	Property<Boolean> getRuntimeOnlyLog4j();
 
 	Property<Boolean> getSplitModDependencies();
+
+	<T extends RemapperParameters> void addRemapperExtension(Class<? extends RemapperExtension<T>> remapperExtensionClass, Class<T> parametersClass, Action<T> parameterAction);
+
+	/**
+	 * @return The minecraft version, as a {@link Provider}.
+	 */
+	Provider<String> getMinecraftVersion();
 
 	// ===================
 	//  Architectury Loom

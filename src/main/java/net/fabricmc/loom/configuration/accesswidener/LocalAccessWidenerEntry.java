@@ -29,7 +29,6 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import dev.architectury.tinyremapper.TinyRemapper;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.accesswidener.AccessWidenerReader;
@@ -37,6 +36,7 @@ import net.fabricmc.accesswidener.AccessWidenerVisitor;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.LazyCloseable;
 import net.fabricmc.loom.util.fmj.ModEnvironment;
+import net.fabricmc.tinyremapper.TinyRemapper;
 
 public record LocalAccessWidenerEntry(Path path, String hash) implements AccessWidenerEntry {
 	public static LocalAccessWidenerEntry create(Path path) {

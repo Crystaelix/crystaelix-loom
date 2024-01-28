@@ -88,7 +88,7 @@ public abstract class ProcessedNamedMinecraftProvider<M extends MinecraftProvide
 			final MinecraftJar outputJar = entry.getValue();
 			deleteSimilarJars(outputJar.getPath());
 
-			final LocalMavenHelper mavenHelper = getMavenHelper(minecraftJar.getName());
+			final LocalMavenHelper mavenHelper = getMavenHelper(minecraftJar.getType());
 			final Path outputPath = mavenHelper.copyToMaven(minecraftJar.getPath(), null);
 
 			assert outputJar.getPath().equals(outputPath);
@@ -97,8 +97,13 @@ public abstract class ProcessedNamedMinecraftProvider<M extends MinecraftProvide
 		}
 	}
 
+	@Override
+	public List<MinecraftJar.Type> getDependencyTypes() {
+		return parentMinecraftProvider.getDependencyTypes();
+	}
+
 	private void applyDependencies() {
-		final List<String> dependencyTargets = parentMinecraftProvider.getDependencyTargets();
+		final List<MinecraftJar.Type> dependencyTargets = getDependencyTypes();
 
 		if (dependencyTargets.isEmpty()) {
 			return;
@@ -125,14 +130,14 @@ public abstract class ProcessedNamedMinecraftProvider<M extends MinecraftProvide
 	}
 
 	@Override
-	protected String getName(String name) {
+	protected String getName(MinecraftJar.Type type) {
 		final String jarPrefix = parentMinecraftProvider.getMinecraftProvider().getJarPrefix();
 		// Hash the cache value so that we don't have to process the same JAR multiple times for many projects
-		return jarPrefix + "minecraft-%s-%s".formatted(name, jarProcessorManager.getJarHash());
+		return jarPrefix + "minecraft-%s-%s".formatted(type.toString(), jarProcessorManager.getJarHash());
 	}
 
 	@Override
-	public Path getJar(String name) {
+	public Path getJar(MinecraftJar.Type type) {
 		// Something has gone wrong if this gets called.
 		throw new UnsupportedOperationException();
 	}
@@ -154,7 +159,7 @@ public abstract class ProcessedNamedMinecraftProvider<M extends MinecraftProvide
 	}
 
 	private Path getProcessedPath(MinecraftJar minecraftJar) {
-		final LocalMavenHelper mavenHelper = getMavenHelper(minecraftJar.getName());
+		final LocalMavenHelper mavenHelper = getMavenHelper(minecraftJar.getType());
 		return mavenHelper.getOutputFile(null);
 	}
 

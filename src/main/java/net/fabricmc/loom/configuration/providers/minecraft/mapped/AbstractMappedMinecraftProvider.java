@@ -37,8 +37,6 @@ import java.util.StringJoiner;
 import java.util.function.Function;
 
 import dev.architectury.loom.util.MappingOption;
-import dev.architectury.tinyremapper.OutputConsumerPath;
-import dev.architectury.tinyremapper.TinyRemapper;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.LoomGradleExtension;
@@ -61,6 +59,8 @@ import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import net.fabricmc.tinyremapper.OutputConsumerPath;
+import net.fabricmc.tinyremapper.TinyRemapper;
 
 public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvider> implements MappedMinecraftProvider.ProviderImpl {
 	protected final M minecraftProvider;
@@ -77,7 +77,8 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 	public abstract List<RemappedJars> getRemappedJars();
 
-	public List<String> getDependencyTargets() {
+	// Returns a list of MinecraftJar.Type's that this provider exports to be used as a dependency
+	public List<MinecraftJar.Type> getDependencyTypes() {
 		return Collections.emptyList();
 	}
 
@@ -96,11 +97,11 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		}
 
 		if (context.applyDependencies()) {
-			final List<String> dependencyTargets = getDependencyTargets();
+			final List<MinecraftJar.Type> dependencyTargets = getDependencyTypes();
 
 			if (!dependencyTargets.isEmpty()) {
 				MinecraftSourceSets.get(getProject()).applyDependencies(
-						(configuration, name) -> getProject().getDependencies().add(configuration, getDependencyNotation(name)),
+						(configuration, type) -> getProject().getDependencies().add(configuration, getDependencyNotation(type)),
 						dependencyTargets
 				);
 			}
@@ -118,8 +119,8 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 	}
 
 	@Override
-	public Path getJar(String name) {
-		return getMavenHelper(name).getOutputFile(null);
+	public Path getJar(MinecraftJar.Type type) {
+		return getMavenHelper(type).getOutputFile(null);
 	}
 
 	public enum MavenScope {
@@ -141,16 +142,16 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 	public abstract MavenScope getMavenScope();
 
-	public LocalMavenHelper getMavenHelper(String name) {
-		return new LocalMavenHelper("net.minecraft", getName(name), getVersion(), null, getMavenScope().getRoot(extension));
+	public LocalMavenHelper getMavenHelper(MinecraftJar.Type type) {
+		return new LocalMavenHelper("net.minecraft", getName(type), getVersion(), null, getMavenScope().getRoot(extension));
 	}
 
-	protected String getName(String name) {
+	protected String getName(MinecraftJar.Type type) {
 		final String intermediateName = extension.getIntermediateMappingsProvider().getName();
 
 		var sj = new StringJoiner("-");
 		sj.add("minecraft");
-		sj.add(name);
+		sj.add(type.toString());
 
 		// Include the intermediate mapping name if it's not the default intermediary
 		if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
@@ -168,13 +169,13 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		return "%s-%s".formatted(extension.getMinecraftProvider().minecraftVersion(), extension.getMappingConfiguration().mappingsIdentifier());
 	}
 
-	protected String getDependencyNotation(String name) {
-		return "net.minecraft:%s:%s".formatted(getName(name), getVersion());
+	protected String getDependencyNotation(MinecraftJar.Type type) {
+		return "net.minecraft:%s:%s".formatted(getName(type), getVersion());
 	}
 
 	private boolean areOutputsValid(List<RemappedJars> remappedJars) {
 		for (RemappedJars remappedJar : remappedJars) {
-			if (!getMavenHelper(remappedJar.name()).exists(null)) {
+			if (!getMavenHelper(remappedJar.type()).exists(null)) {
 				return false;
 			}
 		}
@@ -211,7 +212,6 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 		try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(remappedJars.outputJarPath()).build()) {
 			outputConsumer.addNonClassFiles(remappedJars.inputJar());
-			remapper.readClassPath(TinyRemapperHelper.getMinecraftCompileLibraries(getProject()));
 
 			for (Path path : remappedJars.remapClasspath()) {
 				remapper.readClassPath(path);
@@ -225,7 +225,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 			remapper.finish();
 		}
 
-		getMavenHelper(remappedJars.name()).savePom();
+		getMavenHelper(remappedJars.type()).savePom();
 
 		if (extension.isForgeLikeAndOfficial()) {
 			try (var serviceManager = new ScopedSharedServiceManager()) {
@@ -281,6 +281,10 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 		public String name() {
 			return outputJar().getName();
+		}
+
+		public MinecraftJar.Type type() {
+			return outputJar().getType();
 		}
 	}
 }

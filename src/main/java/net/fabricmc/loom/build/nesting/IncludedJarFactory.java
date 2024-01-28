@@ -174,7 +174,8 @@ public final class IncludedJarFactory {
 		}
 
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		File tempDir = new File(extension.getFiles().getProjectBuildCache(), "temp/modprocessing");
+		String childName = "temp/modprocessing/%s/%s/%s/%s".formatted(metadata.group().replace(".", "/"), metadata.name(), metadata.version(), input.getName());
+		File tempDir = new File(extension.getFiles().getProjectBuildCache(), childName);
 
 		if (!tempDir.exists()) {
 			tempDir.mkdirs();
@@ -182,15 +183,15 @@ public final class IncludedJarFactory {
 
 		File tempFile = new File(tempDir, input.getName());
 
-		if (tempFile.exists()) {
-			tempFile.delete();
+		if (tempFile.exists() && FabricModJsonFactory.isModJar(tempFile, LoomGradleExtension.get(project).getPlatform().get())) {
+			return tempFile;
 		}
 
 		try {
 			FileUtils.copyFile(input, tempFile);
 
 			// TODO generate Quilt qmjs natively
-			ZipReprocessorUtil.appendZipEntry(tempFile, "fabric.mod.json", generateModForDependency(metadata).getBytes(StandardCharsets.UTF_8));
+			ZipReprocessorUtil.appendZipEntry(tempFile.toPath(), "fabric.mod.json", generateModForDependency(metadata).getBytes(StandardCharsets.UTF_8));
 		} catch (IOException e) {
 			throw new UncheckedIOException("Failed to add dummy mod while including %s".formatted(input), e);
 		}

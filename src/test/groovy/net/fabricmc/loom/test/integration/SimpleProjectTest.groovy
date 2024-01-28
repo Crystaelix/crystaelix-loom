@@ -33,7 +33,8 @@ import spock.lang.Unroll
 import net.fabricmc.loom.test.util.GradleProjectTestTrait
 import net.fabricmc.loom.test.util.ServerRunner
 
-import static net.fabricmc.loom.test.LoomTestConstants.*
+import static net.fabricmc.loom.test.LoomTestConstants.PRE_RELEASE_GRADLE
+import static net.fabricmc.loom.test.LoomTestConstants.STANDARD_TEST_VERSIONS
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
 
 @Timeout(value = 20, unit = TimeUnit.MINUTES)
@@ -42,6 +43,7 @@ class SimpleProjectTest extends Specification implements GradleProjectTestTrait 
 	def "build and run (gradle #version)"() {
 		setup:
 		def gradle = gradleProject(project: "simple", version: version)
+		gradle.buildSrc("remapext") // apply the remap extension plugin
 
 		def server = ServerRunner.create(gradle.projectDir, "1.16.5")
 				.withMod(gradle.getOutputFile("fabric-example-mod-1.0.0.jar"))
@@ -54,8 +56,13 @@ class SimpleProjectTest extends Specification implements GradleProjectTestTrait 
 		gradle.getOutputZipEntry("fabric-example-mod-1.0.0.jar", "META-INF/MANIFEST.MF").contains("Fabric-Loom-Version: 0.0.0+unknown")
 		gradle.getOutputZipEntry("fabric-example-mod-1.0.0-sources.jar", "net/fabricmc/example/mixin/ExampleMixin.java").contains("class_442") // Very basic test to ensure sources got remapped
 
+		// test same-namespace remapJar tasks
+		gradle.getOutputZipEntry("fabric-example-mod-1.0.0-no-remap.jar", "META-INF/MANIFEST.MF").contains("Fabric-Loom-Version: 0.0.0+unknown")
+		gradle.getOutputZipEntry("fabric-example-mod-1.0.0-no-remap-sources.jar", "net/fabricmc/example/mixin/ExampleMixin.java").contains("TitleScreen.class") // Very basic test to ensure sources did not get remapped :)
+
 		serverResult.successful()
 		serverResult.output.contains("Hello simple Fabric mod") // A check to ensure our mod init was actually called
+		serverResult.output.contains("Hello Loom!") // Check that the remapper extension worked
 		where:
 		version << STANDARD_TEST_VERSIONS
 	}
@@ -73,5 +80,24 @@ class SimpleProjectTest extends Specification implements GradleProjectTestTrait 
 		'idea' 		| _
 		'eclipse'	| _
 		'vscode'	| _
+	}
+
+	@Unroll
+	def "remap mixins with tiny-remapper"() {
+		setup:
+		def gradle = gradleProject(project: "simple", version: PRE_RELEASE_GRADLE)
+		gradle.buildGradle << """
+				allprojects {
+					loom.mixin.useLegacyMixinAp = false
+				}
+				""".stripIndent()
+
+		when:
+		def result = gradle.run(task: "build")
+
+		then:
+		result.task(":build").outcome == SUCCESS
+		!result.output.contains("[WARN]  [MIXIN]") // Assert that tiny remapper didnt not have any warnings when remapping
+		gradle.getOutputZipEntry("fabric-example-mod-1.0.0.jar", "META-INF/MANIFEST.MF").contains("Fabric-Loom-Version: 0.0.0+unknown")
 	}
 }

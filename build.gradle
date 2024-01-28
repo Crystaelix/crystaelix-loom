@@ -50,7 +50,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 
 group = "dev.architectury"
-def baseVersion = '1.4'
+def baseVersion = '1.5'
 
 def ENV = System.getenv()
 def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
@@ -130,7 +130,6 @@ dependencies {
 	// libraries
 	implementation libs.commons.io
 	implementation libs.gson
-	implementation libs.jackson
 	implementation libs.guava
 	implementation libs.bundles.asm
 
@@ -243,6 +242,8 @@ java {
 }
 
 spotless {
+	lineEndings = com.diffplug.spotless.LineEnding.UNIX
+
 	java {
 		licenseHeaderFile(rootProject.file("HEADER")).yearSeparator("-")
 		targetExclude("**/loom/util/DownloadUtil.java", "**/loom/util/FileSystemUtil.java")

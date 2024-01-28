@@ -22,16 +22,21 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.kotlin.remapping;
+package net.fabricmc.loom.api.remapping;
 
-import kotlin.Metadata;
-import kotlinx.metadata.jvm.KotlinClassMetadata;
+import org.jetbrains.annotations.ApiStatus;
 
 /**
- * Similar story to JvmExtensionWrapper, lets abuse the fact that Java can call "internal" Kotlin APIs without reflection :).
+ * Marker interface for parameter objects to {@link RemapperExtension}s.
+ *
+ * <p>Design based off of Gradle's {@link org.gradle.workers.WorkParameters}.
  */
-public record KotlinClassMetadataWrapper(KotlinClassMetadata metadata) {
-	public Metadata getAnnotationData() {
-		return metadata.getAnnotationData$kotlinx_metadata_jvm();
+public interface RemapperParameters {
+	final class None implements RemapperParameters {
+		@ApiStatus.Internal
+		public static None INSTANCE = new None();
+
+		private None() {
+		}
 	}
 }

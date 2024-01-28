@@ -24,12 +24,12 @@
 
 package net.fabricmc.loom.task;
 
-import java.io.File;
 import java.util.Map;
 import java.util.Set;
 
 import javax.inject.Inject;
 
+import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.artifacts.Configuration;
@@ -76,8 +76,7 @@ public abstract class RemapTaskConfiguration implements Runnable {
 			return;
 		}
 
-		// Register the default remap jar task - must not be lazy to ensure that the prepare tasks get setup for other projects to depend on.
-		RemapJarTask remapJarTask = getTasks().create(REMAP_JAR_TASK_NAME, RemapJarTask.class, task -> {
+		Action<RemapJarTask> remapJarTaskAction = task -> {
 			final AbstractArchiveTask jarTask = getTasks().named(JavaPlugin.JAR_TASK_NAME, AbstractArchiveTask.class).get();
 
 			// Basic task setup
@@ -91,22 +90,26 @@ public abstract class RemapTaskConfiguration implements Runnable {
 			task.getInputFile().convention(jarTask.getArchiveFile());
 			task.dependsOn(getTasks().named(JavaPlugin.JAR_TASK_NAME));
 			task.getIncludesClientOnlyClasses().set(getProject().provider(extension::areEnvironmentSourceSetsSplit));
-		});
+		};
+
+		// must not be lazy to ensure that the prepare tasks get setup for other projects to depend on.
+		// Being lazy also breaks maven publishing, see: https://github.com/FabricMC/fabric-loom/issues/1023
+		getTasks().create(REMAP_JAR_TASK_NAME, RemapJarTask.class, remapJarTaskAction);
 
 		// Configure the default jar task
 		getTasks().named(JavaPlugin.JAR_TASK_NAME, AbstractArchiveTask.class).configure(task -> {
 			task.getArchiveClassifier().convention("dev");
-			task.getDestinationDirectory().set(new File(getProject().getBuildDir(), "devlibs"));
+			task.getDestinationDirectory().set(getProject().getLayout().getBuildDirectory().map(directory -> directory.dir("devlibs")));
 		});
 
-		getTasks().named(BasePlugin.ASSEMBLE_TASK_NAME).configure(task -> task.dependsOn(remapJarTask));
+		getTasks().named(BasePlugin.ASSEMBLE_TASK_NAME).configure(task -> task.dependsOn(getTasks().named(REMAP_JAR_TASK_NAME)));
 
 		trySetupSourceRemapping();
 
 		getProject().afterEvaluate(p -> {
 			if (extension.isSrgForgeLike()) {
 				if (PropertyUtil.getAndFinalize(extension.getForge().getConvertAccessWideners())) {
-					Aw2At.setup(getProject(), remapJarTask);
+					Aw2At.setup(getProject(), (RemapJarTask) getTasks().getByName(REMAP_JAR_TASK_NAME));
 				}
 
 				Set<String> mixinConfigs = PropertyUtil.getAndFinalize(extension.getForge().getMixinConfigs());
@@ -161,7 +164,7 @@ public abstract class RemapTaskConfiguration implements Runnable {
 			}
 
 			sourcesJarTask.getArchiveClassifier().convention("dev-sources");
-			sourcesJarTask.getDestinationDirectory().set(new File(getProject().getBuildDir(), "devlibs"));
+			sourcesJarTask.getDestinationDirectory().set(getProject().getLayout().getBuildDirectory().map(directory -> directory.dir("devlibs")));
 			task.getArchiveClassifier().convention("sources");
 
 			task.dependsOn(sourcesJarTask);

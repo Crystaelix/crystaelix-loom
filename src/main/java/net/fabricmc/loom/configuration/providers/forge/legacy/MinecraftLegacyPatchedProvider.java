@@ -24,9 +24,9 @@
 
 package net.fabricmc.loom.configuration.providers.forge.legacy;
 
+import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.function.Predicate;
 
@@ -43,10 +43,10 @@ import net.fabricmc.loom.configuration.providers.forge.ForgeProvider;
 import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.LoomVersions;
-import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 
@@ -198,7 +198,11 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		// release version (so we can use the TerminalConsoleAppender) where some of those classes have been moved from
 		// a `helpers` to a `utils` package.
 		// To allow Forge to work regardless, we'll re-package those helper classes into the forge jar.
-		Path log4jBeta9 = Arrays.stream(TinyRemapperHelper.getMinecraftCompileLibraries(project))
+		Path log4jBeta9 = project.getConfigurations()
+				.getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES)
+				.getFiles()
+				.stream()
+				.map(File::toPath)
 				.filter(it -> it.getFileName().toString().equals("log4j-core-2.0-beta9.jar"))
 				.findAny()
 				.orElse(null);

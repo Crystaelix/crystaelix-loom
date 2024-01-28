@@ -32,9 +32,11 @@ import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -44,11 +46,6 @@ import com.google.gson.JsonObject;
 import dev.architectury.loom.legacyforge.LegacyForgeModDependencies;
 import dev.architectury.loom.neoforge.NeoForgeModDependencies;
 import dev.architectury.loom.util.MappingOption;
-import dev.architectury.tinyremapper.InputTag;
-import dev.architectury.tinyremapper.NonClassCopyMode;
-import dev.architectury.tinyremapper.OutputConsumerPath;
-import dev.architectury.tinyremapper.TinyRemapper;
-import dev.architectury.tinyremapper.extension.mixin.MixinExtension;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.attributes.Usage;
@@ -59,7 +56,7 @@ import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.mods.dependency.ModDependency;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
-import net.fabricmc.loom.task.RemapJarTask;
+import net.fabricmc.loom.extension.RemapperExtensionHolder;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoggerFilter;
 import net.fabricmc.loom.util.ModPlatform;
@@ -72,6 +69,11 @@ import net.fabricmc.loom.util.service.SharedServiceManager;
 import net.fabricmc.loom.util.srg.AtClassRemapper;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import net.fabricmc.tinyremapper.InputTag;
+import net.fabricmc.tinyremapper.NonClassCopyMode;
+import net.fabricmc.tinyremapper.OutputConsumerPath;
+import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public class ModProcessor {
 	private static final String toM = MappingsNamespace.NAMED.toString();
@@ -165,8 +167,6 @@ public class ModProcessor {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final MappingConfiguration mappingConfiguration = extension.getMappingConfiguration();
 		String fromM = IntermediaryNamespaces.intermediary(project);
-		Path[] mcDeps = project.getConfigurations().getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES).getFiles()
-				.stream().map(File::toPath).toArray(Path[]::new);
 
 		Stopwatch stopwatch = Stopwatch.createStarted();
 
@@ -176,8 +176,6 @@ public class ModProcessor {
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
 				.withKnownIndyBsm(extension.getKnownIndyBsms().get())
 				.withMappings(TinyRemapperHelper.create(mappings, fromM, toM, false))
-				.logger(project.getLogger()::lifecycle)
-				.logUnknownInvokeDynamic(false)
 				.renameInvalidLocals(false)
 				.extraAnalyzeVisitor(AccessWidenerAnalyzeVisitorProvider.createFromMods(fromM, remapList, extension.getPlatform().get()));
 
@@ -189,16 +187,22 @@ public class ModProcessor {
 			builder.extension(kotlinRemapperClassloader.getTinyRemapperExtension());
 		}
 
-		// This is required for mods that use @Shadow and @Overwrite, so enable for now
-		builder.extension(new MixinExtension());
+		final Set<InputTag> remapMixins = new HashSet<>();
+		final boolean requiresStaticMixinRemap = remapList.stream()
+				.anyMatch(modDependency -> modDependency.getMetadata().mixinRemapType() == ArtifactMetadata.MixinRemapType.STATIC);
+
+		if (requiresStaticMixinRemap) {
+			// Configure the mixin extension to remap mixins from mod jars that were remapped with the mixin extension.
+			builder.extension(new MixinExtension(remapMixins::contains));
+		}
+
+		for (RemapperExtensionHolder holder : extension.getRemapperExtensions().get()) {
+			holder.apply(builder, fromM, toM, project.getObjects());
+		}
 
 		final TinyRemapper remapper = builder.build();
 
-		for (Path minecraftJar : extension.getMinecraftJars(IntermediaryNamespaces.intermediaryNamespace(project))) {
-			remapper.readClassPathAsync(minecraftJar);
-		}
-
-		remapper.readClassPathAsync(mcDeps);
+		remapper.readClassPath(extension.getMinecraftJars(IntermediaryNamespaces.intermediaryNamespace(project)).toArray(Path[]::new));
 
 		final Map<ModDependency, InputTag> tagMap = new HashMap<>();
 		final Map<ModDependency, OutputConsumerPath> outputConsumerMap = new HashMap<>();
@@ -208,7 +212,6 @@ public class ModProcessor {
 			for (File inputFile : entry.getSourceConfiguration().get().getFiles()) {
 				if (remapList.stream().noneMatch(info -> info.getInputFile().toFile().equals(inputFile))) {
 					project.getLogger().debug("Adding " + inputFile + " onto the remap classpath");
-
 					remapper.readClassPathAsync(inputFile.toPath());
 				}
 			}
@@ -218,6 +221,18 @@ public class ModProcessor {
 			InputTag tag = remapper.createInputTag();
 
 			project.getLogger().debug("Adding " + info.getInputFile() + " as a remap input");
+
+			// Note: this is done at a jar level, not at the level of an individual mixin config.
+			// If a mod has multiple mixin configs, it's assumed that either all or none of them have refmaps.
+			if (info.getMetadata().mixinRemapType() == ArtifactMetadata.MixinRemapType.STATIC) {
+				if (!requiresStaticMixinRemap) {
+					// Should be impossible but stranger things have happened.
+					throw new IllegalStateException("Was not configured for static remap, but a mod required it?!");
+				}
+
+				project.getLogger().info("Remapping mixins in {} statically", info.getInputFile());
+				remapMixins.add(tag);
+			}
 
 			remapper.readInputsAsync(tag, info.getInputFile());
 			tagMap.put(info, tag);
@@ -299,10 +314,10 @@ public class ModProcessor {
 	}
 
 	private void remapJarManifestEntries(Path jar) throws IOException {
-		ZipUtils.transform(jar, Map.of(RemapJarTask.MANIFEST_PATH, bytes -> {
+		ZipUtils.transform(jar, Map.of(Constants.Manifest.PATH, bytes -> {
 			var manifest = new Manifest(new ByteArrayInputStream(bytes));
 
-			manifest.getMainAttributes().putValue(RemapJarTask.MANIFEST_NAMESPACE_KEY, toM);
+			manifest.getMainAttributes().putValue(Constants.Manifest.MAPPING_NAMESPACE, toM);
 
 			ByteArrayOutputStream out = new ByteArrayOutputStream();
 			manifest.write(out);

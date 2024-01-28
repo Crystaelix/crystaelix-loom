@@ -40,7 +40,7 @@ import net.fabricmc.loom.configuration.providers.mappings.intermediary.Intermedi
 import net.fabricmc.loom.configuration.providers.mappings.utils.DstNameFilterMappingVisitor;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
-import net.fabricmc.mappingio.format.ProGuardReader;
+import net.fabricmc.mappingio.format.proguard.ProGuardFileReader;
 
 public record MojangMappingLayer(String minecraftVersion,
 									Path clientMappings,
@@ -63,8 +63,8 @@ public record MojangMappingLayer(String minecraftVersion,
 
 		try (BufferedReader clientBufferedReader = Files.newBufferedReader(clientMappings, StandardCharsets.UTF_8);
 				BufferedReader serverBufferedReader = Files.newBufferedReader(serverMappings, StandardCharsets.UTF_8)) {
-			ProGuardReader.read(clientBufferedReader, MappingsNamespace.NAMED.toString(), MappingsNamespace.OFFICIAL.toString(), nsSwitch);
-			ProGuardReader.read(serverBufferedReader, MappingsNamespace.NAMED.toString(), MappingsNamespace.OFFICIAL.toString(), nsSwitch);
+			ProGuardFileReader.read(clientBufferedReader, MappingsNamespace.NAMED.toString(), MappingsNamespace.OFFICIAL.toString(), nsSwitch);
+			ProGuardFileReader.read(serverBufferedReader, MappingsNamespace.NAMED.toString(), MappingsNamespace.OFFICIAL.toString(), nsSwitch);
 		}
 	}
 

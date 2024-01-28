@@ -27,8 +27,9 @@ package net.fabricmc.loom.configuration.decompile;
 import java.io.File;
 import java.util.List;
 
+import org.gradle.api.Project;
+
 import net.fabricmc.loom.LoomGradleExtension;
-import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJar;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
@@ -38,8 +39,13 @@ import net.fabricmc.loom.task.GenerateSourcesTask;
 import net.fabricmc.loom.util.Constants;
 
 public class SingleJarDecompileConfiguration extends DecompileConfiguration<MappedMinecraftProvider> {
-	public SingleJarDecompileConfiguration(ConfigContext configContext, MappedMinecraftProvider minecraftProvider) {
-		super(configContext, minecraftProvider);
+	public SingleJarDecompileConfiguration(Project project, MappedMinecraftProvider minecraftProvider) {
+		super(project, minecraftProvider);
+	}
+
+	@Override
+	public String getTaskName(MinecraftJar.Type type) {
+		return "genSources";
 	}
 
 	@Override
@@ -47,10 +53,11 @@ public class SingleJarDecompileConfiguration extends DecompileConfiguration<Mapp
 		final List<MinecraftJar> minecraftJars = minecraftProvider.getMinecraftJars();
 		assert minecraftJars.size() == 1;
 		final MinecraftJar minecraftJar = minecraftJars.get(0);
+		final String taskBaseName = getTaskName(minecraftJar.getType());
 
 		LoomGradleExtension.get(project).getDecompilerOptions().forEach(options -> {
 			final String decompilerName = options.getFormattedName();
-			String taskName = "genSourcesWith" + decompilerName;
+			String taskName = "%sWith%s".formatted(taskBaseName, decompilerName);
 			// Decompiler will be passed to the constructor of GenerateSourcesTask
 			project.getTasks().register(taskName, GenerateSourcesTask.class, options).configure(task -> {
 				task.getInputJarName().set(minecraftJar.getName());
@@ -67,7 +74,7 @@ public class SingleJarDecompileConfiguration extends DecompileConfiguration<Mapp
 			});
 		});
 
-		project.getTasks().register("genSources", task -> {
+		project.getTasks().register(taskBaseName, task -> {
 			task.setDescription("Decompile minecraft using the default decompiler.");
 			task.setGroup(Constants.TaskGroup.FABRIC);
 

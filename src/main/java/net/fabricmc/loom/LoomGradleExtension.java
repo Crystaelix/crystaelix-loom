@@ -55,6 +55,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraft
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
 import net.fabricmc.loom.extension.LoomFiles;
 import net.fabricmc.loom.extension.MixinExtension;
+import net.fabricmc.loom.extension.RemapperExtensionHolder;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.download.DownloadBuilder;
 
@@ -142,6 +143,8 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	boolean multiProjectOptimisation();
 
 	ListProperty<LibraryProcessorManager.LibraryProcessorFactory> getLibraryProcessors();
+
+	ListProperty<RemapperExtensionHolder> getRemapperExtensions();
 
 	// ===================
 	//  Architectury Loom

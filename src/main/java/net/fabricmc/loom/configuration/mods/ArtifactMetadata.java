@@ -29,6 +29,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.Locale;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -38,51 +39,60 @@ import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.configuration.InstallerData;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
 
 // ARCH: isFabricMod means "is mod on current platform"
-public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequirements, @Nullable InstallerData installerData) {
+public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequirements, @Nullable InstallerData installerData, MixinRemapType mixinRemapType) {
 	private static final String INSTALLER_PATH = "fabric-installer.json";
-	private static final String MANIFEST_PATH = "META-INF/MANIFEST.MF";
-	private static final String MANIFEST_REMAP_KEY = "Fabric-Loom-Remap";
 
 	// ARCH: Quilt support
 	private static final String QUILT_INSTALLER_PATH = "quilt_installer.json";
 
-	public static ArtifactMetadata create(ArtifactRef artifact) throws IOException {
-		return create(artifact, ModPlatform.FABRIC);
+	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion) throws IOException {
+		return create(artifact, currentLoomVersion, ModPlatform.FABRIC);
 	}
 
-	public static ArtifactMetadata create(ArtifactRef artifact, ModPlatform platform) throws IOException {
+	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion, ModPlatform platform) throws IOException {
 		boolean isFabricMod;
 		RemapRequirements remapRequirements = RemapRequirements.DEFAULT;
 		InstallerData installerData = null;
+		MixinRemapType refmapRemapType = MixinRemapType.MIXIN;
 
 		// Force-remap all mods on Forge and NeoForge.
 		if (platform.isForgeLike()) {
 			remapRequirements = RemapRequirements.OPT_IN;
+			refmapRemapType = MixinRemapType.STATIC;
 		}
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(artifact.path())) {
 			isFabricMod = FabricModJsonFactory.containsMod(fs, platform);
-			final Path manifestPath = fs.getPath(MANIFEST_PATH);
+			final Path manifestPath = fs.getPath(Constants.Manifest.PATH);
 
 			if (Files.exists(manifestPath)) {
 				final var manifest = new Manifest(new ByteArrayInputStream(Files.readAllBytes(manifestPath)));
 				final Attributes mainAttributes = manifest.getMainAttributes();
-				final String value = mainAttributes.getValue(MANIFEST_REMAP_KEY);
+				final String remapValue = mainAttributes.getValue(Constants.Manifest.REMAP_KEY);
+				final String loomVersion = mainAttributes.getValue(Constants.Manifest.LOOM_VERSION);
+				final String mixinRemapType = mainAttributes.getValue(Constants.Manifest.MIXIN_REMAP_TYPE);
 
-				if (value != null) {
+				if (remapValue != null) {
 					// Support opting into and out of remapping with "Fabric-Loom-Remap" manifest entry
-					remapRequirements = Boolean.parseBoolean(value) ? RemapRequirements.OPT_IN : RemapRequirements.OPT_OUT;
+					remapRequirements = Boolean.parseBoolean(remapValue) ? RemapRequirements.OPT_IN : RemapRequirements.OPT_OUT;
 				}
 
-				// Check to see if the jar was built with a newer version of loom.
-				// This version of loom does not support the remap type value so throw an exception.
-				if (mainAttributes.getValue("Fabric-Loom-Mixin-Remap-Type") != null) {
-					throw new IllegalStateException("This version of loom does not support the mixin remap type value. Please update to the latest version of loom.");
+				if (mixinRemapType != null) {
+					try {
+						refmapRemapType = MixinRemapType.valueOf(mixinRemapType.toUpperCase(Locale.ROOT));
+					} catch (IllegalArgumentException e) {
+						throw new IllegalStateException("Unknown mixin remap type: " + mixinRemapType);
+					}
+				}
+
+				if (loomVersion != null && refmapRemapType != MixinRemapType.STATIC) {
+					validateLoomVersion(loomVersion, currentLoomVersion);
 				}
 			}
 
@@ -95,7 +105,32 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 			}
 		}
 
-		return new ArtifactMetadata(isFabricMod, remapRequirements, installerData);
+		return new ArtifactMetadata(isFabricMod, remapRequirements, installerData, refmapRemapType);
+	}
+
+	// Validates that the version matches or is less than the current loom version
+	// This is only done for jars with tiny-remapper remapped mixins.
+	private static void validateLoomVersion(String version, String currentLoomVersion) {
+		if ("0.0.0+unknown".equals(currentLoomVersion)) {
+			// Unknown version, skip validation. This is the case when running from source (tests)
+			return;
+		}
+
+		final String[] versionParts = version.split("\\.");
+		final String[] currentVersionParts = currentLoomVersion.split("\\.");
+
+		// Check major and minor version
+		for (int i = 0; i < 2; i++) {
+			final int versionPart = Integer.parseInt(versionParts[i]);
+			final int currentVersionPart = Integer.parseInt(currentVersionParts[i]);
+
+			if (versionPart > currentVersionPart) {
+				throw new IllegalStateException("Mod was built with a newer version of Loom (%s), you are using Loom (%s)".formatted(version, currentLoomVersion));
+			} else if (versionPart < currentVersionPart) {
+				// Older version, no need to check further
+				break;
+			}
+		}
 	}
 
 	public boolean shouldRemap() {
@@ -119,6 +154,17 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 
 		private Predicate<ArtifactMetadata> getShouldRemap() {
 			return shouldRemap;
+		}
+	}
+
+	public enum MixinRemapType {
+		// Jar uses refmaps, so will be remapped by mixin
+		MIXIN,
+		// Jar does not use refmaps, so will be remapped by tiny-remapper
+		STATIC;
+
+		public String manifestValue() {
+			return name().toLowerCase(Locale.ROOT);
 		}
 	}
 }
