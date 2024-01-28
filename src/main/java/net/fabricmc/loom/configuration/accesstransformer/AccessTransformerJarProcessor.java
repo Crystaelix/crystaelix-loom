@@ -161,6 +161,7 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 		FileCollection classpath = new DependencyDownloader(project)
 				.add(LoomVersions.ACCESS_TRANSFORMERS.mavenNotation())
 				.add(LoomVersions.ASM.mavenNotation())
+				.platform(LoomVersions.ACCESS_TRANSFORMERS_LOG4J_BOM.mavenNotation())
 				.download();
 		List<String> args = new ArrayList<>();
 		args.add("--inJar");
