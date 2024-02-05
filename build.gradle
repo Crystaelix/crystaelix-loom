@@ -53,7 +53,8 @@ group = "dev.architectury"
 def baseVersion = '1.5'
 
 def ENV = System.getenv()
-def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
+//def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
+def runNumber = "0"
 
 def isSnapshot = ENV.PR_NUM != null
 
@@ -369,17 +370,17 @@ publishing {
 		}
 	}
 
-	repositories {
-		if (ENV.MAVEN_PASS != null) {
-			maven {
-				url = "https://deploy.shedaniel.me/"
-				credentials {
-					username = "shedaniel"
-					password = ENV.MAVEN_PASS
-				}
-			}
-		}
-	}
+//	repositories {
+//		if (ENV.MAVEN_PASS != null) {
+//			maven {
+//				url = "https://deploy.shedaniel.me/"
+//				credentials {
+//					username = "shedaniel"
+//					password = ENV.MAVEN_PASS
+//				}
+//			}
+//		}
+//	}
 }
 
 // Need to tweak this file to pretend we are compatible with j8 so the bootstrap will run.
