@@ -102,7 +102,7 @@ public class TinyRemapperService implements SharedService {
 				mappings.add(gradleMixinMappingProvider(serviceManager, project.getGradle(), extension.getMappingConfiguration().mappingsIdentifier, from, to));
 			}
 
-			return new TinyRemapperService(mappings, !legacyMixin, kotlinClasspathService, extension.getKnownIndyBsms().get(), extension.getRemapperExtensions().get(), from, to, project.getObjects());
+			return new TinyRemapperService(mappings, extension.isForgeLike(), !legacyMixin, kotlinClasspathService, extension.getKnownIndyBsms().get(), extension.getRemapperExtensions().get(), from, to, project.getObjects());
 		});
 
 		final ConfigurationContainer configurations = project.getConfigurations();
@@ -168,12 +168,14 @@ public class TinyRemapperService implements SharedService {
 	// Set to true once remapping has started, once set no inputs can be read.
 	private boolean isRemapping = false;
 
-	private TinyRemapperService(List<IMappingProvider> mappings, boolean useMixinExtension, @Nullable KotlinClasspath kotlinClasspath, Set<String> knownIndyBsms, List<RemapperExtensionHolder> remapperExtensions, String sourceNamespace, String targetNamespace, ObjectFactory objectFactory) {
+	private TinyRemapperService(List<IMappingProvider> mappings, boolean ignoreConflicts, boolean useMixinExtension, @Nullable KotlinClasspath kotlinClasspath, Set<String> knownIndyBsms, List<RemapperExtensionHolder> remapperExtensions, String sourceNamespace, String targetNamespace, ObjectFactory objectFactory) {
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper().withKnownIndyBsm(knownIndyBsms);
 
 		for (IMappingProvider provider : mappings) {
 			builder.withMappings(provider);
 		}
+
+		builder.ignoreConflicts(ignoreConflicts);
 
 		if (useMixinExtension) {
 			builder.extension(new net.fabricmc.tinyremapper.extension.mixin.MixinExtension());
