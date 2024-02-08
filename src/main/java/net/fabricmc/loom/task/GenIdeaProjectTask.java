@@ -37,6 +37,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 import org.w3c.dom.Document;
@@ -47,6 +48,7 @@ import org.xml.sax.SAXException;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public class GenIdeaProjectTask extends AbstractLoomTask {
 	@TaskAction
@@ -88,6 +90,7 @@ public class GenIdeaProjectTask extends AbstractLoomTask {
 				continue;
 			}
 
+			ForgeSourceRootHelper.addForgeSourceRoots(project, settings, SourceSetHelper::getIdeaClasspath);
 			runManager.appendChild(RunConfig.runConfig(project, settings).genRuns(runManager));
 			settings.makeRunDir();
 		}

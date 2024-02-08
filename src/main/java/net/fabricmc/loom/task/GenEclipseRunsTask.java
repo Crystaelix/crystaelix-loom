@@ -28,20 +28,24 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.apache.commons.io.FileUtils;
+import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public class GenEclipseRunsTask extends AbstractLoomTask {
 	@TaskAction
 	public void genRuns() throws IOException {
-		EclipseModel eclipseModel = getProject().getExtensions().getByType(EclipseModel.class);
+		Project project = getProject();
+		EclipseModel eclipseModel = project.getExtensions().getByType(EclipseModel.class);
 		LoomGradleExtension extension = getExtension();
-		File dataRunConfigs = new File(getProject().getRootDir(), eclipseModel.getProject().getName() + "_data.launch");
+		File dataRunConfigs = new File(project.getRootDir(), eclipseModel.getProject().getName() + "_data.launch");
 
 		for (RunConfigSettings settings : extension.getRunConfigs()) {
 			if (!settings.isIdeConfigGenerated()) {
@@ -50,9 +54,10 @@ public class GenEclipseRunsTask extends AbstractLoomTask {
 
 			String name = settings.getName();
 
-			File configs = new File(getProject().getProjectDir(), eclipseModel.getProject().getName() + "_" + name + ".launch");
-			RunConfig configInst = RunConfig.runConfig(getProject(), settings);
-			String config = configInst.fromDummy("eclipse_run_config_template.xml", false, getProject());
+			File configs = new File(project.getProjectDir(), eclipseModel.getProject().getName() + "_" + name + ".launch");
+			ForgeSourceRootHelper.addForgeSourceRoots(project, settings, SourceSetHelper::getEclipseClasspath);
+			RunConfig configInst = RunConfig.runConfig(project, settings);
+			String config = configInst.fromDummy("eclipse_run_config_template.xml", false, project);
 
 			FileUtils.writeStringToFile(configs, config, StandardCharsets.UTF_8);
 

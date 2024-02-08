@@ -26,13 +26,19 @@ package net.fabricmc.loom.task;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
+
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class RunGameTask extends AbstractRunTask {
 	@Inject
 	public RunGameTask(RunConfigSettings settings) {
-		super(proj -> RunConfig.runConfig(proj, settings));
+		super(proj -> {
+			ForgeSourceRootHelper.addForgeSourceRoots(proj, settings, (modSources, project) -> SourceSetHelper.getGradleClasspath(modSources));
+			return RunConfig.runConfig(proj, settings);
+		});
 
 		// Defaults to empty, forwards stdin to mc.
 		setStandardInput(System.in);

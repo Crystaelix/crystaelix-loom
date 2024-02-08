@@ -41,6 +41,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.apache.tools.ant.taskdefs.condition.Os;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
@@ -49,6 +50,7 @@ import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 // Recommended vscode plugin pack:
 // https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack
@@ -106,6 +108,7 @@ public class GenVsCodeProjectTask extends AbstractLoomTask {
 				continue;
 			}
 
+			ForgeSourceRootHelper.addForgeSourceRoots(project, settings, SourceSetHelper::getVscodeClasspath);
 			final RunConfig runConfig = RunConfig.runConfig(project, settings);
 			final VsCodeConfiguration configuration = new VsCodeConfiguration(project, runConfig);
 

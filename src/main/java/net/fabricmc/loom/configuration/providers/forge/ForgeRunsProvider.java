@@ -34,23 +34,17 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.google.common.collect.Multimap;
-import com.google.common.collect.MultimapBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import dev.architectury.loom.forge.UserdevConfig;
-import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectSet;
 import org.gradle.api.Project;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
-import net.fabricmc.loom.api.ModSettings;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
-import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public class ForgeRunsProvider {
 	private final Project project;
@@ -125,29 +119,7 @@ public class ForgeRunsProvider {
 		} else if (key.equals("natives")) {
 			string = extension.getFiles().getNativesDirectory(project).getAbsolutePath();
 		} else if (key.equals("source_roots")) {
-			// Use a set-valued multimap for deduplicating paths.
-			Multimap<String, String> modClasses = MultimapBuilder.hashKeys().linkedHashSetValues().build();
-			NamedDomainObjectContainer<ModSettings> mods = extension.getMods();
-
-			if (runConfig != null && !runConfig.getMods().isEmpty()) {
-				mods = runConfig.getMods();
-			}
-
-			for (ModSettings mod : mods) {
-				// Note: In Forge 1.16.5, resources have to come first to find mods.toml
-				for (SourceSetReference modSourceSet : mod.getModSourceSets().get()) {
-					File resourcesDir = modSourceSet.sourceSet().getOutput().getResourcesDir();
-					modClasses.put(mod.getName(), resourcesDir.getAbsolutePath());
-				}
-
-				for (File file : SourceSetHelper.getClasspath(mod, project)) {
-					modClasses.put(mod.getName(), file.getAbsolutePath());
-				}
-			}
-
-			string = modClasses.entries().stream()
-					.map(entry -> entry.getKey() + "%%" + entry.getValue())
-					.collect(Collectors.joining(File.pathSeparator));
+			string = "loom.stub";
 		} else if (key.equals("mcp_mappings")) {
 			string = "loom.stub";
 		} else if (key.equals("mcp_to_srg")) {
