@@ -115,6 +115,7 @@ public final class SourceSetHelper {
 
 		files.addAll(modSettings.getModSourceSets().get().stream()
 				.flatMap(sourceSet -> getClasspath(sourceSet, project).stream())
+				.distinct()
 				.toList());
 		files.addAll(modSettings.getModFiles().getFiles());
 
@@ -131,22 +132,21 @@ public final class SourceSetHelper {
 		return classpath;
 	}
 
-	private static List<File> getGradleClasspath(SourceSetReference reference) {
+	public static List<File> getGradleClasspath(SourceSetReference reference) {
 		final SourceSetOutput output = reference.sourceSet().getOutput();
 		final File resources = output.getResourcesDir();
 
 		final List<File> classpath = new ArrayList<>();
 
-		classpath.addAll(output.getClassesDirs().getFiles());
-
 		if (resources != null) {
 			classpath.add(resources);
 		}
 
+		classpath.addAll(output.getClassesDirs().getFiles());
+
 		return classpath;
 	}
 
-	@VisibleForTesting
 	public static List<File> getIdeaClasspath(SourceSetReference reference, Project project) {
 		final File projectDir = project.getRootDir();
 		final File dotIdea = new File(projectDir, ".idea");
@@ -173,7 +173,7 @@ public final class SourceSetHelper {
 		final File productionDir = new File(outputDirUrl, "production");
 		final File outputDir = new File(productionDir, IdeaUtils.getIdeaModuleName(reference));
 
-		return Collections.singletonList(outputDir);
+		return List.of(outputDir, outputDir);
 	}
 
 	@Nullable
@@ -195,7 +195,6 @@ public final class SourceSetHelper {
 		}
 	}
 
-	@VisibleForTesting
 	public static List<File> getEclipseClasspath(SourceSetReference reference, Project project) {
 		// Somewhat of a guess, I'm unsure if this is correct for multi-project builds
 		final File projectDir = project.getProjectDir();
@@ -208,7 +207,6 @@ public final class SourceSetHelper {
 		return getBinDirClasspath(projectDir, reference);
 	}
 
-	@VisibleForTesting
 	public static List<File> getVscodeClasspath(SourceSetReference reference, Project project) {
 		// Somewhat of a guess, I'm unsure if this is correct for multi-project builds
 		final File projectDir = project.getProjectDir();
@@ -223,7 +221,8 @@ public final class SourceSetHelper {
 
 	private static List<File> getBinDirClasspath(File projectDir, SourceSetReference reference) {
 		final File binDir = new File(projectDir, "bin");
-		return Collections.singletonList(new File(binDir, reference.sourceSet().getName()));
+		final File outputDir = new File(binDir, reference.sourceSet().getName());
+		return List.of(outputDir, outputDir);
 	}
 
 	@Nullable

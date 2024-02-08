@@ -42,6 +42,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.apache.commons.io.FileUtils;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.TaskAction;
@@ -55,6 +56,7 @@ import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.task.AbstractLoomTask;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class IdeaSyncTask extends AbstractLoomTask {
 	@Inject
@@ -87,6 +89,7 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 				continue;
 			}
 
+			ForgeSourceRootHelper.addForgeSourceRoots(getProject(), settings, SourceSetHelper::getIdeaClasspath);
 			RunConfig config = RunConfig.runConfig(getProject(), settings);
 			String name = config.configName.replaceAll("[^a-zA-Z0-9$_]", "_");
 
