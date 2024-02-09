@@ -27,7 +27,7 @@ package net.fabricmc.loom.util;
 import org.objectweb.asm.Opcodes;
 
 public class Constants {
-	public static final String PLUGIN_ID = "dev.architectury.loom";
+	public static final String PLUGIN_ID = "com.crystaelix.loom";
 	public static final boolean PLUGIN_BETA = true;
 	public static final boolean PLUGIN_DEPRECATED = false;
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";

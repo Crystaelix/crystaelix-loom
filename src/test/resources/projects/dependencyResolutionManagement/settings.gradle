@@ -1,11 +1,11 @@
 pluginManagement {
 	plugins {
-		id 'dev.architectury.loom'
+		id 'com.crystaelix.loom'
 	}
 }
 
 plugins {
-	id 'dev.architectury.loom'
+	id 'com.crystaelix.loom'
 }
 
 dependencyResolutionManagement {

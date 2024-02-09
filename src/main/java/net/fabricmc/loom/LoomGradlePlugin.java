@@ -24,10 +24,10 @@
 
 package net.fabricmc.loom;
 
-import java.util.List;
-import java.util.Objects;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 
 import com.google.common.collect.ImmutableMap;
@@ -85,12 +85,12 @@ public class LoomGradlePlugin implements BootstrappedPlugin {
 		if (!loggedVersions.contains(LOOM_VERSION)) {
 			loggedVersions.add(LOOM_VERSION);
 			System.setProperty("loom.printed.logged", String.join(",", loggedVersions));
-			project.getLogger().lifecycle("Architectury Loom: " + LOOM_VERSION);
+			project.getLogger().lifecycle("Crystaelix Loom: " + LOOM_VERSION);
 
 			if (Constants.PLUGIN_BETA) {
-				project.getLogger().lifecycle("This version of Architectury Loom is in beta! Please report any issues you encounter: https://github.com/architectury/architectury-loom/issues");
+				project.getLogger().lifecycle("This version of Crystaelix Loom is in beta! Please report any issues you encounter: https://github.com/TheLMiffy1111/crystaelix-loom/issues");
 			} else if (Constants.PLUGIN_DEPRECATED) {
-				project.getLogger().lifecycle("You are using an outdated version of Architectury Loom! This version will not receive any support, please consider updating!");
+				project.getLogger().lifecycle("You are using an outdated version of Crystaelix Loom! This version will not receive any support, please consider updating!");
 			}
 		}
 

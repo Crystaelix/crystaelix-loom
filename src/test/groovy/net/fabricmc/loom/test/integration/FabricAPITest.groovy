@@ -24,17 +24,16 @@
 
 package net.fabricmc.loom.test.integration
 
-import java.util.concurrent.TimeUnit
-
+import net.fabricmc.loom.test.util.GradleProjectTestTrait
+import net.fabricmc.loom.test.util.ServerRunner
+import net.fabricmc.loom.util.ZipUtils
 import spock.lang.Specification
 import spock.lang.Timeout
 import spock.lang.Unroll
 
-import net.fabricmc.loom.test.util.GradleProjectTestTrait
-import net.fabricmc.loom.test.util.ServerRunner
-import net.fabricmc.loom.util.ZipUtils
+import java.util.concurrent.TimeUnit
 
-import static net.fabricmc.loom.test.LoomTestConstants.*
+import static net.fabricmc.loom.test.LoomTestConstants.PRE_RELEASE_GRADLE
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
 
 @Timeout(value = 30, unit = TimeUnit.MINUTES)
@@ -62,8 +61,8 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 
 		// Change the plugin used
 		gradle.buildGradle.text = gradle.buildGradle.text
-				.replace('id "fabric-loom" version "1.4.1"', 'id "dev.architectury.loom"')
-				.replace('"fabric-loom"', '"dev.architectury.loom"') + mixinApPatch
+				.replace('id "fabric-loom" version "1.4.1"', 'id "com.crystaelix.loom"')
+				.replace('"fabric-loom"', '"com.crystaelix.loom"') + mixinApPatch
 
 		def minecraftVersion = "23w51b"
 		def server = ServerRunner.create(gradle.projectDir, minecraftVersion)
