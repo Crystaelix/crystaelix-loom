@@ -28,6 +28,7 @@ import net.fabricmc.loom.api.mappings.layered.spec.MojangMappingsSpecBuilder;
 
 public class MojangMappingsSpecBuilderImpl implements MojangMappingsSpecBuilder {
 	private boolean nameSyntheticMembers = false;
+	private boolean skipClassNames = false;
 
 	private MojangMappingsSpecBuilderImpl() {
 	}
@@ -47,7 +48,18 @@ public class MojangMappingsSpecBuilderImpl implements MojangMappingsSpecBuilder 
 		return nameSyntheticMembers;
 	}
 
+	@Override
+	public MojangMappingsSpecBuilder setSkipClassNames(boolean value) {
+		skipClassNames = value;
+		return this;
+	}
+
+	@Override
+	public boolean getSkipClassNames() {
+		return skipClassNames;
+	}
+
 	public MojangMappingsSpec build(MojangMappingsSpec.SilenceLicenseSupplier supplier) {
-		return new MojangMappingsSpec(supplier, nameSyntheticMembers);
+		return new MojangMappingsSpec(supplier, nameSyntheticMembers, skipClassNames);
 	}
 }

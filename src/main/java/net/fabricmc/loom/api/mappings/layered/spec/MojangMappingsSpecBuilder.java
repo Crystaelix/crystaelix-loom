@@ -33,4 +33,8 @@ public interface MojangMappingsSpecBuilder {
 	MojangMappingsSpecBuilder setNameSyntheticMembers(boolean value);
 
 	boolean getNameSyntheticMembers();
+
+	MojangMappingsSpecBuilder setSkipClassNames(boolean value);
+
+	boolean getSkipClassNames();
 }

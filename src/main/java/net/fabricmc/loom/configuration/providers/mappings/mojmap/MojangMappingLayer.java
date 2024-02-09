@@ -37,17 +37,20 @@ import org.gradle.api.logging.Logger;
 import net.fabricmc.loom.api.mappings.layered.MappingLayer;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.providers.mappings.intermediary.IntermediaryMappingLayer;
+import net.fabricmc.loom.configuration.providers.mappings.utils.DstClassNameSkippingMappingVisitor;
 import net.fabricmc.loom.configuration.providers.mappings.utils.DstNameFilterMappingVisitor;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.ProGuardReader;
 
-public record MojangMappingLayer(String minecraftVersion,
-									Path clientMappings,
-									Path serverMappings,
-									boolean nameSyntheticMembers,
-									Logger logger,
-									MojangMappingsSpec.SilenceLicenseOption silenceLicense) implements MappingLayer {
+public record MojangMappingLayer(
+		String minecraftVersion,
+		Path clientMappings,
+		Path serverMappings,
+		boolean nameSyntheticMembers,
+		boolean skipClassNames,
+		Logger logger,
+		MojangMappingsSpec.SilenceLicenseOption silenceLicense) implements MappingLayer {
 	private static final Pattern SYNTHETIC_NAME_PATTERN = Pattern.compile("^(access|this|val\\$this|lambda\\$.*)\\$[0-9]+$");
 	@Override
 	public void visit(MappingVisitor mappingVisitor) throws IOException {
@@ -55,11 +58,16 @@ public record MojangMappingLayer(String minecraftVersion,
 			printMappingsLicense(clientMappings);
 		}
 
-		// Filter out field names matching the pattern
-		DstNameFilterMappingVisitor nameFilter = new DstNameFilterMappingVisitor(mappingVisitor, SYNTHETIC_NAME_PATTERN);
+		if (nameSyntheticMembers) {
+			mappingVisitor = new DstNameFilterMappingVisitor(mappingVisitor, SYNTHETIC_NAME_PATTERN);
+		}
+
+		if (skipClassNames) {
+			mappingVisitor = new DstClassNameSkippingMappingVisitor(mappingVisitor);
+		}
 
 		// Make official the source namespace
-		MappingSourceNsSwitch nsSwitch = new MappingSourceNsSwitch(nameSyntheticMembers() ? mappingVisitor : nameFilter, MappingsNamespace.OFFICIAL.toString());
+		MappingSourceNsSwitch nsSwitch = new MappingSourceNsSwitch(mappingVisitor, MappingsNamespace.OFFICIAL.toString());
 
 		try (BufferedReader clientBufferedReader = Files.newBufferedReader(clientMappings, StandardCharsets.UTF_8);
 				BufferedReader serverBufferedReader = Files.newBufferedReader(serverMappings, StandardCharsets.UTF_8)) {
