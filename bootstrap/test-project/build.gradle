@@ -1,5 +1,5 @@
 plugins {
-	id 'dev.architectury.loom' version '0.13.local'
+	id 'com.crystaelix.loom' version '0.13.local'
 }
 
 dependencies {

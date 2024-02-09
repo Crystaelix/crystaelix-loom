@@ -1,11 +1,11 @@
 plugins {
 	id "java"
 	id "java-library"
-	id 'dev.architectury.loom' apply false
+	id 'com.crystaelix.loom' apply false
 }
 
 allprojects {
-	apply plugin: "dev.architectury.loom"
+	apply plugin: "com.crystaelix.loom"
 
 	version = "1.0.0"
 

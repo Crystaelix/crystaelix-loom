@@ -49,7 +49,7 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	}
 }
 
-group = "dev.architectury"
+group = "com.crystaelix"
 def baseVersion = '1.4'
 
 def ENV = System.getenv()
@@ -288,7 +288,7 @@ codenarc {
 gradlePlugin {
 	plugins {
 		fabricLoom {
-			id = 'dev.architectury.loom'
+			id = 'com.crystaelix.loom'
 			implementationClass = 'net.fabricmc.loom.bootstrap.LoomGradlePluginBootstrap'
 		}
 	}
@@ -349,8 +349,8 @@ publishing {
 
 		// Manually crate the plugin marker for snapshot versions
 		snapshotPlugin(MavenPublication) {
-			groupId 'dev.architectury.loom'
-			artifactId 'dev.architectury.loom.gradle.plugin'
+			groupId 'com.crystaelix.loom'
+			artifactId 'com.crystaelix.loom.gradle.plugin'
 			version baseVersion + '-SNAPSHOT'
 
 			pom.withXml {
