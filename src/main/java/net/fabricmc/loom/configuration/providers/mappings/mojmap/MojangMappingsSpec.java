@@ -32,13 +32,17 @@ import net.fabricmc.loom.api.mappings.layered.spec.MappingsSpec;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.util.download.DownloadException;
 
-public record MojangMappingsSpec(SilenceLicenseOption silenceLicense, boolean nameSyntheticMembers) implements MappingsSpec<MojangMappingLayer> {
+public record MojangMappingsSpec(SilenceLicenseOption silenceLicense, boolean nameSyntheticMembers, boolean skipClassNames) implements MappingsSpec<MojangMappingLayer> {
 	// Keys in dependency manifest
 	private static final String MANIFEST_CLIENT_MAPPINGS = "client_mappings";
 	private static final String MANIFEST_SERVER_MAPPINGS = "server_mappings";
 
+	public MojangMappingsSpec(SilenceLicenseSupplier supplier, boolean nameSyntheticMembers, boolean skipClassNames) {
+		this(new SilenceLicenseOption(supplier), nameSyntheticMembers, skipClassNames);
+	}
+
 	public MojangMappingsSpec(SilenceLicenseSupplier supplier, boolean nameSyntheticMembers) {
-		this(new SilenceLicenseOption(supplier), nameSyntheticMembers);
+		this(supplier, nameSyntheticMembers, false);
 	}
 
 	public MojangMappingsSpec(boolean nameSyntheticMembers) {
@@ -103,6 +107,7 @@ public record MojangMappingsSpec(SilenceLicenseOption silenceLicense, boolean na
 				clientMappings,
 				serverMappings,
 				nameSyntheticMembers(),
+				skipClassNames(),
 				context.getLogger(),
 				silenceLicense()
 		);
