@@ -28,15 +28,18 @@ import javax.inject.Inject;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.provider.Property;
 
 import net.fabricmc.loom.api.NeoForgeExtensionAPI;
 
 public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	private final ConfigurableFileCollection accessTransformers;
+	private final Property<Boolean> useNeoForgeLoggerConfig;
 
 	@Inject
 	public NeoForgeExtensionImpl(Project project) {
 		accessTransformers = project.getObjects().fileCollection();
+		useNeoForgeLoggerConfig = project.getObjects().property(Boolean.class).convention(true);
 	}
 
 	@Override
@@ -47,5 +50,10 @@ public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	@Override
 	public void accessTransformer(Object file) {
 		accessTransformers.from(file);
+	}
+
+	@Override
+	public Property<Boolean> getUseNeoForgeLoggerConfig() {
+		return useNeoForgeLoggerConfig;
 	}
 }

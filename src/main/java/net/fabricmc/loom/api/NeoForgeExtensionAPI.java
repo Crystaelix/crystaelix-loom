@@ -25,6 +25,7 @@
 package net.fabricmc.loom.api;
 
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.provider.Property;
 
 /**
  * This is the NeoForge extension API available to build scripts.
@@ -47,4 +48,12 @@ public interface NeoForgeExtensionAPI {
 	 * @param file the file, evaluated as per {@link org.gradle.api.Project#file(Object)}
 	 */
 	void accessTransformer(Object file);
+
+	/**
+	 * If true, Loom will use NeoForge's Log4J config file instead of its own.
+	 * This is enabled by default.
+	 *
+	 * @return the property
+	 */
+	Property<Boolean> getUseNeoForgeLoggerConfig();
 }
