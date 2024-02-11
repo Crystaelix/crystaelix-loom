@@ -16,19 +16,21 @@ import net.fabricmc.mappingio.tree.MappingTreeView;
 
 public class LegacyForgeModDependencies {
 	public static void remapAts(Path jar, MappingTreeView mappings, String from, String to) throws IOException {
-		byte[] manifestFile = ZipUtils.unpack(jar, "META-INF/MANIFEST.MF");
-		Manifest manifest = new Manifest(new ByteArrayInputStream(manifestFile));
-		String atPaths = manifest.getMainAttributes().getValue(Constants.LegacyForge.ACCESS_TRANSFORMERS_MANIFEST_KEY);
+		if (ZipUtils.contains(jar, "META-INF/MANIFEST.MF")) {
+			byte[] manifestFile = ZipUtils.unpack(jar, "META-INF/MANIFEST.MF");
+			Manifest manifest = new Manifest(new ByteArrayInputStream(manifestFile));
+			String atPaths = manifest.getMainAttributes().getValue(Constants.LegacyForge.ACCESS_TRANSFORMERS_MANIFEST_KEY);
 
-		if (atPaths != null) {
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
-				for (String atPathStr : atPaths.split(" ")) {
-					final Path atPath = fs.getPath("META-INF", atPathStr);
+			if (atPaths != null) {
+				try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
+					for (String atPathStr : atPaths.split(" ")) {
+						final Path atPath = fs.getPath("META-INF", atPathStr);
 
-					if (Files.exists(atPath)) {
-						AccessTransformSet ats = AccessTransformFormats.FML.read(atPath);
-						ats = ats.remap(mappings, from, to);
-						AccessTransformFormats.FML.write(atPath, ats);
+						if (Files.exists(atPath)) {
+							AccessTransformSet ats = AccessTransformFormats.FML.read(atPath);
+							ats = ats.remap(mappings, from, to);
+							AccessTransformFormats.FML.write(atPath, ats);
+						}
 					}
 				}
 			}
