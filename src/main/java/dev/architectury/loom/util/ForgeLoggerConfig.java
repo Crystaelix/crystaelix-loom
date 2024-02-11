@@ -16,10 +16,12 @@ import net.fabricmc.loom.util.FileSystemUtil;
 
 public final class ForgeLoggerConfig {
 	private static final List<ArtifactCoordinates> LOGGER_CONFIG_ARTIFACTS = List.of(
-			// 1.17 -
+			// Forge 1.17 -
 			new ArtifactCoordinates("net.minecraftforge", "fmlloader", null),
-			// 1.14 - 1.16
-			new ArtifactCoordinates("net.minecraftforge", "forge", "launcher")
+			// Forge 1.14 - 1.16
+			new ArtifactCoordinates("net.minecraftforge", "forge", "launcher"),
+			// NeoForge
+			new ArtifactCoordinates("net.neoforged.fancymodloader", "loader", null)
 	);
 
 	public static void copyToPath(Project project, Path outputFile) {
@@ -50,6 +52,19 @@ public final class ForgeLoggerConfig {
 				} catch (IOException e) {
 					throw new UncheckedIOException(e);
 				}
+			}
+		}
+
+		if (!found) {
+			// Also look in universal jar
+			final File libraryFile = LoomGradleExtension.get(project).getForgeUniversalProvider().getForge();
+
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(libraryFile, false)) {
+				final Path configPath = fs.getPath("log4j2.xml");
+				Files.copy(configPath, outputFile);
+				found = true;
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
 			}
 		}
 

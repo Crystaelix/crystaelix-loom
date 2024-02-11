@@ -39,7 +39,12 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 	public void run() {
 		Path outputFile = getExtension().getFiles().getDefaultLog4jConfigFile().toPath();
 
-		if (getExtension().isForge() && getExtension().getForge().getUseForgeLoggerConfig().get()) {
+		if (getExtension().isSrgForgeLike() && getExtension().getForge().getUseForgeLoggerConfig().get()) {
+			ForgeLoggerConfig.copyToPath(getProject(), outputFile);
+			return;
+		}
+
+		if (getExtension().isNeoForge() && getExtension().getNeoForge().getUseNeoForgeLoggerConfig().get()) {
 			ForgeLoggerConfig.copyToPath(getProject(), outputFile);
 			return;
 		}
