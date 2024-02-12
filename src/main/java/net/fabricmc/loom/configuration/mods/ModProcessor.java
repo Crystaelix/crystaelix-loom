@@ -217,7 +217,7 @@ public class ModProcessor {
 
 			project.getLogger().debug("Adding " + info.getInputFile() + " as a remap input");
 
-			remapper.readInputsAsync(tag, info.getInputFile());
+			remapper.readInputs(tag, info.getInputFile());
 			tagMap.put(info, tag);
 
 			Files.deleteIfExists(getRemappedOutput(info));
