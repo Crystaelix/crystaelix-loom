@@ -232,7 +232,7 @@ public class ModProcessor {
 				remapMixins.add(tag);
 			}
 
-			remapper.readInputsAsync(tag, info.getInputFile());
+			remapper.readInputs(tag, info.getInputFile());
 			tagMap.put(info, tag);
 
 			Files.deleteIfExists(getRemappedOutput(info));
