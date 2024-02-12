@@ -24,14 +24,15 @@
 
 package net.fabricmc.loom.test.integration
 
-import net.fabricmc.loom.test.util.GradleProjectTestTrait
-import net.fabricmc.loom.test.util.ServerRunner
-import net.fabricmc.loom.util.ZipUtils
+import java.util.concurrent.TimeUnit
+
 import spock.lang.Specification
 import spock.lang.Timeout
 import spock.lang.Unroll
 
-import java.util.concurrent.TimeUnit
+import net.fabricmc.loom.test.util.GradleProjectTestTrait
+import net.fabricmc.loom.test.util.ServerRunner
+import net.fabricmc.loom.util.ZipUtils
 
 import static net.fabricmc.loom.test.LoomTestConstants.PRE_RELEASE_GRADLE
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
