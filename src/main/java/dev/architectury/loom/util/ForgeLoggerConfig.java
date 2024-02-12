@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 import java.util.StringJoiner;
 
@@ -46,7 +47,7 @@ public final class ForgeLoggerConfig {
 
 				try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(libraryFile, false)) {
 					final Path configPath = fs.getPath("log4j2.xml");
-					Files.copy(configPath, outputFile);
+					Files.copy(configPath, outputFile, StandardCopyOption.REPLACE_EXISTING);
 					found = true;
 					break;
 				} catch (IOException e) {
@@ -61,7 +62,7 @@ public final class ForgeLoggerConfig {
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(libraryFile, false)) {
 				final Path configPath = fs.getPath("log4j2.xml");
-				Files.copy(configPath, outputFile);
+				Files.copy(configPath, outputFile, StandardCopyOption.REPLACE_EXISTING);
 				found = true;
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);

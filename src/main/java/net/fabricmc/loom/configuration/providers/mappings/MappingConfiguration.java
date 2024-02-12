@@ -208,8 +208,8 @@ public class MappingConfiguration {
 		if (extension.isLegacyForgeLike() && isMCP(inputJar) && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || minecraftProvider.refreshDeps())) {
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(inputJar)) {
 				McpMappingsScanner scan = new McpMappingsScanner(fs);
-				Files.copy(scan.get("fields.csv").get(), fieldsCsv);
-				Files.copy(scan.get("methods.csv").get(), methodsCsv);
+				Files.copy(scan.get("fields.csv").get(), fieldsCsv, StandardCopyOption.REPLACE_EXISTING);
+				Files.copy(scan.get("methods.csv").get(), methodsCsv, StandardCopyOption.REPLACE_EXISTING);
 			}
 		}
 
