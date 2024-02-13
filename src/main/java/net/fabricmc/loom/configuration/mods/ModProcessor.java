@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -187,8 +188,11 @@ public class ModProcessor {
 			builder.extension(kotlinRemapperClassloader.getTinyRemapperExtension());
 		}
 
-		// This is required for mods that use @Shadow and @Overwrite, so enable for now
-		builder.extension(new MixinExtension());
+		if (extension.isSrgForgeLike()) {
+			builder.extension(new MixinExtension(EnumSet.of(MixinExtension.AnnotationTarget.HARD)));
+		} else if (extension.isNeoForge()) {
+			builder.extension(new MixinExtension());
+		}
 
 		final TinyRemapper remapper = builder.build();
 
