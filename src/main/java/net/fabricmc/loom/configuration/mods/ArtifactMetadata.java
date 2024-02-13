@@ -64,7 +64,7 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 		// Force-remap all mods on Forge and NeoForge.
 		if (platform.isForgeLike()) {
 			remapRequirements = RemapRequirements.OPT_IN;
-			refmapRemapType = MixinRemapType.STATIC;
+			refmapRemapType = platform == ModPlatform.NEOFORGE ? MixinRemapType.STATIC : MixinRemapType.SEMI_STATIC;
 		}
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(artifact.path())) {
@@ -161,7 +161,9 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 		// Jar uses refmaps, so will be remapped by mixin
 		MIXIN,
 		// Jar does not use refmaps, so will be remapped by tiny-remapper
-		STATIC;
+		STATIC,
+		// Jar may use refmaps and may have remapped methods
+		SEMI_STATIC;
 
 		public String manifestValue() {
 			return name().toLowerCase(Locale.ROOT);

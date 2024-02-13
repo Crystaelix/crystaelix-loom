@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -72,6 +73,7 @@ import net.fabricmc.tinyremapper.NonClassCopyMode;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
+import net.fabricmc.tinyremapper.extension.mixin.common.Logger;
 
 public class ModProcessor {
 	private static final String toM = MappingsNamespace.NAMED.toString();
@@ -189,9 +191,17 @@ public class ModProcessor {
 		final boolean requiresStaticMixinRemap = remapList.stream()
 				.anyMatch(modDependency -> modDependency.getMetadata().mixinRemapType() == ArtifactMetadata.MixinRemapType.STATIC);
 
+		final Set<InputTag> remapMixinsHard = new HashSet<>();
+		final boolean requiresSemiStaticMixinRemap = remapList.stream()
+				.anyMatch(modDependency -> modDependency.getMetadata().mixinRemapType() == ArtifactMetadata.MixinRemapType.SEMI_STATIC);
+
 		if (requiresStaticMixinRemap) {
 			// Configure the mixin extension to remap mixins from mod jars that were remapped with the mixin extension.
 			builder.extension(new MixinExtension(remapMixins::contains));
+		}
+
+		if (requiresSemiStaticMixinRemap) {
+			builder.extension(new MixinExtension(EnumSet.of(MixinExtension.AnnotationTarget.HARD), Logger.Level.WARN, remapMixinsHard::contains));
 		}
 
 		for (RemapperExtensionHolder holder : extension.getRemapperExtensions().get()) {
@@ -230,6 +240,15 @@ public class ModProcessor {
 
 				project.getLogger().info("Remapping mixins in {} statically", info.getInputFile());
 				remapMixins.add(tag);
+			}
+
+			if (info.getMetadata().mixinRemapType() == ArtifactMetadata.MixinRemapType.SEMI_STATIC) {
+				if (!requiresSemiStaticMixinRemap) {
+					throw new IllegalStateException("Was not configured for semi-static remap, but a mod required it?!");
+				}
+
+				project.getLogger().info("Remapping mixins in {} semi-statically", info.getInputFile());
+				remapMixinsHard.add(tag);
 			}
 
 			remapper.readInputs(tag, info.getInputFile());
