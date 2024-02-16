@@ -177,6 +177,7 @@ public class ModProcessor {
 				.withKnownIndyBsm(extension.getKnownIndyBsms().get())
 				.withMappings(TinyRemapperHelper.create(mappings, fromM, toM, false))
 				.renameInvalidLocals(false)
+				.extraAnalyzeVisitor(AccessTransformerAnalyzeVisitorProvider.createFromMods(remapList, extension.getPlatform().get()))
 				.extraAnalyzeVisitor(AccessWidenerAnalyzeVisitorProvider.createFromMods(fromM, remapList, extension.getPlatform().get()));
 
 		final KotlinClasspathService kotlinClasspathService = KotlinClasspathService.getOrCreateIfRequired(serviceManager, project);
