@@ -34,6 +34,7 @@ import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ExternalModuleDependency;
 import org.gradle.api.artifacts.ModuleDependency;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Provider;
 
 import net.fabricmc.loom.LoomGradleExtension;
@@ -120,7 +121,8 @@ public class MinecraftLibraryProvider {
 	}
 
 	private List<Library> processLibraries(List<Library> libraries) {
-		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), JavaVersion.current());
+		final JavaVersion javaVersion = project.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
+		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), javaVersion);
 
 		if (libraryContext.usesLWJGL3()) {
 			isLWJGL3 = true;
