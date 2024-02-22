@@ -68,9 +68,7 @@ public class LWJGL3UpgradeLibraryProcessor extends LibraryProcessor {
 	public Predicate<Library> apply(Consumer<Library> dependencyConsumer) {
 		return library -> {
 			if (library.is(LWJGL_GROUP) && library.name().startsWith("lwjgl")) {
-				// Replace the natives with the new version, none natives become runtime only
-				final Library.Target target = library.target() == Library.Target.NATIVES ? Library.Target.NATIVES : Library.Target.RUNTIME;
-				final Library upgradedLibrary = library.withVersion(LWJGL_VERSION).withTarget(target);
+				final Library upgradedLibrary = library.withVersion(LWJGL_VERSION);
 				dependencyConsumer.accept(upgradedLibrary);
 			}
 
