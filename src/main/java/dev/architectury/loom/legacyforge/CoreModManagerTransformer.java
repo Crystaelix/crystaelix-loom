@@ -109,7 +109,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 		//					if (!tweaks.contains(tweak)) {
 		//						Integer sortOrder = Ints.tryParse(Strings.nullToEmpty(manifest.getMainAttributes().getValue("TweakOrder")));
 		//						tweaks.add(tweak);
-		//						tweakSorting.put(tweak, sortOrder);
+		//						if (sortOrder != null) tweakSorting.put(tweak, sortOrder);
 		//					}
 		//					continue;
 		//				}
@@ -472,6 +472,8 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			Label label45 = new Label();
 			methodVisitor.visitLabel(label45);
 			methodVisitor.visitLineNumber(778, label45);
+			methodVisitor.visitVarInsn(ALOAD, 11);
+			methodVisitor.visitJumpInsn(IFNULL, label21);
 			methodVisitor.visitFieldInsn(GETSTATIC, pakkage + "fml/relauncher/CoreModManager", "tweakSorting", "Ljava/util/Map;");
 			methodVisitor.visitVarInsn(ALOAD, 10);
 			methodVisitor.visitVarInsn(ALOAD, 11);
