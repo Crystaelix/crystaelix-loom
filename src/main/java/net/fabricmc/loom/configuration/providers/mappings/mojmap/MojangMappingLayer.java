@@ -58,7 +58,7 @@ public record MojangMappingLayer(
 			printMappingsLicense(clientMappings);
 		}
 
-		if (nameSyntheticMembers) {
+		if (!nameSyntheticMembers) {
 			mappingVisitor = new DstNameFilterMappingVisitor(mappingVisitor, SYNTHETIC_NAME_PATTERN);
 		}
 
