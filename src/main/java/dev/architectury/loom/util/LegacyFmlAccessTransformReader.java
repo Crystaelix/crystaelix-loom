@@ -28,7 +28,7 @@ public class LegacyFmlAccessTransformReader {
 			String[] parts = SPACE_PATTERN.split(line);
 
 			if (parts.length != 2 && parts.length != 3) {
-				throw new IllegalArgumentException("Invalid FML access transformer line: " + line);
+				continue;
 			}
 
 			AccessTransform transform = parseAccessTransform(parts[0]);
@@ -64,7 +64,7 @@ public class LegacyFmlAccessTransformReader {
 		int last = access.length() - 1;
 
 		if (last < 2) {
-			throw new IllegalArgumentException("Invalid access transformer: " + access);
+			return AccessTransform.EMPTY;
 		}
 
 		ModifierChange finalChange;
@@ -86,7 +86,7 @@ public class LegacyFmlAccessTransformReader {
 		case "default" -> AccessChange.PACKAGE_PRIVATE;
 		case "private" -> AccessChange.PRIVATE;
 		case "" -> AccessChange.NONE;
-		default -> throw new IllegalArgumentException("Invalid access modifier: " + access);
+		default -> AccessChange.NONE;
 		};
 	}
 
@@ -94,7 +94,7 @@ public class LegacyFmlAccessTransformReader {
 		return switch (m) {
 		case '-' -> ModifierChange.REMOVE;
 		case '+' -> ModifierChange.ADD;
-		default -> throw new IllegalArgumentException("Invalid final modifier: '" + m);
+		default -> ModifierChange.NONE;
 		};
 	}
 
