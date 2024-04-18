@@ -31,12 +31,13 @@ import java.util.List;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MergedMinecraftProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 
 public final class MergedForgeMinecraftProvider extends MergedMinecraftProvider implements ForgeMinecraftProvider {
 	private final MinecraftPatchedProvider patchedProvider;
 
-	public MergedForgeMinecraftProvider(ConfigContext configContext) {
-		super(configContext);
+	public MergedForgeMinecraftProvider(MinecraftMetadataProvider metadataProvider, ConfigContext configContext) {
+		super(metadataProvider, configContext);
 		this.patchedProvider = MinecraftPatchedProvider.create(configContext.project(), this, MinecraftPatchedProvider.Type.MERGED);
 	}
 

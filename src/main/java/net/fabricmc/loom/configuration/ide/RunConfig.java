@@ -44,6 +44,7 @@ import java.util.stream.Collectors;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.ModuleVersionIdentifier;
 import org.gradle.api.artifacts.ResolvedArtifact;
@@ -59,6 +60,7 @@ import net.fabricmc.loom.configuration.InstallerData;
 import net.fabricmc.loom.configuration.ide.idea.IdeaSyncTask;
 import net.fabricmc.loom.configuration.ide.idea.IdeaUtils;
 import net.fabricmc.loom.configuration.providers.BundleMetadata;
+import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryContext;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.gradle.SourceSetReference;
 
@@ -138,6 +140,12 @@ public class RunConfig {
 	public static RunConfig runConfig(Project project, RunConfigSettings settings) {
 		settings.evaluateNow();
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		LibraryContext context = new LibraryContext(extension.getMinecraftProvider().getVersionInfo(), JavaVersion.current());
+
+		if (settings.getEnvironment().equals("client") && context.usesLWJGL3()) {
+			settings.startFirstThread();
+		}
+
 		String name = settings.getName();
 
 		String configName = settings.getConfigName();

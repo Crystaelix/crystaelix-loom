@@ -109,6 +109,11 @@ public abstract class LoomFilesBaseImpl implements LoomFiles {
 	}
 
 	@Override
+	public File getDecompileCache(String version) {
+		return new File(getUserCache(), "decompile/" + version + ".zip");
+	}
+
+	@Override
 	public File getForgeDependencyRepo() {
 		return new File(getUserCache(), "forge/transformed-dependencies-v1");
 	}

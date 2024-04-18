@@ -41,6 +41,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -49,6 +50,7 @@ import org.apache.commons.io.output.NullOutputStream;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
+import org.jetbrains.annotations.Nullable;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.LoomGradleExtension;
@@ -84,21 +86,31 @@ public class ForgeSourcesRemapper {
 			minecraftJar = minecraftJars.get(0);
 		}
 
-		Path sourcesJar = GenerateSourcesTask.getMappedJarFileWithSuffix("-sources.jar", minecraftJar).toPath();
+		Path sourcesJar = GenerateSourcesTask.getJarFileWithSuffix("-sources.jar", minecraftJar).toPath();
 
 		if (!Files.exists(sourcesJar)) {
 			try (var serviceManager = new ScopedSharedServiceManager()) {
-				addForgeSources(project, serviceManager, sourcesJar);
+				addForgeSources(project, serviceManager, minecraftJar, sourcesJar);
 			}
 		}
 	}
 
-	public static void addForgeSources(Project project, SharedServiceManager serviceManager, Path sourcesJar) throws IOException {
-		try (FileSystemUtil.Delegate delegate = FileSystemUtil.getJarFileSystem(sourcesJar, true)) {
+	public static void addForgeSources(Project project, SharedServiceManager serviceManager, @Nullable Path inputJar, Path sourcesJar) throws IOException {
+		try (FileSystemUtil.Delegate inputFs = inputJar == null ? null : FileSystemUtil.getJarFileSystem(inputJar, true);
+			FileSystemUtil.Delegate outputFs = FileSystemUtil.getJarFileSystem(sourcesJar, true)) {
 			ThreadingUtils.TaskCompleter taskCompleter = ThreadingUtils.taskCompleter();
 
-			provideForgeSources(project, serviceManager, (path, bytes) -> {
-				Path fsPath = delegate.get().getPath(path);
+			provideForgeSources(project, serviceManager, path -> {
+				Path inputPath = inputFs == null ? null : inputFs.get().getPath(path.replace(".java", ".class"));
+
+				if (inputPath != null && Files.notExists(inputPath)) {
+					project.getLogger().info("Discarding forge source file {} as it does not exist in the input jar", path);
+					return false;
+				}
+
+				return !path.contains("$");
+			}, (path, bytes) -> {
+				Path fsPath = outputFs.get().getPath(path);
 
 				if (fsPath.getParent() != null) {
 					try {
@@ -109,6 +121,7 @@ public class ForgeSourcesRemapper {
 				}
 
 				taskCompleter.add(() -> {
+					project.getLogger().info("Added forge source file {}", path);
 					Files.write(fsPath, bytes, StandardOpenOption.CREATE);
 				});
 			});
@@ -117,7 +130,7 @@ public class ForgeSourcesRemapper {
 		}
 	}
 
-	public static void provideForgeSources(Project project, SharedServiceManager serviceManager, BiConsumer<String, byte[]> consumer) throws IOException {
+	public static void provideForgeSources(Project project, SharedServiceManager serviceManager, Predicate<String> classFilter, BiConsumer<String, byte[]> consumer) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		List<Path> forgeInstallerSources = new ArrayList<>();
 		Path legacySources = null;
@@ -125,8 +138,9 @@ public class ForgeSourcesRemapper {
 		if (extension.getForgeUserdevProvider().isFG3()) {
 			String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
 
-			for (File file : DependencyDownloader.download(project, sourceDependency, false, false)) {
+			for (File file : DependencyDownloader.download(project, sourceDependency)) {
 				forgeInstallerSources.add(file.toPath());
+				project.getLogger().info("Found forge source jar: {}", file);
 			}
 		} else {
 			Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
@@ -143,6 +157,7 @@ public class ForgeSourcesRemapper {
 
 		project.getLogger().lifecycle(":found {} forge source jars", forgeInstallerSources.size());
 		Map<String, byte[]> forgeSources = extractSources(forgeInstallerSources);
+		forgeSources.keySet().removeIf(classFilter.negate());
 		project.getLogger().lifecycle(":extracted {} forge source classes", forgeSources.size());
 		remapSources(project, serviceManager, forgeSources);
 		forgeSources.forEach(consumer);

@@ -355,7 +355,7 @@ public class MappingConfiguration {
 			// These are unmerged v2 mappings
 			IntermediateMappingsService intermediateMappingsService = IntermediateMappingsService.getInstance(serviceManager, project, minecraftProvider);
 
-			MappingsMerger.mergeAndSaveMappings(baseTinyMappings, tinyMappings, intermediateMappingsService);
+			MappingsMerger.mergeAndSaveMappings(baseTinyMappings, tinyMappings, minecraftProvider, intermediateMappingsService);
 		} else {
 			if (LoomGradleExtension.get(project).isForgeLike()) {
 				// (2022-09-11) This is due to ordering issues.

@@ -118,6 +118,17 @@ class ModMetadataFilesTest extends Specification {
 		modMetadata.fileName == 'mods.toml [erroring]'
 	}
 
+	def "read broken neoforge.mods.toml from directory"() {
+		given:
+		Files.createDirectories(workingDir.resolve('META-INF'))
+		workingDir.resolve('META-INF/neoforge.mods.toml').text = ModsTomlTest.BROKEN_INPUT
+		when:
+		def modMetadata = ModMetadataFiles.fromDirectory(workingDir)
+		then:
+		modMetadata instanceof ErroringModMetadataFile
+		modMetadata.fileName == 'neoforge.mods.toml [erroring]'
+	}
+
 	def "read fabric.mod.json from directory"() {
 		given:
 		workingDir.resolve('fabric.mod.json').text = '''

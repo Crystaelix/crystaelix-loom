@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,47 +22,23 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.decompilers.linemap;
+package net.fabricmc.loom.configuration.providers.mappings;
 
-import java.io.BufferedReader;
-import java.io.Closeable;
 import java.io.IOException;
+import java.nio.file.Path;
 
-/**
- * A reader for line map files that in the format of {@link net.fabricmc.loom.decompilers.LineNumberRemapper}.
- * {@linkplain #accept Accepts} a {@link LineMapVisitor} that processes the contents.
- *
- * @author Juuz
- */
-public final class LineMapReader implements Closeable {
-	private final BufferedReader reader;
+import org.gradle.api.Project;
+import org.jetbrains.annotations.ApiStatus;
+import org.jetbrains.annotations.Nullable;
 
-	public LineMapReader(BufferedReader reader) {
-		this.reader = reader;
-	}
+import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
 
-	public void accept(LineMapVisitor visitor) throws IOException {
-		String line;
-
-		while ((line = reader.readLine()) != null) {
-			if (line.isBlank()) continue;
-
-			String[] parts = line.trim().split("\t");
-
-			try {
-				if (!line.startsWith("\t")) {
-					visitor.visitClass(parts[0], Integer.parseInt(parts[1]), Integer.parseInt(parts[2]));
-				} else {
-					visitor.visitLine(Integer.parseInt(parts[0]), Integer.parseInt(parts[1]));
-				}
-			} catch (NumberFormatException | ArrayIndexOutOfBoundsException e) {
-				throw new RuntimeException("Could not parse line: " + line, e);
-			}
-		}
-	}
+@ApiStatus.Internal
+public abstract class IntermediateMappingsProviderInternal extends IntermediateMappingsProvider {
+	public abstract void provide(Path tinyMappings, @Nullable Project project) throws IOException;
 
 	@Override
-	public void close() throws IOException {
-		reader.close();
+	public void provide(Path tinyMappings) throws IOException {
+		this.provide(tinyMappings, null);
 	}
 }

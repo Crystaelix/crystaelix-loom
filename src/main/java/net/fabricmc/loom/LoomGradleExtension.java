@@ -25,6 +25,7 @@
 package net.fabricmc.loom;
 
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.List;
 
 import org.gradle.api.Project;
@@ -46,6 +47,7 @@ import net.fabricmc.loom.configuration.providers.forge.ForgeUserdevProvider;
 import net.fabricmc.loom.configuration.providers.forge.PatchProvider;
 import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
+import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryProcessorManager;
@@ -54,6 +56,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
 import net.fabricmc.loom.extension.LoomFiles;
+import net.fabricmc.loom.extension.LoomProblemReporter;
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.extension.RemapperExtensionHolder;
 import net.fabricmc.loom.util.ModPlatform;
@@ -105,7 +108,7 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 		return switch (mappingsNamespace) {
 		case NAMED -> getNamedMinecraftProvider().getMinecraftJarPaths();
 		case INTERMEDIARY -> getIntermediaryMinecraftProvider().getMinecraftJarPaths();
-		case OFFICIAL -> getMinecraftProvider().getMinecraftJars();
+		case OFFICIAL, CLIENT_OFFICIAL, SERVER_OFFICIAL -> getMinecraftProvider().getMinecraftJars();
 		case SRG -> {
 			ModPlatform.assertPlatform(this, () -> "SRG jars are only available on Forge.", ModPlatform.SRG_FORGE_LIKE);
 			yield getSrgMinecraftProvider().getMinecraftJarPaths();
@@ -145,6 +148,10 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	ListProperty<LibraryProcessorManager.LibraryProcessorFactory> getLibraryProcessors();
 
 	ListProperty<RemapperExtensionHolder> getRemapperExtensions();
+
+	Collection<LayeredMappingsFactory> getLayeredMappingFactories();
+
+	LoomProblemReporter getProblemReporter();
 
 	// ===================
 	//  Architectury Loom
@@ -200,9 +207,5 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	 */
 	default Path getPlatformMappingFile() {
 		return getMappingConfiguration().getPlatformMappingFile(this);
-	}
-
-	default boolean hasLWJGL3() {
-		return getMinecraftProvider().getLibraryProvider().isLWJGL3();
 	}
 }

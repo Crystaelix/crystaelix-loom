@@ -55,6 +55,7 @@ import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
 import net.fabricmc.loom.api.processor.ProcessorContext;
 import net.fabricmc.loom.api.processor.SpecContext;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.ExceptionUtil;
@@ -157,9 +158,11 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 	}
 
 	public static void executeAt(Project project, Path input, Path output, AccessTransformerConfiguration configuration) throws IOException {
-		boolean serverBundleMetadataPresent = LoomGradleExtension.get(project).getMinecraftProvider().getServerBundleMetadata() != null;
+		LoomVersions accessTransformer = chooseAccessTransformer(project);
+		String mainClass = accessTransformer == LoomVersions.ACCESS_TRANSFORMERS_NEO ? "net.neoforged.accesstransformer.cli.TransformerProcessor"
+						: "net.minecraftforge.accesstransformer.TransformerProcessor";
 		FileCollection classpath = new DependencyDownloader(project)
-				.add(LoomVersions.ACCESS_TRANSFORMERS.mavenNotation())
+				.add(accessTransformer.mavenNotation())
 				.add(LoomVersions.ASM.mavenNotation())
 				.platform(LoomVersions.ACCESS_TRANSFORMERS_LOG4J_BOM.mavenNotation())
 				.download();
@@ -172,10 +175,24 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 		configuration.apply(args);
 
 		ForgeToolExecutor.exec(project, spec -> {
-			spec.getMainClass().set("net.minecraftforge.accesstransformer.TransformerProcessor");
+			spec.getMainClass().set(mainClass);
 			spec.setArgs(args);
 			spec.setClasspath(classpath);
 		}).rethrowFailure().assertNormalExitValue();
+	}
+
+	private static LoomVersions chooseAccessTransformer(Project project) {
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
+
+		if (extension.isNeoForge()) {
+			MinecraftVersionMeta.JavaVersion javaVersion = extension.getMinecraftProvider().getVersionInfo().javaVersion();
+
+			if (javaVersion != null && javaVersion.majorVersion() >= 21) {
+				return LoomVersions.ACCESS_TRANSFORMERS_NEO;
+			}
+		}
+
+		return LoomVersions.ACCESS_TRANSFORMERS;
 	}
 
 	@FunctionalInterface

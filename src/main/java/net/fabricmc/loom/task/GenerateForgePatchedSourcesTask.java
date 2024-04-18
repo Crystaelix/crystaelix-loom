@@ -82,7 +82,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 
 	public GenerateForgePatchedSourcesTask() {
 		getOutputs().upToDateWhen((o) -> false);
-		getOutputJar().fileProvider(getProject().provider(() -> GenerateSourcesTask.getMappedJarFileWithSuffix(getRuntimeJar(), "-sources.jar")));
+		getOutputJar().fileProvider(getProject().provider(() -> GenerateSourcesTask.getJarFileWithSuffix(getRuntimeJar(), "-sources.jar")));
 	}
 
 	@TaskAction
@@ -111,7 +111,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 			// Step 3: remap
 			remap(patched, serviceManager);
 			// Step 4: add Forge's own sources
-			ForgeSourcesRemapper.addForgeSources(getProject(), serviceManager, getOutputJar().get().getAsFile().toPath());
+			ForgeSourcesRemapper.addForgeSources(getProject(), serviceManager, null, getOutputJar().get().getAsFile().toPath());
 		}
 	}
 

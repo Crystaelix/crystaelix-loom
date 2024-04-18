@@ -29,6 +29,7 @@ import java.util.List;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
+import net.fabricmc.loom.configuration.providers.minecraft.LegacyMergedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MergedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.SingleJarEnvType;
@@ -37,7 +38,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.SplitMinecraftProvide
 import net.fabricmc.loom.util.SidedClassVisitor;
 import net.fabricmc.tinyremapper.TinyRemapper;
 
-public abstract sealed class MojangMappedMinecraftProvider<M extends MinecraftProvider> extends AbstractMappedMinecraftProvider<M> permits MojangMappedMinecraftProvider.MergedImpl, MojangMappedMinecraftProvider.SingleJarImpl, MojangMappedMinecraftProvider.SplitImpl {
+public abstract sealed class MojangMappedMinecraftProvider<M extends MinecraftProvider> extends AbstractMappedMinecraftProvider<M> permits MojangMappedMinecraftProvider.MergedImpl, MojangMappedMinecraftProvider.LegacyMergedImpl, MojangMappedMinecraftProvider.SingleJarImpl, MojangMappedMinecraftProvider.SplitImpl {
 	public MojangMappedMinecraftProvider(Project project, M minecraftProvider) {
 		super(project, minecraftProvider);
 	}
@@ -62,6 +63,18 @@ public abstract sealed class MojangMappedMinecraftProvider<M extends MinecraftPr
 			return List.of(
 				new RemappedJars(minecraftProvider.getMergedJar(), getMergedJar(), MappingsNamespace.OFFICIAL)
 			);
+		}
+	}
+
+	public static final class LegacyMergedImpl extends MojangMappedMinecraftProvider<LegacyMergedMinecraftProvider> implements Merged {
+		public LegacyMergedImpl(Project project, LegacyMergedMinecraftProvider minecraftProvider) {
+			super(project, minecraftProvider);
+		}
+
+		@Override
+		public List<RemappedJars> getRemappedJars() {
+			// The delegate providers will handle the remapping
+			throw new UnsupportedOperationException("LegacyMergedImpl does not support getRemappedJars");
 		}
 	}
 

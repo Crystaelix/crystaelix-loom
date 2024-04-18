@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021-2022 FabricMC
+ * Copyright (c) 2021-2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,8 +28,10 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -42,6 +44,7 @@ import org.gradle.api.Project;
 import org.gradle.api.UncheckedIOException;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.model.ObjectFactory;
 import org.gradle.api.provider.ListProperty;
@@ -61,6 +64,7 @@ import net.fabricmc.loom.api.NeoForgeExtensionAPI;
 import net.fabricmc.loom.api.RemapConfigurationSettings;
 import net.fabricmc.loom.api.decompilers.DecompilerOptions;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.api.mappings.layered.spec.LayeredMappingSpecBuilder;
 import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
 import net.fabricmc.loom.api.remapping.RemapperExtension;
@@ -70,10 +74,9 @@ import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
 import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
-import net.fabricmc.loom.configuration.providers.mappings.GradleMappingContext;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpec;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpecBuilderImpl;
-import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsDependency;
+import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.task.GenerateSourcesTask;
@@ -103,7 +106,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	protected final Property<IntermediateMappingsProvider> intermediateMappingsProvider;
 	private final Property<Boolean> runtimeOnlyLog4j;
 	private final Property<Boolean> splitModDependencies;
-	private final Property<MinecraftJarConfiguration> minecraftJarConfiguration;
+	private final Property<MinecraftJarConfiguration<?, ?, ?>> minecraftJarConfiguration;
 	private final Property<Boolean> splitEnvironmentalSourceSet;
 	private final InterfaceInjectionExtensionAPI interfaceInjectionExtension;
 
@@ -116,12 +119,16 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 
 	// A common mistake with layered mappings is to call the wrong `officialMojangMappings` method, use this to keep track of when we are building a layered mapping spec.
 	protected final ThreadLocal<Boolean> layeredSpecBuilderScope = ThreadLocal.withInitial(() -> false);
+	public static final String DEFAULT_INTERMEDIARY_URL = "https://maven.fabricmc.net/net/fabricmc/intermediary/%1$s/intermediary-%1$s-v2.jar";
+
+	protected boolean hasEvaluatedLayeredMappings = false;
+	protected final Map<LayeredMappingSpec, LayeredMappingsFactory> layeredMappingsDependencyMap = new HashMap<>();
 
 	// ===================
 	//  Architectury Loom
 	// ===================
 	private Provider<ModPlatform> platform;
-	private boolean silentMojangMappingsLicense = false;
+	private final Property<Boolean> silentMojangMappingsLicense;
 	public Boolean generateSrgTiny = null;
 	private final List<String> tasksBeforeRun = Collections.synchronizedList(new ArrayList<>());
 	public final List<Consumer<RunConfig>> settingsPostEdit = new ArrayList<>();
@@ -145,7 +152,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 				.convention(project.provider(() -> !isForgeLike()));
 		this.modProvidedJavadoc.finalizeValueOnRead();
 		this.intermediary = project.getObjects().property(String.class)
-				.convention("https://maven.fabricmc.net/net/fabricmc/intermediary/%1$s/intermediary-%1$s-v2.jar");
+				.convention(DEFAULT_INTERMEDIARY_URL);
 
 		this.intermediateMappingsProvider = project.getObjects().property(IntermediateMappingsProvider.class);
 		this.intermediateMappingsProvider.finalizeValueOnRead();
@@ -161,7 +168,8 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		this.minecraftJarProcessors = (ListProperty<MinecraftJarProcessor<?>>) (Object) project.getObjects().listProperty(MinecraftJarProcessor.class);
 		this.minecraftJarProcessors.finalizeValueOnRead();
 
-		this.minecraftJarConfiguration = project.getObjects().property(MinecraftJarConfiguration.class).convention(MinecraftJarConfiguration.MERGED);
+		//noinspection unchecked
+		this.minecraftJarConfiguration = project.getObjects().property((Class<MinecraftJarConfiguration<?, ?, ?>>) (Class<?>) MinecraftJarConfiguration.class).convention(MinecraftJarConfiguration.MERGED);
 		this.minecraftJarConfiguration.finalizeValueOnRead();
 
 		this.accessWidener.finalizeValueOnRead();
@@ -208,6 +216,8 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 
 			return ModPlatform.FABRIC;
 		})::get);
+		this.silentMojangMappingsLicense = project.getObjects().property(Boolean.class).convention(false);
+		this.silentMojangMappingsLicense.finalizeValueOnRead();
 	}
 
 	@Override
@@ -256,14 +266,19 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 
 	@Override
 	public Dependency layered(Action<LayeredMappingSpecBuilder> action) {
+		if (hasEvaluatedLayeredMappings) {
+			throw new IllegalStateException("Layered mappings have already been evaluated");
+		}
+
 		LayeredMappingSpecBuilderImpl builder = new LayeredMappingSpecBuilderImpl(this);
 
 		layeredSpecBuilderScope.set(true);
 		action.execute(builder);
 		layeredSpecBuilderScope.set(false);
 
-		LayeredMappingSpec builtSpec = builder.build();
-		return new LayeredMappingsDependency(getProject(), new GradleMappingContext(getProject(), builtSpec.getVersion().replace("+", "_").replace(".", "_")), builtSpec, builtSpec.getVersion());
+		final LayeredMappingSpec builtSpec = builder.build();
+		final LayeredMappingsFactory layeredMappingsFactory = layeredMappingsDependencyMap.computeIfAbsent(builtSpec, LayeredMappingsFactory::new);
+		return layeredMappingsFactory.createDependency(getProject());
 	}
 
 	@Override
@@ -383,7 +398,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
-	public Property<MinecraftJarConfiguration> getMinecraftJarConfiguration() {
+	public Property<MinecraftJarConfiguration<?, ?, ?>> getMinecraftJarConfiguration() {
 		return minecraftJarConfiguration;
 	}
 
@@ -477,13 +492,24 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
+	public FileCollection getNamedMinecraftJars() {
+		final ConfigurableFileCollection jars = getProject().getObjects().fileCollection();
+		jars.from(getProject().provider(() -> LoomGradleExtension.get(getProject()).getMinecraftJars(MappingsNamespace.NAMED)));
+		return jars;
+	}
+
+	@Override
 	public void silentMojangMappingsLicense() {
-		this.silentMojangMappingsLicense = true;
+		try {
+			this.silentMojangMappingsLicense.set(true);
+		} catch (IllegalStateException e) {
+			throw new IllegalStateException("loom.silentMojangMappingsLicense() must be called before its value is read, usually with loom.layered {}.", e);
+		}
 	}
 
 	@Override
 	public boolean isSilentMojangMappingsLicenseEnabled() {
-		return silentMojangMappingsLicense;
+		return silentMojangMappingsLicense.get();
 	}
 
 	@Override

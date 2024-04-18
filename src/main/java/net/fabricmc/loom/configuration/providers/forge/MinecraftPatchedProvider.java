@@ -302,7 +302,7 @@ public class MinecraftPatchedProvider {
 							return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
 								@Override
 								public void visitParameter(String name, int access) {
-									if (vignetteParameters.matcher(name).matches()) {
+									if (name != null && vignetteParameters.matcher(name).matches()) {
 										super.visitParameter(null, access);
 									} else {
 										super.visitParameter(name, access);

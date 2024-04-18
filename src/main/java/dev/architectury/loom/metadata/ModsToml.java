@@ -24,6 +24,7 @@ import net.fabricmc.loom.util.ModPlatform;
 
 public final class ModsToml implements ModMetadataFile {
 	public static final String FILE_PATH = "META-INF/mods.toml";
+	public static final String NEOFORGE_FILE_PATH = "META-INF/neoforge.mods.toml";
 	private final Config config;
 
 	private ModsToml(Config config) {

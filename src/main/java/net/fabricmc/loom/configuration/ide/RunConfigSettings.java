@@ -340,7 +340,7 @@ public class RunConfigSettings implements Named {
 	 * Add the {@code -XstartOnFirstThread} JVM argument when on OSX.
 	 */
 	public void startFirstThread() {
-		if (Platform.CURRENT.getOperatingSystem().isMacOS() && extension.hasLWJGL3()) {
+		if (Platform.CURRENT.getOperatingSystem().isMacOS()) {
 			vmArg("-XstartOnFirstThread");
 		}
 	}
@@ -357,7 +357,6 @@ public class RunConfigSettings implements Named {
 	 * Configure run config with the default client options.
 	 */
 	public void client() {
-		startFirstThread();
 		environment("client");
 		defaultMainClass(Constants.Knot.KNOT_CLIENT);
 

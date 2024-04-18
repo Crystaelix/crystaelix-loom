@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,39 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.test.unit
+package net.fabricmc.loom.test.unit.processor.classes;
 
-import spock.lang.Specification
-
-import net.fabricmc.loom.decompilers.linemap.LineMapClassFilter
-import net.fabricmc.loom.decompilers.linemap.LineMapReader
-import net.fabricmc.loom.decompilers.linemap.LineMapWriter
-
-class LineMapTest extends Specification {
-	LineMapReader reader = new LineMapReader(LineMapTest.getResourceAsStream('/linemap/input.lmap').newReader('UTF-8'))
-
-	private String readExpected(String name) {
-		return LineMapTest.getResourceAsStream("/linemap/${name}.lmap")
-				.getText('UTF-8')
-				.replace('\r\n', '\n')
-	}
-
-	def "roundtrip"() {
-		when:
-		def sw = new StringWriter()
-		reader.accept(new LineMapWriter(sw))
-		reader.close()
-		then:
-		sw.toString() == readExpected('simpleOutput')
-	}
-
-	def "filter"() {
-		when:
-		def sw = new StringWriter()
-		def writer = new LineMapWriter(sw)
-		reader.accept(new LineMapClassFilter(writer, { it.startsWith('test/nested/') }))
-		reader.close()
-		then:
-		sw.toString() == readExpected('filteredOutput')
-	}
+public class GenericTargetClass {
 }
