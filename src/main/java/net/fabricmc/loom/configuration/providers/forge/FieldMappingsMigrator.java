@@ -33,6 +33,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -52,38 +53,25 @@ import org.objectweb.asm.Opcodes;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
-import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ThreadingUtils;
-import net.fabricmc.loom.util.service.SharedServiceManager;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MappingTreeView;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
-public final class FieldMigratedMappingConfiguration extends MappingConfiguration {
+public final class FieldMappingsMigrator implements MappingsMigrator {
 	private List<Map.Entry<FieldMember, String>> migratedFields = new ArrayList<>();
 	public Path migratedFieldsCache;
-	private Path rawTinyMappings;
-	private Path rawTinyMappingsWithSrg;
-	private Path rawTinyMappingsWithMojang;
-
-	public FieldMigratedMappingConfiguration(String mappingsIdentifier, Path mappingsWorkingDir) {
-		super(mappingsIdentifier, mappingsWorkingDir);
-	}
 
 	@Override
-	protected void setup(Project project, SharedServiceManager serviceManager, MinecraftProvider minecraftProvider, Path inputJar) throws IOException {
-		final Path forgeCache = ForgeProvider.getForgeCache(project);
-		Files.createDirectories(forgeCache);
-		migratedFieldsCache = forgeCache.resolve("migrated-fields.json");
+	public long setup(Project project, MinecraftProvider minecraftProvider, Path cache, Path rawMappings, boolean hasSrg, boolean hasMojang) throws IOException {
+		migratedFieldsCache = cache.resolve("migrated-fields.json");
 		migratedFields.clear();
 
-		if (minecraftProvider.refreshDeps()) {
-			Files.deleteIfExists(migratedFieldsCache);
-		} else if (Files.exists(migratedFieldsCache)) {
+		if (!minecraftProvider.refreshDeps() && Files.exists(migratedFieldsCache)) {
 			try (BufferedReader reader = Files.newBufferedReader(migratedFieldsCache)) {
 				Map<String, String> map = new Gson().fromJson(reader, new TypeToken<Map<String, String>>() {
 				}.getType());
@@ -93,47 +81,14 @@ public final class FieldMigratedMappingConfiguration extends MappingConfiguratio
 					migratedFields.add(new AbstractMap.SimpleEntry<>(new FieldMember(split[0], split[1]), newDescriptor));
 				});
 			}
-		}
-
-		super.setup(project, serviceManager, minecraftProvider, inputJar);
-	}
-
-	@Override
-	protected void manipulateMappings(Project project, Path mappingsJar) throws IOException {
-		LoomGradleExtension extension = LoomGradleExtension.get(project);
-
-		if (extension.isLegacyForgeLike()) {
-			// Legacy forge patches are in official namespace, so if the type of a field is changed by them, then that
-			// is effectively a new field and not traceable to any mapping. Therefore this does not apply to it.
-			return;
-		}
-
-		Stopwatch stopwatch = Stopwatch.createStarted();
-		this.rawTinyMappings = tinyMappings;
-		this.rawTinyMappingsWithSrg = tinyMappingsWithSrg;
-		this.rawTinyMappingsWithMojang = tinyMappingsWithMojang;
-
-		tinyMappings = mappingsWorkingDir().resolve("mappings-field-migrated.tiny");
-		tinyMappingsWithSrg = mappingsWorkingDir().resolve("mappings-srg-field-migrated.tiny");
-		tinyMappingsWithMojang = mappingsWorkingDir().resolve("mappings-mojang-field-migrated.tiny");
-
-		try {
-			updateFieldMigration(project, extension.isNeoForge(), extension.shouldGenerateSrgTiny());
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
-
-		project.getLogger().info(":migrated {} fields in " + stopwatch.stop(), extension.getPlatform().get().id());
-	}
-
-	public void updateFieldMigration(Project project, boolean hasMojang, boolean hasSrg) throws IOException {
-		if (!Files.exists(migratedFieldsCache)) {
+		} else {
+			Files.deleteIfExists(migratedFieldsCache);
 			migratedFields.clear();
 
 			if (hasSrg) {
-				migratedFields.addAll(generateNewFieldMigration(project, MinecraftPatchedProvider.get(project).getMinecraftPatchedIntermediateJar(), MappingsNamespace.SRG.toString(), rawTinyMappingsWithSrg).entrySet());
+				migratedFields.addAll(generateNewFieldMigration(project, MinecraftPatchedProvider.get(project).getMinecraftPatchedIntermediateJar(), MappingsNamespace.SRG.toString(), rawMappings).entrySet());
 			} else if (hasMojang) {
-				migratedFields.addAll(generateNewFieldMigration(project, MinecraftPatchedProvider.get(project).getMinecraftPatchedIntermediateJar(), MappingsNamespace.MOJANG.toString(), rawTinyMappingsWithMojang).entrySet());
+				migratedFields.addAll(generateNewFieldMigration(project, MinecraftPatchedProvider.get(project).getMinecraftPatchedIntermediateJar(), MappingsNamespace.MOJANG.toString(), rawMappings).entrySet());
 			}
 
 			Map<String, String> map = new HashMap<>();
@@ -141,32 +96,42 @@ public final class FieldMigratedMappingConfiguration extends MappingConfiguratio
 				map.put(entry.getKey().owner + "#" + entry.getKey().field, entry.getValue());
 			});
 			Files.writeString(migratedFieldsCache, new Gson().toJson(map));
-			Files.deleteIfExists(tinyMappings);
-			Files.deleteIfExists(tinyMappingsWithSrg);
-			Files.deleteIfExists(tinyMappingsWithMojang);
 		}
 
-		if (Files.notExists(tinyMappings) || (hasSrg && Files.notExists(tinyMappingsWithSrg)) || (hasMojang && Files.notExists(tinyMappingsWithMojang))) {
-			Table<String, String, String> fieldDescriptorMap = HashBasedTable.create();
+		this.migratedFields.sort(Comparator.comparing(entry -> entry.getKey().owner + "#" + entry.getKey().field));
+		return migratedFields.hashCode();
+	}
 
-			for (Map.Entry<FieldMember, String> entry : migratedFields) {
-				fieldDescriptorMap.put(entry.getKey().owner, entry.getKey().field, entry.getValue());
-			}
+	@Override
+	public void migrate(Project project, List<MappingsEntry> entries) {
+		Stopwatch stopwatch = Stopwatch.createStarted();
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
-			injectMigration(project, fieldDescriptorMap, rawTinyMappings, tinyMappings);
+		try {
+			updateFieldMigration(project, entries);
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
 
-			if (hasSrg) {
-				injectMigration(project, fieldDescriptorMap, rawTinyMappingsWithSrg, tinyMappingsWithSrg);
-			} else if (hasMojang) {
-				injectMigration(project, fieldDescriptorMap, rawTinyMappingsWithMojang, tinyMappingsWithMojang);
-			}
+		project.getLogger().info(":migrated {} fields in " + stopwatch.stop(), extension.getPlatform().get().id());
+	}
+
+	public void updateFieldMigration(Project project, List<MappingsEntry> entries) throws IOException {
+		Table<String, String, String> fieldDescriptorMap = HashBasedTable.create();
+
+		for (Map.Entry<FieldMember, String> entry : migratedFields) {
+			fieldDescriptorMap.put(entry.getKey().owner, entry.getKey().field, entry.getValue());
+		}
+
+		for (MappingsEntry entry : entries) {
+			injectMigration(project, fieldDescriptorMap, entry.path());
 		}
 	}
 
-	private static void injectMigration(Project project, Table<String, String, String> fieldDescriptorMap, Path source, Path out) throws IOException {
+	private static void injectMigration(Project project, Table<String, String, String> fieldDescriptorMap, Path path) throws IOException {
 		MemoryMappingTree mappings = new MemoryMappingTree();
 
-		try (BufferedReader reader = Files.newBufferedReader(source)) {
+		try (BufferedReader reader = Files.newBufferedReader(path)) {
 			MappingReader.read(reader, mappings);
 		}
 
@@ -186,7 +151,7 @@ public final class FieldMigratedMappingConfiguration extends MappingConfiguratio
 			}
 		}
 
-		try (Writer writer = Files.newBufferedWriter(out, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+		try (Writer writer = Files.newBufferedWriter(path, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
 			mappings.accept(new Tiny2FileWriter(writer, false));
 		}
 	}
