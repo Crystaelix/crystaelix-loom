@@ -93,6 +93,7 @@ import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.MetaInfFixer;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public class MinecraftPatchedProvider {
 	protected static final String LOOM_PATCH_VERSION_KEY = "Loom-Patch-Version";
@@ -144,11 +145,12 @@ public class MinecraftPatchedProvider {
 	}
 
 	protected void initPatchedFiles() {
+		String loader = getExtension().isNeoForge() ? "neoforge" : getExtension().isCleanroom() ? "cleanroom" : "forge";
 		String forgeVersion = getExtension().getForgeProvider().getVersion().getCombined();
 		Path forgeWorkingDir = ForgeProvider.getForgeCache(project);
 		// Note: strings used instead of platform id since FML requires one of these exact strings
 		// depending on the loader to recognise Minecraft.
-		String patchId = (getExtension().isNeoForge() ? "neoforge" : "forge") + "-" + forgeVersion + "-";
+		String patchId = loader + "-" + forgeVersion + "-";
 
 		minecraftProvider.setJarPrefix(patchId);
 
@@ -238,12 +240,17 @@ public class MinecraftPatchedProvider {
 		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
 		MemoryMappingTree mappings = mappingsService.getMappingTree();
 
-		TinyRemapper remapper = TinyRemapper.newRemapper()
+		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
 				.withMappings(TinyRemapperHelper.create(mappings, from, to, true))
 				.withMappings(InnerClassRemapper.of(InnerClassRemapper.readClassNames(input), mappings, from, to))
 				.renameInvalidLocals(true)
-				.rebuildSourceFilenames(true)
-				.build();
+				.rebuildSourceFilenames(true);
+
+		if (getExtension().isNeoForge()) {
+			builder.extension(new MixinExtension(inputTag -> true));
+		}
+
+		TinyRemapper remapper = builder.build();
 
 		//if (project.getGradle().getStartParameter().getLogLevel().compareTo(LogLevel.LIFECYCLE) < 0) {
 		//	MappingsProviderVerbose.saveFile(remapper);

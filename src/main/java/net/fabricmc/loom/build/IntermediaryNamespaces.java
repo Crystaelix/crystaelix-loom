@@ -38,6 +38,14 @@ public final class IntermediaryNamespaces {
 	}
 
 	/**
+	 * Returns the runtime intermediary namespace of the project.
+	 * This is the namespace used in the compiled jar.
+	 */
+	public static String runtimeIntermediary(Project project) {
+		return runtimeIntermediaryNamespace(project).toString();
+	}
+
+	/**
 	 * Returns the intermediary namespace of the project.
 	 */
 	public static MappingsNamespace intermediaryNamespace(Project project) {
@@ -47,6 +55,15 @@ public final class IntermediaryNamespaces {
 		case FORGE, LEGACYFORGE, CLEANROOM -> MappingsNamespace.SRG;
 		case NEOFORGE -> MappingsNamespace.MOJANG;
 		};
+	}
+
+	/**
+	 * Returns the intermediary namespace of the project.
+	 */
+	public static MappingsNamespace runtimeIntermediaryNamespace(Project project) {
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		if (extension.isForge() && extension.getForgeProvider().usesMojangAtRuntime()) return MappingsNamespace.MOJANG;
+		return intermediaryNamespace(project);
 	}
 
 	/**
@@ -62,6 +79,6 @@ public final class IntermediaryNamespaces {
 	 * @return the correct namespace to use
 	 */
 	public static String replaceMixinIntermediaryNamespace(Project project, String namespace) {
-		return namespace.equals(intermediary(project)) ? MappingsNamespace.INTERMEDIARY.toString() : namespace;
+		return namespace.equals(runtimeIntermediary(project)) ? MappingsNamespace.INTERMEDIARY.toString() : namespace;
 	}
 }

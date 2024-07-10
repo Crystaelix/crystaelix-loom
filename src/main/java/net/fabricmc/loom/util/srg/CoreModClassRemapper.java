@@ -61,7 +61,7 @@ public final class CoreModClassRemapper {
 
 	public static void remapJar(Project project, ModPlatform platform, Path jar, MappingTree mappings) throws IOException {
 		final Logger logger = project.getLogger();
-		final String sourceNamespace = IntermediaryNamespaces.intermediary(project);
+		final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar, false)) {
 			Path coremodsJsonPath = fs.getPath("META-INF", "coremods.json");

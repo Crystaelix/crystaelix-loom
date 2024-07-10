@@ -35,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -232,28 +233,20 @@ public class MappingConfiguration {
 			// Generate the Mojmap-merged mappings if needed.
 			// Note that this needs to happen before manipulateMappings for FieldMigratedMappingConfiguration.
 			if (Files.notExists(tinyMappingsWithMojang) || extension.refreshDeps()) {
-				final Stopwatch stopwatch = Stopwatch.createStarted();
-				final MappingContext context = new GradleMappingContext(project, "tmp-neoforge");
-
-				try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(tinyMappingsWithMojang), false)) {
-					ForgeMappingsMerger.mergeMojang(context, tinyMappings, null, true).accept(writer);
-				}
-
-				project.getLogger().info(":merged mojang mappings in {}", stopwatch.stop());
+				mergeMojang(project, tinyMappings, tinyMappingsWithMojang);
 			}
 		}
 
 		if (extension.shouldGenerateSrgTiny()) {
 			if (Files.notExists(tinyMappingsWithSrg) || extension.refreshDeps()) {
-				// Merge tiny mappings with srg
-				Stopwatch stopwatch = Stopwatch.createStarted();
-				ForgeMappingsMerger.ExtraMappings extraMappings = extension.isLegacyForgeLike() ? null : ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
-
-				try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(tinyMappingsWithSrg), false)) {
-					ForgeMappingsMerger.mergeSrg(getRawSrgFile(project), tinyMappings, extraMappings, true).accept(writer);
+				if (extension.isForge() && extension.getForgeProvider().usesMojangAtRuntime()) {
+					Path tmp = Files.createTempFile("mappings", ".tiny");
+					mergeMojang(project, tinyMappings, tmp);
+					mergeSrg(project, tmp, tinyMappingsWithSrg);
+					Files.deleteIfExists(tmp);
+				} else {
+					mergeSrg(project, tinyMappings, tinyMappingsWithSrg);
 				}
-
-				project.getLogger().info(":merged srg mappings in " + stopwatch.stop());
 			}
 		}
 
@@ -319,6 +312,28 @@ public class MappingConfiguration {
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}
+	}
+
+	private static void mergeMojang(Project project, Path source, Path target) throws IOException {
+		final Stopwatch stopwatch = Stopwatch.createStarted();
+		final MappingContext context = new GradleMappingContext(project, "tmp-mojang");
+
+		try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(target, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING), false)) {
+			ForgeMappingsMerger.mergeMojang(context, source, null, true).accept(writer);
+		}
+
+		project.getLogger().info(":merged mojang mappings in {}", stopwatch.stop());
+	}
+
+	private static void mergeSrg(Project project, Path source, Path target) throws IOException {
+		Stopwatch stopwatch = Stopwatch.createStarted();
+		ForgeMappingsMerger.ExtraMappings extraMappings = LoomGradleExtension.get(project).isLegacyForgeLike() ? null : ForgeMappingsMerger.ExtraMappings.ofMojmapTsrg(getMojmapSrgFileIfPossible(project));
+
+		try (Tiny2FileWriter writer = new Tiny2FileWriter(Files.newBufferedWriter(target, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING), false)) {
+			ForgeMappingsMerger.mergeSrg(getRawSrgFile(project), source, extraMappings, true).accept(writer);
+		}
+
+		project.getLogger().info(":merged srg mappings in " + stopwatch.stop());
 	}
 
 	protected void manipulateMappings(Project project, Path mappingsJar) throws IOException {
@@ -552,7 +567,7 @@ public class MappingConfiguration {
 	protected static String createForgeMappingsIdentifier(LoomGradleExtension extension, String mappingsName, String version, String classifier, String minecraftVersion) {
 		final String base = createMappingsIdentifier(mappingsName, version, classifier, minecraftVersion);
 		final String platform = extension.getPlatform().get().id();
-		final int forgeVersion = extension.getForgeProvider().getVersion().getBuildNumber();
+		final String forgeVersion = extension.getForgeProvider().getVersion().getForgeVersion();
 		return base + "-" + platform + "-" + forgeVersion;
 	}
 

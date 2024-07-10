@@ -427,6 +427,11 @@ task writeActionsTestMatrix() {
 					return
 				}
 
+				if (it.name.endsWith("NeoForge1206Test.groovy") || it.name.endsWith("Forge1206Test.groovy")) {
+					// Arch: The 1.20.6 tests require Java 21
+					return
+				}
+
 				def className = it.path.toString().replace(".groovy", "")
 				className = className.substring(className.lastIndexOf("integration/") + "integration/".length()).replace('/', '.')
 

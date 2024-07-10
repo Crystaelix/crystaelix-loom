@@ -166,11 +166,11 @@ public class ModProcessor {
 	private void remapJars(List<ModDependency> remapList) throws IOException {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final MappingConfiguration mappingConfiguration = extension.getMappingConfiguration();
-		String fromM = IntermediaryNamespaces.intermediary(project);
+		String fromM = IntermediaryNamespaces.runtimeIntermediary(project);
 
 		Stopwatch stopwatch = Stopwatch.createStarted();
 
-		MappingOption mappingOption = MappingOption.forPlatform(extension).forNamespaces(fromM, toM);
+		MappingOption mappingOption = MappingOption.forPlatform(extension);
 		MemoryMappingTree mappings = mappingConfiguration.getMappingsService(serviceManager, mappingOption).getMappingTree();
 		LoggerFilter.replaceSystemOut();
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()

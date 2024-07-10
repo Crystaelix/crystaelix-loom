@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.google.common.hash.Hashing;
+import dev.architectury.loom.forge.ModDirTransformerDiscovererPatch;
 import dev.architectury.loom.neoforge.LaunchHandlerPatcher;
 import dev.architectury.loom.util.ClassVisitorUtil;
 import org.gradle.api.Project;
@@ -63,6 +64,7 @@ public class ForgeLibrariesProvider {
 	private static final String FANCYML_LOADER_NAME = "loader";
 
 	private static final String FORGE_OBJECT_HOLDER_FILE = "net/minecraftforge/fml/common/asm/ObjectHolderDefinalize.class";
+	private static final String FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE = "net/minecraftforge/fml/loading/ModDirTransformerDiscoverer.class";
 	private static final String NEOFORGE_OBJECT_HOLDER_FILE = "net/neoforged/fml/common/asm/ObjectHolderDefinalize.class";
 	private static final String NEOFORGE_LAUNCH_HANDLER_FILE = "net/neoforged/fml/loading/targets/CommonUserdevLaunchHandler.class";
 
@@ -174,6 +176,10 @@ public class ForgeLibrariesProvider {
 
 				if (Files.exists(fs.get().getPath(FORGE_OBJECT_HOLDER_FILE))) {
 					remapObjectHolder(project, outputJar, mappingConfiguration);
+				}
+
+				if (Files.exists(fs.getPath(FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE))) {
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE), ModDirTransformerDiscovererPatch::new);
 				}
 
 				if (Files.exists(fs.getPath(NEOFORGE_OBJECT_HOLDER_FILE))) {

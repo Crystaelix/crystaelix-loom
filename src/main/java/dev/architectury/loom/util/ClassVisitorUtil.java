@@ -17,7 +17,7 @@ public final class ClassVisitorUtil {
 		try {
 			final byte[] inputBytes = Files.readAllBytes(path);
 			final var reader = new ClassReader(inputBytes);
-			final var writer = new ClassWriter(0);
+			final var writer = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
 			reader.accept(visitorFactory.apply(writer), 0);
 			final byte[] outputBytes = writer.toByteArray();
 

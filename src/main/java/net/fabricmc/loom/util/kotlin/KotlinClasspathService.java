@@ -67,7 +67,7 @@ public record KotlinClasspathService(Set<URL> classpath, String version) impleme
 					} catch (MalformedURLException e) {
 						throw new UncheckedIOException(e);
 					}
-				}).collect(Collectors.toSet());;
+				}).collect(Collectors.toSet());
 
 		return new KotlinClasspathService(classpath, kotlinVersion);
 	}

@@ -78,6 +78,10 @@ public class ForgeProvider extends DependencyProvider {
 		return version;
 	}
 
+	public boolean usesMojangAtRuntime() {
+		return platform == ModPlatform.NEOFORGE || version.getMajorVersion() >= Constants.Forge.MIN_USE_MOJANG_NS_VERSION;
+	}
+
 	public File getGlobalCache() {
 		if (globalCache == null) {
 			globalCache = getMinecraftProvider().dir(platform.id() + "/" + version.getCombined());

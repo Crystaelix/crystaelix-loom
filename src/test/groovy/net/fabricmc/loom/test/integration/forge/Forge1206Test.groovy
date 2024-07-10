@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2023 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,28 +22,39 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.test.unit.architectury
+package net.fabricmc.loom.test.integration.forge
 
 import spock.lang.Specification
+import spock.lang.Unroll
 
-import static dev.architectury.loom.util.MappingOption.*
+import net.fabricmc.loom.test.util.GradleProjectTestTrait
 
-class MappingOptionTest extends Specification {
-	def "namespace filtering with empty array should not change mapping option"() {
+import static net.fabricmc.loom.test.LoomTestConstants.DEFAULT_GRADLE
+import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
+
+class Forge1206Test extends Specification implements GradleProjectTestTrait {
+	@Unroll
+	def "build #mcVersion #neoforgeVersion #mappings #patches"() {
+		if (Integer.valueOf(System.getProperty("java.version").split("\\.")[0]) < 21) {
+			println("This test requires Java 21. Currently you have Java ${System.getProperty("java.version")}.")
+			return
+		}
+
+		setup:
+		def gradle = gradleProject(project: "forge/1206", version: DEFAULT_GRADLE)
+		gradle.buildGradle.text = gradle.buildGradle.text.replace('@MCVERSION@', mcVersion)
+				.replace('@FORGEVERSION@', neoforgeVersion)
+				.replace('MAPPINGS', mappings) // Spotless doesn't like the @'s
+				.replace('PATCHES', patches)
+
 		when:
-		def filtered = mappingOption.forNamespaces(namespaces as String[])
+		def result = gradle.run(task: "build")
+
 		then:
-		filtered == expected
+		result.task(":build").outcome == SUCCESS
+
 		where:
-		mappingOption | namespaces      | expected
-		DEFAULT       | []              | DEFAULT
-		WITH_MOJANG   | []              | DEFAULT
-		WITH_SRG      | []              | DEFAULT
-		DEFAULT       | ['a', 'srg']    | DEFAULT
-		WITH_SRG      | ['a', 'srg']    | WITH_SRG
-		WITH_MOJANG   | ['a', 'srg']    | DEFAULT
-		DEFAULT       | ['mojang', 'a'] | DEFAULT
-		WITH_SRG      | ['mojang', 'a'] | DEFAULT
-		WITH_MOJANG   | ['mojang', 'a'] | WITH_MOJANG
+		mcVersion | neoforgeVersion | mappings | patches
+		'1.20.6'  | '1.20.6-50.1.3' | 'loom.officialMojangMappings()' | ''
 	}
 }

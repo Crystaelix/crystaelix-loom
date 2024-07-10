@@ -65,6 +65,7 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
  */
 public final class ForgeMappingsMerger {
 	private static final List<String> INPUT_NAMESPACES = List.of("official", "intermediary", "named");
+	private static final List<String> INPUT_NAMESPACES_WITH_MOJANG = List.of("official", "mojang", "intermediary", "named");
 	private final MemoryMappingTree newNs;
 	private final MemoryMappingTree src;
 	private final MemoryMappingTree output;
@@ -111,8 +112,8 @@ public final class ForgeMappingsMerger {
 		List<String> inputNamespaces = new ArrayList<>(src.getDstNamespaces());
 		inputNamespaces.add(0, src.getSrcNamespace());
 
-		if (!inputNamespaces.equals(INPUT_NAMESPACES)) {
-			throw new MappingException("Mapping file " + tiny + " does not have 'official, intermediary, named' as its namespaces! Found: " + inputNamespaces);
+		if (!inputNamespaces.equals(INPUT_NAMESPACES) && !inputNamespaces.equals(INPUT_NAMESPACES_WITH_MOJANG)) {
+			throw new MappingException("Mapping file " + tiny + " does not have 'official(, mojang), intermediary, named' as its namespaces! Found: " + inputNamespaces);
 		}
 
 		return src;

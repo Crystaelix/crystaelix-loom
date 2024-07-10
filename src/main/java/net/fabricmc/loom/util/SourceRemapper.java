@@ -65,7 +65,7 @@ public class SourceRemapper {
 	private Mercury mercury;
 
 	public SourceRemapper(Project project, SharedServiceManager serviceManager, boolean toNamed) {
-		this(project, serviceManager, toNamed ? IntermediaryNamespaces.intermediary(project) : "named", !toNamed ? IntermediaryNamespaces.intermediary(project) : "named");
+		this(project, serviceManager, toNamed ? IntermediaryNamespaces.runtimeIntermediary(project) : "named", !toNamed ? IntermediaryNamespaces.runtimeIntermediary(project) : "named");
 	}
 
 	public SourceRemapper(Project project, SharedServiceManager serviceManager, String from, String to) {
