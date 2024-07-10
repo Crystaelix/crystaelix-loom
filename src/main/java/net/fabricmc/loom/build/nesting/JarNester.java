@@ -28,7 +28,6 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -37,17 +36,17 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.UncheckedIOException;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 
 import net.fabricmc.loom.LoomGradlePlugin;
-import net.fabricmc.loom.build.nesting.IncludedJarFactory.NestedFile;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.Pair;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
 
 public class JarNester {
-	public static void nestJars(Collection<File> jars, List<NestedFile> forgeJars, File modJar, ModPlatform platform, Logger logger) {
+	public static void nestJars(Collection<File> jars, File modJar, ModPlatform platform, Logger logger) {
 		if (jars.isEmpty()) {
 			logger.debug("Nothing to nest into " + modJar.getName());
 			return;
@@ -65,7 +64,7 @@ public class JarNester {
 			}).collect(Collectors.toList()));
 
 			if (platform.isForgeLike()) {
-				handleForgeJarJar(forgeJars, modJar, logger);
+				handleForgeJarJar(jars, modJar, logger);
 				return;
 			}
 
@@ -141,13 +140,27 @@ public class JarNester {
 		}
 	}
 
-	private static void handleForgeJarJar(List<NestedFile> forgeJars, File modJar, Logger logger) throws IOException {
+	private static @Nullable NestableJarGenerationTask.Metadata readNestedFile(File file, Logger logger) {
+		try {
+			return ZipUtils.unpackGsonNullable(file.toPath(), NestableJarGenerationTask.NESTING_METADATA_PATH, NestableJarGenerationTask.Metadata.class);
+		} catch (IOException e) {
+			logger.error("Could not read {}", file.getAbsolutePath(), e);
+			return null;
+		}
+	}
+
+	private static void handleForgeJarJar(Collection<File> jars, File modJar, Logger logger) throws IOException {
 		JsonObject json = new JsonObject();
 		JsonArray nestedJars = new JsonArray();
 
-		for (NestedFile nestedFile : forgeJars) {
-			IncludedJarFactory.Metadata metadata = nestedFile.metadata();
-			File file = nestedFile.file();
+		for (File file : jars) {
+			NestableJarGenerationTask.Metadata metadata = readNestedFile(file, logger);
+
+			if (metadata == null) {
+				logger.error("Jar {} does not contain Loom nesting metadata", file.getAbsolutePath());
+				continue;
+			}
+
 			String nestedJarPath = "META-INF/jars/" + file.getName();
 
 			for (JsonElement nestedJar : nestedJars) {

@@ -153,6 +153,8 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 
 	LoomProblemReporter getProblemReporter();
 
+	boolean isConfigurationCacheActive();
+
 	// ===================
 	//  Architectury Loom
 	// ===================

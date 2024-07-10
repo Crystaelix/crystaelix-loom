@@ -105,6 +105,14 @@ public class RunConfigSettings implements Named {
 	private final Property<String> mainClass;
 
 	/**
+	 * The true entrypoint, this is usually dev launch injector.
+	 * This should not be changed unless you know what you are doing.
+	 */
+	@ApiStatus.Internal
+	@ApiStatus.Experimental
+	private final Property<String> devLaunchMainClass;
+
+	/**
 	 * The source set getter, which obtains the source set from the given project.
 	 */
 	private Function<Project, SourceSet> source;
@@ -148,6 +156,7 @@ public class RunConfigSettings implements Named {
 			Objects.requireNonNull(defaultMainClass, "Run config " + name + " must specify default main class");
 			return RunConfig.getMainClass(environment, extension, defaultMainClass);
 		}));
+		this.devLaunchMainClass = project.getObjects().property(String.class).convention("net.fabricmc.devlaunchinjector.Main");
 		this.mods = project.getObjects().domainObjectContainer(ModSettings.class);
 
 		setSource(p -> {
@@ -450,6 +459,12 @@ public class RunConfigSettings implements Named {
 		this.ideConfigGenerated = ideConfigGenerated;
 	}
 
+	@ApiStatus.Internal
+	@ApiStatus.Experimental
+	public Property<String> devLaunchMainClass() {
+		return devLaunchMainClass;
+	}
+
 	/**
 	 * {@return a container of mod settings for this run configuration}
 	 *
@@ -459,7 +474,6 @@ public class RunConfigSettings implements Named {
 	 *
 	 * <p>This method is currently only available on Forge and NeoForge.
 	 */
-	@ApiStatus.Experimental
 	public NamedDomainObjectContainer<ModSettings> getMods() {
 		ModPlatform.assertForgeLike(extension);
 		return mods;
@@ -470,7 +484,6 @@ public class RunConfigSettings implements Named {
 	 *
 	 * <p>This method is currently only available on Forge.
 	 */
-	@ApiStatus.Experimental
 	public void mods(Action<NamedDomainObjectContainer<ModSettings>> action) {
 		action.execute(getMods());
 	}

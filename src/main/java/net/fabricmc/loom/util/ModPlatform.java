@@ -39,8 +39,8 @@ import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 public enum ModPlatform {
 	FABRIC("Fabric", false),
 	FORGE("Forge", false),
-	QUILT("Quilt", true),
-	NEOFORGE("NeoForge", true),
+	QUILT("Quilt", false),
+	NEOFORGE("NeoForge", false),
 	LEGACYFORGE("LegacyForge", true),
 	CLEANROOM("Cleanroom", true);
 

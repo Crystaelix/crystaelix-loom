@@ -89,6 +89,7 @@ import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
+import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.MetaInfFixer;
 import net.fabricmc.tinyremapper.OutputConsumerPath;

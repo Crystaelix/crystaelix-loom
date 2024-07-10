@@ -144,13 +144,8 @@ public final class DependencyDownloader {
 				attributes.attribute((Attribute<Object>) attribute, value);
 			});
 		});
-		FileCollection files = config.fileCollection(dep -> true);
 
-		if (resolve) {
-			files = project.files(files.getFiles());
-		}
-
-		return files;
+		return resolve ? project.files(config.resolve()) : config;
 	}
 
 	/**

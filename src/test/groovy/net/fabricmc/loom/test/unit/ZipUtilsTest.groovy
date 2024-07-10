@@ -29,9 +29,11 @@ import java.nio.file.Files
 import java.time.ZoneId
 
 import com.google.gson.JsonObject
+import org.gradle.api.tasks.bundling.ZipEntryCompression
 import spock.lang.Specification
 
 import net.fabricmc.loom.util.Checksum
+import net.fabricmc.loom.util.FileSystemUtil
 import net.fabricmc.loom.util.Pair
 import net.fabricmc.loom.util.ZipReprocessorUtil
 import net.fabricmc.loom.util.ZipUtils
@@ -212,5 +214,48 @@ class ZipUtilsTest extends Specification {
 
 		then:
 		transformed.get("test").asString == "THIS IS A TEST OF TRANSFORMING"
+	}
+
+	// Also see: ClosedZipFSReproducer
+	def "unrecoverable error"() {
+		given:
+		def dir = File.createTempDir()
+		def zip = File.createTempFile("loom-zip-test", ".zip").toPath()
+		new File(dir, "test.json").text = """
+		{
+			"test": "This is a test of transforming"
+		}
+		"""
+		ZipUtils.pack(dir.toPath(), zip)
+
+		when:
+		ZipUtils.transformJson(JsonObject.class, zip, "test.json") { json ->
+			// Before we close the ZipFS do something to prevent the zip from being written on close
+			// E.G lock the file
+			Files.delete(zip)
+			Files.createDirectories(zip)
+			Files.createFile(zip.resolve("lock"))
+
+			json
+		}
+		then:
+		thrown FileSystemUtil.UnrecoverableZipException
+	}
+
+	def "reprocess uncompressed"() {
+		given:
+		// Create a reproducible input zip
+		def dir = Files.createTempDirectory("loom-zip-test")
+		def zip = Files.createTempFile("loom-zip-test", ".zip")
+		def fileInside = dir.resolve("text.txt")
+		Files.writeString(fileInside, "hello world")
+		ZipUtils.pack(dir, zip)
+
+		when:
+		ZipReprocessorUtil.reprocessZip(zip, true, false, ZipEntryCompression.STORED)
+
+		then:
+		ZipUtils.unpack(zip, "text.txt") == "hello world".bytes
+		Checksum.sha1Hex(zip) == "e699fa52a520553241aac798f72255ac0a912b05"
 	}
 }

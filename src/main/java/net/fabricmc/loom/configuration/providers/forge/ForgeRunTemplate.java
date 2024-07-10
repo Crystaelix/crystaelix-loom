@@ -24,10 +24,13 @@
 
 package net.fabricmc.loom.configuration.providers.forge;
 
+import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
@@ -114,4 +117,33 @@ public record ForgeRunTemplate(
 			settings.property(Constants.Forge.UNION_RELAUNCHER_MAIN_CLASS_PROPERTY, main);
 		}
 	}
+
+	public Resolved resolve(ConfigValue.Resolver configValueResolver) {
+		final Function<ConfigValue, String> resolve = value -> value.resolve(configValueResolver);
+		final Collector<Map.Entry<String, ConfigValue>, ?, Map<String, String>> resolveMap =
+				Collectors.toMap(Map.Entry::getKey, entry -> entry.getValue().resolve(configValueResolver));
+
+		final List<String> args = this.args.stream().map(resolve).toList();
+		final List<String> jvmArgs = this.jvmArgs.stream().map(resolve).toList();
+		final Map<String, String> env = this.env.entrySet().stream().collect(resolveMap);
+		final Map<String, String> props = this.props.entrySet().stream().collect(resolveMap);
+
+		return new Resolved(
+				name,
+				main,
+				args,
+				jvmArgs,
+				env,
+				props
+		);
+	}
+
+	public record Resolved(
+			String name,
+			String main,
+			List<String> args,
+			List<String> jvmArgs,
+			Map<String, String> env,
+			Map<String, String> props
+	) implements Serializable { }
 }

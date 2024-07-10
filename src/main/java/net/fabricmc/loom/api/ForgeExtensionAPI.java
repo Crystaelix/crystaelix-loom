@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021-2023 FabricMC
+ * Copyright (c) 2021-2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -109,7 +109,10 @@ public interface ForgeExtensionAPI {
 	 * This is disabled by default.
 	 *
 	 * @return the property
+	 * @deprecated This API is not needed on newer Minecraft versions where Forge forces its own logger config.
 	 */
+	@ApiStatus.ScheduledForRemoval(inVersion = "2.0")
+	@Deprecated(forRemoval = true)
 	Property<Boolean> getUseForgeLoggerConfig();
 
 	/**
