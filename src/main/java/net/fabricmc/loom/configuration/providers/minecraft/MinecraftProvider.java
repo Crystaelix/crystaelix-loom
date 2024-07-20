@@ -33,6 +33,7 @@ import java.util.Objects;
 import com.google.common.base.Preconditions;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -87,9 +88,10 @@ public abstract class MinecraftProvider {
 		if (javaVersion != null) {
 			final int requiredMajorJavaVersion = getVersionInfo().javaVersion().majorVersion();
 			final JavaVersion requiredJavaVersion = JavaVersion.toVersion(requiredMajorJavaVersion);
+			final JavaVersion currentJavaVersion = getProject().getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
 
-			if (!JavaVersion.current().isCompatibleWith(requiredJavaVersion)) {
-				throw new IllegalStateException("Minecraft " + minecraftVersion() + " requires Java " + requiredJavaVersion + " but Gradle is using " + JavaVersion.current());
+			if (!currentJavaVersion.isCompatibleWith(requiredJavaVersion)) {
+				LOGGER.warn("Minecraft " + minecraftVersion() + " requires Java " + requiredJavaVersion + " but Gradle is targetting " + currentJavaVersion);
 			}
 		}
 
