@@ -79,7 +79,11 @@ public class ForgeProvider extends DependencyProvider {
 	}
 
 	public boolean usesMojangAtRuntime() {
-		return platform == ModPlatform.NEOFORGE || version.getMajorVersion() >= Constants.Forge.MIN_USE_MOJANG_NS_VERSION;
+		return platform == ModPlatform.NEOFORGE || platform == ModPlatform.FORGE && version.getMajorVersion() >= Constants.Forge.MIN_USE_MOJANG_NS_VERSION;
+	}
+
+	public boolean forcesLoggerConfig() {
+		return platform == ModPlatform.NEOFORGE || platform == ModPlatform.FORGE && version.getMajorVersion() >= Constants.Forge.MIN_FORCE_LOGGER_CONFIG_VERSION;
 	}
 
 	public File getGlobalCache() {

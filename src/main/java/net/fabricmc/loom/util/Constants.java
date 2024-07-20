@@ -204,6 +204,7 @@ public class Constants {
 		 * The minimum version of Forge that uses "mojang" as the namespace in production.
 		 */
 		public static final int MIN_USE_MOJANG_NS_VERSION = 50;
+		public static final int MIN_FORCE_LOGGER_CONFIG_VERSION = 47;
 
 		private Forge() {
 		}

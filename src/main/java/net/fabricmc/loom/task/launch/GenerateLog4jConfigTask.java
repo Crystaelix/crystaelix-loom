@@ -62,6 +62,14 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 	public GenerateLog4jConfigTask() {
 		getOutputFile().set(getExtension().getFiles().getDefaultLog4jConfigFile());
 
+		if (getExtension().isModernForgeLike() && getExtension().getForgeProvider().forcesLoggerConfig()) {
+			getUseForgeLoggerConfig().set(true);
+			getForgeLoggerConfigSource().set(getProject().getLayout().file(
+					getProject().provider(() -> ForgeLoggerConfig.getForgeLoggerConfigSource(getProject()))
+			));
+			return;
+		}
+
 		if (getExtension().isForge()) {
 			getUseForgeLoggerConfig().set(getProject().provider(() -> getExtension().getForge().getUseForgeLoggerConfig().get()));
 			getForgeLoggerConfigSource().set(getProject().getLayout().file(

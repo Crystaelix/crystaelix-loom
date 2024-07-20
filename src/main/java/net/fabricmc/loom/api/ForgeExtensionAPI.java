@@ -107,12 +107,10 @@ public interface ForgeExtensionAPI {
 	/**
 	 * If true, Loom will use Forge's Log4J config file instead of its own.
 	 * This is disabled by default.
+	 * Has no effect on newer Minecraft versions where Forge forces its own logger config.
 	 *
 	 * @return the property
-	 * @deprecated This API is not needed on newer Minecraft versions where Forge forces its own logger config.
 	 */
-	@ApiStatus.ScheduledForRemoval(inVersion = "2.0")
-	@Deprecated(forRemoval = true)
 	Property<Boolean> getUseForgeLoggerConfig();
 
 	/**
