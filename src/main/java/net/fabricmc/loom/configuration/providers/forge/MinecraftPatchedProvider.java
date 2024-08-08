@@ -89,7 +89,6 @@ import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
-import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.MetaInfFixer;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
@@ -146,7 +145,7 @@ public class MinecraftPatchedProvider {
 	}
 
 	protected void initPatchedFiles() {
-		String loader = getExtension().isNeoForge() ? "neoforge" : getExtension().isCleanroom() ? "cleanroom" : "forge";
+		String loader = getExtension().isNeoForge() ? "neoforge" : "forge";
 		String forgeVersion = getExtension().getForgeProvider().getVersion().getCombined();
 		Path forgeWorkingDir = ForgeProvider.getForgeCache(project);
 		// Note: strings used instead of platform id since FML requires one of these exact strings
