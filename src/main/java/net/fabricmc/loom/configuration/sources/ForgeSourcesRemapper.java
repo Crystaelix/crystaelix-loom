@@ -50,8 +50,8 @@ import org.apache.commons.io.output.NullOutputStream;
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.mercury.Mercury;
 import org.cadixdev.mercury.remapper.MercuryRemapper;
-import org.jetbrains.annotations.Nullable;
 import org.gradle.api.Project;
+import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
@@ -138,7 +138,7 @@ public class ForgeSourcesRemapper {
 		if (extension.getForgeUserdevProvider().isFG3()) {
 			String sourceDependency = extension.getForgeUserdevProvider().getJson().getAsJsonPrimitive("sources").getAsString();
 
-			for (File file : DependencyDownloader.download(project, sourceDependency)) {
+			for (File file : DependencyDownloader.download(project, sourceDependency, false, true)) {
 				forgeInstallerSources.add(file.toPath());
 				project.getLogger().info("Found forge source jar: {}", file);
 			}
