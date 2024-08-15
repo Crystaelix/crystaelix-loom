@@ -245,7 +245,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 					className = "net.minecraftforge.registries.ObjectHolderRegistry";
 				}
 
-				final String sourceNamespace = IntermediaryNamespaces.intermediary(project);
+				final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
 				final MemoryMappingTree mappings = mappingsService.getMappingTree();
 				RemapObjectHolderVisitor.remapObjectHolder(remappedJars.outputJar().getPath(), className, mappings, sourceNamespace, "named");
 			}

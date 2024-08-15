@@ -76,7 +76,7 @@ public final class IntermediaryNamespaces {
 	/**
 	 * Potentially replaces the remapping target namespace for mixin refmaps.
 	 *
-	 * <p>All {@linkplain #intermediary(Project) intermediary-like namespaces} are replaced
+	 * <p>All {@linkplain #runtimeIntermediary(Project) intermediary-like namespaces} are replaced
 	 * by {@code intermediary} since fabric-mixin-compile-extensions only supports intermediary.
 	 * We transform the namespaces in the input mappings, e.g. {@code intermediary} -> {@code yraidemretni} and
 	 * {@code srg} -> {@code intermediary}.

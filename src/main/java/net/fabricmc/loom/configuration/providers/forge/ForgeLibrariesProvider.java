@@ -96,6 +96,13 @@ public class ForgeLibrariesProvider {
 				}
 			}
 
+			if (lib.startsWith("net.minecraftforge:bootstrap:")) {
+				if (extension.isForge() && extension.getForgeProvider().getVersion().getMajorVersion() >= Constants.Forge.MIN_BOOTSTRAP_DEV_VERSION) {
+					String version = lib.substring(lib.lastIndexOf(":"));
+					dependencies.add(project.getDependencies().create("net.minecraftforge:bootstrap-dev" + version));
+				}
+			}
+
 			if (dep == null) {
 				dep = lib;
 			}

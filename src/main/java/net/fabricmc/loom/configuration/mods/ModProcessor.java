@@ -216,7 +216,7 @@ public class ModProcessor {
 
 		final TinyRemapper remapper = builder.build();
 
-		remapper.readClassPath(extension.getMinecraftJars(IntermediaryNamespaces.intermediaryNamespace(project)).toArray(Path[]::new));
+		remapper.readClassPath(extension.getMinecraftJars(IntermediaryNamespaces.runtimeIntermediaryNamespace(project)).toArray(Path[]::new));
 
 		final Map<ModDependency, InputTag> tagMap = new HashMap<>();
 		final Map<ModDependency, OutputConsumerPath> outputConsumerMap = new HashMap<>();

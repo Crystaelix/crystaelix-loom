@@ -151,7 +151,8 @@ public class ModConfigurationRemapper {
 
 				artifactMetadata = metaCache.computeIfAbsent(artifact, a -> {
 					try {
-						return ArtifactMetadata.create(a, LoomGradlePlugin.LOOM_VERSION, extension.getPlatform().get());
+						return ArtifactMetadata.create(a, LoomGradlePlugin.LOOM_VERSION, extension.getPlatform().get(),
+								extension.isForgeLike() && extension.getForgeProvider().usesMojangAtRuntime() ? true : null);
 					} catch (IOException e) {
 						throw ExceptionUtil.createDescriptiveWrapper(UncheckedIOException::new, "Failed to read metadata from " + a.path(), e);
 					}

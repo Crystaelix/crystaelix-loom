@@ -55,10 +55,10 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 	private static final String QUILT_INSTALLER_PATH = "quilt_installer.json";
 
 	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion) throws IOException {
-		return create(artifact, currentLoomVersion, ModPlatform.FABRIC);
+		return create(artifact, currentLoomVersion, ModPlatform.FABRIC, null);
 	}
 
-	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion, ModPlatform platform) throws IOException {
+	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion, ModPlatform platform, @Nullable Boolean forcesStaticMixinRemap) throws IOException {
 		boolean isFabricMod;
 		RemapRequirements remapRequirements = RemapRequirements.DEFAULT;
 		InstallerData installerData = null;
@@ -94,6 +94,10 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 					} catch (IllegalArgumentException e) {
 						throw new IllegalStateException("Unknown mixin remap type: " + mixinRemapType);
 					}
+				} else if (forcesStaticMixinRemap != null) {
+					// The mixin remap type is not specified in the manifest, but we have a forced value
+					// This is forced to be static on NeoForge or Forge 50+.
+					refmapRemapType = forcesStaticMixinRemap ? MixinRemapType.STATIC : MixinRemapType.MIXIN;
 				}
 
 				if (loomVersion != null && refmapRemapType != MixinRemapType.STATIC) {

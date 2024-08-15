@@ -38,7 +38,6 @@ import org.gradle.api.artifacts.ModuleDependency;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.ModPlatform;
 
 public class ForgeProvider extends DependencyProvider {
@@ -68,10 +67,6 @@ public class ForgeProvider extends DependencyProvider {
 		}
 
 		addDependency(dependency.getDepString() + ":installer", Constants.Configurations.FORGE_INSTALLER);
-
-		if (getExtension().isForge() && version.getMajorVersion() >= Constants.Forge.MIN_UNION_RELAUNCHER_VERSION) {
-			addDependency(LoomVersions.UNION_RELAUNCHER.mavenNotation(), Constants.Configurations.FORGE_EXTRA);
-		}
 	}
 
 	public ForgeVersion getVersion() {

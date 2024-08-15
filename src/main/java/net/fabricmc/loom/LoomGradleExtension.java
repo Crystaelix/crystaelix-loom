@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.Collection;
 import java.util.List;
 
+import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -114,7 +115,10 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 			yield getSrgMinecraftProvider().getMinecraftJarPaths();
 		}
 		case MOJANG -> {
-			ModPlatform.assertPlatform(this, () -> "Mojang-mapped jars are only available on NeoForge.", ModPlatform.NEOFORGE);
+			if (!this.isForgeLike() || !this.getForgeProvider().usesMojangAtRuntime()) {
+				throw new GradleException("Mojang-mapped jars are only available on NeoForge / Forge 50+.");
+			}
+
 			yield getMojangMappedMinecraftProvider().getMinecraftJarPaths();
 		}
 		};

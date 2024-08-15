@@ -98,7 +98,7 @@ public class SourceRemapper {
 			return;
 		}
 
-		project.getLogger().lifecycle(":remapping sources");
+		project.getLogger().lifecycle(":remapping sources (Mercury, {} -> {})", from, to);
 
 		ProgressLoggerFactory progressLoggerFactory = ((ProjectInternal) project).getServices().get(ProgressLoggerFactory.class);
 		ProgressLogger progressLogger = progressLoggerFactory.newOperation(SourceRemapper.class.getName());
@@ -199,13 +199,9 @@ public class SourceRemapper {
 			mercury.getClassPath().add(intermediaryJar);
 		}
 
-		if (extension.isSrgForgeLike()) {
-			for (Path srgJar : extension.getMinecraftJars(MappingsNamespace.SRG)) {
-				mercury.getClassPath().add(srgJar);
-			}
-		} else if (extension.isNeoForge()) {
-			for (Path mojangJar : extension.getMinecraftJars(MappingsNamespace.MOJANG)) {
-				mercury.getClassPath().add(mojangJar);
+		if (extension.isForgeLike()) {
+			for (Path jar : extension.getMinecraftJars(IntermediaryNamespaces.runtimeIntermediaryNamespace(project))) {
+				mercury.getClassPath().add(jar);
 			}
 		}
 

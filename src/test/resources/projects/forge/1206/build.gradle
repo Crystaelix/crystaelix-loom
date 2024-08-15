@@ -18,6 +18,17 @@ group = project.maven_group
 def mcVersion = "@MCVERSION@"
 def forgeVersion = "@FORGEVERSION@"
 
+
+loom {
+	forge {
+		mixinConfig "examplemod.mixins.json"
+	}
+
+	afterEvaluate {
+		assert mixin.useLegacyMixinAp.get() == false
+	}
+}
+
 repositories {
 	// Add repositories to retrieve artifacts from in here.
 	// You should only use this when depending on other mods because
