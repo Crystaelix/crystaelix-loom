@@ -279,7 +279,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				if (!mixinConfigs.isEmpty()) {
 					for (String config : mixinConfigs) {
 						launchConfig
-								.argument("-mixin.config")
+								.argument("--mixin.config")
 								.argument(config);
 					}
 				}
