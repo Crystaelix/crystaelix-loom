@@ -214,6 +214,9 @@ public class Constants {
 		public static final String CPW_FML_TWEAKER = "cpw.mods.fml.common.launcher.FMLTweaker";
 		public static final String FML_SERVER_TWEAKER = "net.minecraftforge.fml.common.launcher.FMLServerTweaker";
 		public static final String CPW_FML_SERVER_TWEAKER = "cpw.mods.fml.common.launcher.FMLServerTweaker";
+		public static final String MIXIN_TWEAKER = "org.spongepowered.asm.launch.MixinTweaker";
 		public static final String ACCESS_TRANSFORMERS_MANIFEST_KEY = "FMLAT";
+		public static final String TWEAK_CLASS_MANIFEST_KEY = "TweakClass";
+		public static final String FORCE_LOAD_AS_MOD_MANIFEST_KEY = "ForceLoadAsMod";
 	}
 }

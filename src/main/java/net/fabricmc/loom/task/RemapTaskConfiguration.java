@@ -125,6 +125,10 @@ public abstract class RemapTaskConfiguration implements Runnable {
 					getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class, task -> {
 						task.manifest(manifest -> {
 							manifest.attributes(Map.of(Constants.Forge.MIXIN_CONFIGS_MANIFEST_KEY, String.join(",", mixinConfigs)));
+
+							if (extension.isLegacyForgeLike() && !manifest.getAttributes().containsKey(Constants.LegacyForge.TWEAK_CLASS_MANIFEST_KEY)) {
+								manifest.attributes(Map.of(Constants.LegacyForge.TWEAK_CLASS_MANIFEST_KEY, Constants.LegacyForge.MIXIN_TWEAKER, Constants.LegacyForge.FORCE_LOAD_AS_MOD_MANIFEST_KEY, "true"));
+							}
 						});
 					});
 				}
