@@ -76,8 +76,6 @@ public abstract class MixinExtensionApiImpl implements MixinExtensionAPI {
 
 	@Override
 	public Property<String> getRefmapTargetNamespace() {
-		if (!getUseLegacyMixinAp().get()) throw new IllegalStateException("You need to set useLegacyMixinAp = true to configure Mixin annotation processor.");
-
 		return refmapTargetNamespace;
 	}
 
