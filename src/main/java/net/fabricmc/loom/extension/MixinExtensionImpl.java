@@ -27,6 +27,7 @@ package net.fabricmc.loom.extension;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -65,10 +66,10 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 	}
 
 	private String getDefaultMixinRefmapName() {
-		String defaultRefmapName = project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get() + ".refmap.json";
+		String defaultRefmapName = project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get().toLowerCase(Locale.ROOT) + ".refmap.json";
 
 		if (project.getRootProject() != project) {
-			final String archivesName = project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get();
+			final String archivesName = project.getExtensions().getByType(BasePluginExtension.class).getArchivesName().get().toLowerCase(Locale.ROOT);
 			final String path = project.getPath().substring(1).replace(':', '_');
 			defaultRefmapName = "%s.%s.refmap.json".formatted(archivesName, path);
 		}
