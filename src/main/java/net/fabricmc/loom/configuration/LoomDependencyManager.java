@@ -45,9 +45,9 @@ public class LoomDependencyManager {
 
 		if (extension.getInstallerData() == null && !extension.isForgeLike()) {
 			if (extension.isQuilt()) {
-				project.getLogger().warn("quilt_installer.json not found in dependencies!");
+				project.getLogger().info("quilt_installer.json not found in dependencies!");
 			} else {
-				project.getLogger().warn("fabric-installer.json not found in dependencies!");
+				project.getLogger().info("fabric-installer.json not found in dependencies!");
 			}
 		}
 	}
