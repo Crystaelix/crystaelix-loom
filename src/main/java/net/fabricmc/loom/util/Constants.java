@@ -165,6 +165,7 @@ public class Constants {
 		@ApiStatus.Experimental
 		public static final String SANDBOX = "fabric.loom.experimental.sandbox";
 		public static final String ALLOW_MISMATCHED_PLATFORM_VERSION = "loom.allowMismatchedPlatformVersion";
+		public static final String IGNORE_DEPENDENCY_LOOM_VERSION_VALIDATION = "loom.ignoreDependencyLoomVersionValidation";
 	}
 
 	public static final class Manifest {

@@ -38,6 +38,7 @@ import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
 import com.google.gson.JsonObject;
+import org.gradle.api.Project;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradlePlugin;
@@ -46,6 +47,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 
 // ARCH: isFabricMod means "is mod on current platform"
 public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequirements, @Nullable InstallerData installerData, MixinRemapType mixinRemapType, List<String> knownIdyBsms) {
@@ -55,10 +57,10 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 	private static final String QUILT_INSTALLER_PATH = "quilt_installer.json";
 
 	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion) throws IOException {
-		return create(artifact, currentLoomVersion, ModPlatform.FABRIC, null);
+		return create(null, artifact, currentLoomVersion, ModPlatform.FABRIC, null);
 	}
 
-	public static ArtifactMetadata create(ArtifactRef artifact, String currentLoomVersion, ModPlatform platform, @Nullable Boolean forcesStaticMixinRemap) throws IOException {
+	public static ArtifactMetadata create(@Nullable Project project, ArtifactRef artifact, String currentLoomVersion, ModPlatform platform, @Nullable Boolean forcesStaticMixinRemap) throws IOException {
 		boolean isFabricMod;
 		RemapRequirements remapRequirements = RemapRequirements.DEFAULT;
 		InstallerData installerData = null;
@@ -101,7 +103,7 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 				}
 
 				if (loomVersion != null && refmapRemapType == MixinRemapType.STATIC) {
-					validateLoomVersion(loomVersion, currentLoomVersion);
+					validateLoomVersion(loomVersion, currentLoomVersion, GradleUtils.getBooleanProperty(project, Constants.Properties.IGNORE_DEPENDENCY_LOOM_VERSION_VALIDATION));
 				}
 
 				if (knownIndyBsmsValue != null) {
@@ -123,7 +125,7 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 
 	// Validates that the version matches or is less than the current loom version
 	// This is only done for jars with tiny-remapper remapped mixins.
-	private static void validateLoomVersion(String version, String currentLoomVersion) {
+	private static void validateLoomVersion(String version, String currentLoomVersion, boolean lenient) {
 		if ("0.0.0+unknown".equals(currentLoomVersion)) {
 			// Unknown version, skip validation. This is the case when running from source (tests)
 			return;
@@ -138,6 +140,11 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 			final int currentVersionPart = Integer.parseInt(currentVersionParts[i]);
 
 			if (versionPart > currentVersionPart) {
+				if (lenient) {
+					System.err.printf("Mod was built with a newer version of Loom (%s), you are using Loom (%s)%n", version, currentLoomVersion);
+					return;
+				}
+
 				throw new IllegalStateException("Mod was built with a newer version of Loom (%s), you are using Loom (%s)".formatted(version, currentLoomVersion));
 			} else if (versionPart < currentVersionPart) {
 				// Older version, no need to check further
