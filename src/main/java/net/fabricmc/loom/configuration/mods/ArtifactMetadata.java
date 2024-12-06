@@ -102,7 +102,8 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 				}
 
 				if (loomVersion != null && refmapRemapType == MixinRemapType.STATIC) {
-					validateLoomVersion(loomVersion, currentLoomVersion, GradleUtils.getBooleanProperty(project, Constants.Properties.IGNORE_DEPENDENCY_LOOM_VERSION_VALIDATION));
+					final boolean lenient = project != null && GradleUtils.getBooleanProperty(project, Constants.Properties.IGNORE_DEPENDENCY_LOOM_VERSION_VALIDATION);
+					validateLoomVersion(loomVersion, currentLoomVersion, lenient);
 				}
 
 				if (knownIndyBsmsValue != null) {
