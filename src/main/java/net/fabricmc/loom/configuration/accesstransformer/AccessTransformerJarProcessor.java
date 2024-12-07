@@ -97,6 +97,7 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 			final byte[] bytes;
 
 			try {
+				// TODO: Shouldn't we check for the mods.toml AT list on Neo?
 				bytes = localMod.getSource().read(Constants.Forge.ACCESS_TRANSFORMER_PATH);
 			} catch (FileNotFoundException | NoSuchFileException e) {
 				continue;
