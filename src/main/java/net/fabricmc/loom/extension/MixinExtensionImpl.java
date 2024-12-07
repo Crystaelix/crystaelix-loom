@@ -61,10 +61,7 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 
 	@Override
 	public Property<String> getDefaultRefmapName() {
-		// Arch: We need to access afterEvaluate state in useLegacyMixinAp's convention, so let's not query it.
-		// Otherwise, this property can't be set in a buildscript without afterEvaluate.
-		// https://github.com/architectury/architectury-loom/issues/242
-		// if (!super.getUseLegacyMixinAp().get()) throw new IllegalStateException("You need to set useLegacyMixinAp = true to configure Mixin annotation processor.");
+		checkMixinApEnabled();
 
 		return defaultRefmapName;
 	}
@@ -84,7 +81,7 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 
 	@Override
 	protected PatternSet add0(SourceSet sourceSet, Provider<String> refmapName) {
-		if (!super.getUseLegacyMixinAp().get()) throw new IllegalStateException("You need to set useLegacyMixinAp = true to configure Mixin annotation processor.");
+		checkMixinApEnabled();
 
 		PatternSet pattern = new PatternSet().setIncludes(Collections.singletonList("**/*.json"));
 		MixinExtension.setMixinInformationContainer(sourceSet, new MixinExtension.MixinInformationContainer(sourceSet, refmapName, pattern));
