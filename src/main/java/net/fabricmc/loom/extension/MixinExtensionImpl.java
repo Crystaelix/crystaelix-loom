@@ -61,7 +61,10 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 
 	@Override
 	public Property<String> getDefaultRefmapName() {
-		if (!super.getUseLegacyMixinAp().get()) throw new IllegalStateException("You need to set useLegacyMixinAp = true to configure Mixin annotation processor.");
+		// Arch: We need to access afterEvaluate state in useLegacyMixinAp's convention, so let's not query it.
+		// Otherwise, this property can't be set in a buildscript without afterEvaluate.
+		// https://github.com/architectury/architectury-loom/issues/242
+		// if (!super.getUseLegacyMixinAp().get()) throw new IllegalStateException("You need to set useLegacyMixinAp = true to configure Mixin annotation processor.");
 
 		return defaultRefmapName;
 	}
