@@ -59,7 +59,7 @@ class ForgeRunConfigTest extends Specification implements GradleProjectTestTrait
 		""".stripIndent()
 
 		when:
-		def result = gradle.run(task: "verifyRunConfigs")
+		def result = gradle.run(task: "verifyRunConfigs", configurationCache: false)
 
 		then:
 		result.task(":verifyRunConfigs").outcome == SUCCESS
@@ -121,7 +121,7 @@ class ForgeRunConfigTest extends Specification implements GradleProjectTestTrait
 		'''.stripIndent()
 
 		when:
-		def result = gradle.run(task: "verifyRunConfigs")
+		def result = gradle.run(task: "verifyRunConfigs", configurationCache: false)
 
 		then:
 		result.task(":verifyRunConfigs").outcome == SUCCESS

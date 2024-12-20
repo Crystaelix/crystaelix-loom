@@ -41,7 +41,6 @@ import org.gradle.api.configuration.BuildFeatures;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.ListProperty;
-import org.gradle.api.provider.Provider;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.ForgeExtensionAPI;
@@ -57,17 +56,16 @@ import net.fabricmc.loom.configuration.providers.mappings.IntermediaryMappingsPr
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.mappings.NoOpIntermediateMappingsProvider;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryProcessorManager;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.IntermediaryMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
-import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.download.Download;
 import net.fabricmc.loom.util.download.DownloadBuilder;
-import net.fabricmc.loom.util.gradle.GradleUtils;
 
 public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implements LoomGradleExtension {
 	private final Project project;
@@ -78,6 +76,7 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	private final List<AccessWidenerFile> transitiveAccessWideners = new ArrayList<>();
 
 	private LoomDependencyManager dependencyManager;
+	private MinecraftMetadataProvider metadataProvider;
 	private MinecraftProvider minecraftProvider;
 	private MappingConfiguration mappingConfiguration;
 	private NamedMinecraftProvider<?> namedMinecraftProvider;
@@ -86,9 +85,7 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	private MojangMappedMinecraftProvider<?> mojangMappedMinecraftProvider;
 	private InstallerData installerData;
 	private boolean refreshDeps;
-	private final Provider<Boolean> multiProjectOptimisation;
 	private final ListProperty<LibraryProcessorManager.LibraryProcessorFactory> libraryProcessorFactories;
-	private final LoomProblemReporter problemReporter;
 	private final boolean configurationCacheActive;
 	private final boolean isolatedProjectsActive;
 
@@ -124,7 +121,6 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		});
 
 		refreshDeps = manualRefreshDeps();
-		multiProjectOptimisation = GradleUtils.getBooleanPropertyProvider(project, Constants.Properties.MULTI_PROJECT_OPTIMISATION);
 		libraryProcessorFactories = project.getObjects().listProperty(LibraryProcessorManager.LibraryProcessorFactory.class);
 		libraryProcessorFactories.addAll(LibraryProcessorManager.DEFAULT_LIBRARY_PROCESSORS);
 		libraryProcessorFactories.finalizeValueOnRead();
@@ -132,24 +128,13 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		configurationCacheActive = getBuildFeatures().getConfigurationCache().getActive().get();
 		isolatedProjectsActive = getBuildFeatures().getIsolatedProjects().getActive().get();
 
-		// Fundamentally impossible to support multi-project optimisation with the configuration cache and/or isolated projects.
-		if (multiProjectOptimisation.get() && configurationCacheActive) {
-			throw new UnsupportedOperationException("Multi-project optimisation is not supported with the configuration cache");
-		}
-
-		if (multiProjectOptimisation.get() && isolatedProjectsActive) {
-			throw new UnsupportedOperationException("Isolated projects are not supported with multi-project optimisation");
-		}
-
-		if (configurationCacheActive) {
-			project.getLogger().warn("Loom support for the Gradle configuration cache is highly experimental and may not work as expected. Please report any issues you encounter.");
-		}
-
 		if (refreshDeps) {
 			project.getLogger().lifecycle("Refresh dependencies is in use, loom will be significantly slower.");
 		}
 
-		problemReporter = project.getObjects().newInstance(LoomProblemReporter.class);
+		if (isolatedProjectsActive) {
+			project.getLogger().lifecycle("Isolated projects is enabled, Loom support is highly experimental, not all features will be enabled.");
+		}
 	}
 
 	@Override
@@ -170,6 +155,16 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	@Override
 	public LoomDependencyManager getDependencyManager() {
 		return Objects.requireNonNull(dependencyManager, "Cannot get LoomDependencyManager before it has been setup");
+	}
+
+	@Override
+	public MinecraftMetadataProvider getMetadataProvider() {
+		return Objects.requireNonNull(metadataProvider, "Cannot get MinecraftMetadataProvider before it has been setup");
+	}
+
+	@Override
+	public void setMetadataProvider(MinecraftMetadataProvider metadataProvider) {
+		this.metadataProvider = metadataProvider;
 	}
 
 	@Override
@@ -316,11 +311,6 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	}
 
 	@Override
-	public boolean multiProjectOptimisation() {
-		return multiProjectOptimisation.getOrElse(false);
-	}
-
-	@Override
 	public ListProperty<LibraryProcessorManager.LibraryProcessorFactory> getLibraryProcessors() {
 		return libraryProcessorFactories;
 	}
@@ -349,13 +339,13 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	}
 
 	@Override
-	public LoomProblemReporter getProblemReporter() {
-		return problemReporter;
+	public boolean isConfigurationCacheActive() {
+		return configurationCacheActive;
 	}
 
 	@Override
-	public boolean isConfigurationCacheActive() {
-		return configurationCacheActive;
+	public boolean isProjectIsolationActive() {
+		return isolatedProjectsActive;
 	}
 
 	@Override

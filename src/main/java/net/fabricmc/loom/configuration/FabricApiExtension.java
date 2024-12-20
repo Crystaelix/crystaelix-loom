@@ -44,17 +44,16 @@ import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Property;
-import org.gradle.api.tasks.Delete;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.SourceSetContainer;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.jvm.tasks.Jar;
-import org.gradle.language.base.plugins.LifecycleBasePlugin;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.util.download.DownloadException;
 import net.fabricmc.loom.util.fmj.FabricModJson;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
@@ -112,6 +111,7 @@ public abstract class FabricApiExtension {
 		settings.getCreateSourceSet().convention(false);
 		settings.getStrictValidation().convention(false);
 		settings.getAddToResources().convention(true);
+		settings.getClient().convention(false);
 
 		action.execute(settings);
 
@@ -133,33 +133,23 @@ public abstract class FabricApiExtension {
 			jar.exclude(".cache/**");
 		});
 
-		taskContainer.getByName(LifecycleBasePlugin.CLEAN_TASK_NAME, task -> {
-			Delete clean = (Delete) task;
-			clean.delete(outputDirectory);
-		});
-
 		if (settings.getCreateSourceSet().get()) {
+			final boolean isClientAndSplit = extension.areEnvironmentSourceSetsSplit() && settings.getClient().get();
+
 			SourceSetContainer sourceSets = SourceSetHelper.getSourceSets(getProject());
 
-			// Create the new datagen sourceset, depend on the main sourceset.
+			// Create the new datagen sourceset, depend on the main or client sourceset.
 			SourceSet dataGenSourceSet = sourceSets.create(DATAGEN_SOURCESET_NAME, sourceSet -> {
-				sourceSet.setCompileClasspath(
-							sourceSet.getCompileClasspath()
-								.plus(mainSourceSet.getOutput())
-				);
+				dependsOn(sourceSet, mainSourceSet);
 
-				sourceSet.setRuntimeClasspath(
-							sourceSet.getRuntimeClasspath()
-									.plus(mainSourceSet.getOutput())
-				);
-
-				extendsFrom(getProject(), sourceSet.getCompileClasspathConfigurationName(), mainSourceSet.getCompileClasspathConfigurationName());
-				extendsFrom(getProject(), sourceSet.getRuntimeClasspathConfigurationName(), mainSourceSet.getRuntimeClasspathConfigurationName());
+				if (isClientAndSplit) {
+					dependsOn(sourceSet, SourceSetHelper.getSourceSetByName(MinecraftSourceSets.Split.CLIENT_ONLY_SOURCE_SET_NAME, getProject()));
+				}
 			});
 
 			settings.getModId().convention(getProject().provider(() -> {
 				try {
-					final FabricModJson fabricModJson = FabricModJsonFactory.createFromSourceSetsNullable(dataGenSourceSet);
+					final FabricModJson fabricModJson = FabricModJsonFactory.createFromSourceSetsNullable(getProject(), dataGenSourceSet);
 
 					if (fabricModJson == null) {
 						throw new RuntimeException("Could not find a fabric.mod.json file in the data source set or a value for DataGenerationSettings.getModId()");
@@ -181,7 +171,7 @@ public abstract class FabricApiExtension {
 
 		if (settings.getCreateRunConfiguration().get()) {
 			extension.getRunConfigs().create("datagen", run -> {
-				run.inherit(extension.getRunConfigs().getByName("server"));
+				run.inherit(extension.getRunConfigs().getByName(settings.getClient().get() ? "client" : "server"));
 				run.setConfigName("Data Generation");
 
 				run.property("fabric-api.datagen");
@@ -199,6 +189,11 @@ public abstract class FabricApiExtension {
 				if (settings.getCreateSourceSet().get()) {
 					run.source(DATAGEN_SOURCESET_NAME);
 				}
+			});
+
+			// Add the output directory as an output allowing the task to be skipped.
+			getProject().getTasks().named("runDatagen", task -> {
+				task.getOutputs().dir(outputDirectory);
 			});
 		}
 	}
@@ -235,6 +230,11 @@ public abstract class FabricApiExtension {
 		 * Contains a boolean property indicating whether the generated resources will be automatically added to the main sourceset.
 		 */
 		Property<Boolean> getAddToResources();
+
+		/**
+		 * Contains a boolean property indicating whether data generation will be compiled and ran with the client.
+		 */
+		Property<Boolean> getClient();
 	}
 
 	private String getDependencyNotation(String moduleName, String fabricApiVersion) {
@@ -325,5 +325,20 @@ public abstract class FabricApiExtension {
 		configurations.named(name, configuration -> {
 			configuration.extendsFrom(configurations.getByName(extendsFrom));
 		});
+	}
+
+	private void dependsOn(SourceSet sourceSet, SourceSet other) {
+		sourceSet.setCompileClasspath(
+				sourceSet.getCompileClasspath()
+						.plus(other.getOutput())
+		);
+
+		sourceSet.setRuntimeClasspath(
+				sourceSet.getRuntimeClasspath()
+						.plus(other.getOutput())
+		);
+
+		extendsFrom(getProject(), sourceSet.getCompileClasspathConfigurationName(), other.getCompileClasspathConfigurationName());
+		extendsFrom(getProject(), sourceSet.getRuntimeClasspathConfigurationName(), other.getRuntimeClasspathConfigurationName());
 	}
 }

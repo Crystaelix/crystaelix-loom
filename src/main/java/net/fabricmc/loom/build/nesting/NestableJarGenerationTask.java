@@ -51,14 +51,12 @@ import org.gradle.api.artifacts.type.ArtifactTypeDefinition;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.provider.MapProperty;
-import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.OutputDirectory;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
-import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -86,13 +84,8 @@ public abstract class NestableJarGenerationTask extends AbstractLoomTask {
 	@Input
 	protected abstract MapProperty<String, Metadata> getJarIds();
 
-	@ApiStatus.Internal
-	@Input
-	protected abstract Property<ModPlatform> getModPlatform();
-
 	@Inject
 	public NestableJarGenerationTask() {
-		getModPlatform().value(getExtension().getPlatform()).finalizeValue();
 	}
 
 	@TaskAction

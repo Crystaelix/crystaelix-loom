@@ -50,6 +50,7 @@ import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryProcessorManager;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.IntermediaryMinecraftProvider;
@@ -57,7 +58,6 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
 import net.fabricmc.loom.extension.LoomFiles;
-import net.fabricmc.loom.extension.LoomProblemReporter;
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.extension.RemapperExtensionHolder;
 import net.fabricmc.loom.util.ModPlatform;
@@ -80,6 +80,10 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	void setDependencyManager(LoomDependencyManager dependencyManager);
 
 	LoomDependencyManager getDependencyManager();
+
+	MinecraftMetadataProvider getMetadataProvider();
+
+	void setMetadataProvider(MinecraftMetadataProvider metadataProvider);
 
 	MinecraftProvider getMinecraftProvider();
 
@@ -141,23 +145,15 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 
 	void setRefreshDeps(boolean refreshDeps);
 
-	/**
-	 * If true, multi-project optimisation mode is enabled. This mode makes builds with many Loom projects
-	 * much faster by increasing sharing and disabling some functionality.
-	 *
-	 * <p>You can enable it by setting the Gradle property {@code fabric.loom.multiProjectOptimisation} to {@code true}.
-	 */
-	boolean multiProjectOptimisation();
-
 	ListProperty<LibraryProcessorManager.LibraryProcessorFactory> getLibraryProcessors();
 
 	ListProperty<RemapperExtensionHolder> getRemapperExtensions();
 
 	Collection<LayeredMappingsFactory> getLayeredMappingFactories();
 
-	LoomProblemReporter getProblemReporter();
-
 	boolean isConfigurationCacheActive();
+
+	boolean isProjectIsolationActive();
 
 	// ===================
 	//  Architectury Loom

@@ -42,6 +42,7 @@ import com.google.common.hash.Hashing;
 import com.google.common.io.MoreFiles;
 import dev.architectury.at.AccessTransformSet;
 import dev.architectury.at.io.AccessTransformFormats;
+import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -59,7 +60,6 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.ExceptionUtil;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.fmj.FabricModJson;
 
@@ -175,11 +175,11 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 
 		configuration.apply(args);
 
-		ForgeToolExecutor.exec(project, spec -> {
+		ForgeToolValueSource.exec(project, spec -> {
 			spec.getMainClass().set(mainClass);
 			spec.setArgs(args);
 			spec.setClasspath(classpath);
-		}).rethrowFailure().assertNormalExitValue();
+		});
 	}
 
 	private static LoomVersions chooseAccessTransformer(Project project) {

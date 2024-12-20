@@ -33,7 +33,6 @@ import org.gradle.util.GradleVersion
 import spock.lang.Shared
 
 import net.fabricmc.loom.test.LoomTestConstants
-import net.fabricmc.loom.util.Constants
 import net.fabricmc.loom.util.ZipUtils
 
 trait GradleProjectTestTrait {
@@ -167,12 +166,22 @@ trait GradleProjectTestTrait {
 				args << options.task
 			}
 
-			if (options.configurationCache || System.getenv("LOOM_TEST_CONFIGURATION_CACHE") != null) {
+			boolean configurationCache = true
+
+			if (options.containsKey("configurationCache")) {
+				configurationCache = options.configurationCache
+			}
+
+			if (configurationCache) {
 				args << "--configuration-cache"
 			}
 
 			if (options.isloatedProjects) {
 				args << "-Dorg.gradle.unsafe.isolated-projects=true"
+			}
+
+			if (options.configureOnDemand) {
+				args << "--configure-on-demand"
 			}
 
 			args.addAll(options.tasks ?: [])
@@ -273,7 +282,7 @@ trait GradleProjectTestTrait {
 			return file
 		}
 
-		void buildSrc(String name) {
+		void buildSrc(String name, boolean apply = true) {
 			useBuildSrc = true
 
 			def buildSrcDir = new File(projectDir, "buildSrc")
@@ -300,24 +309,26 @@ trait GradleProjectTestTrait {
                 rootProject.name='loom-test-plugin'
             '''
 
-			// Patch the new plugin into the end of the plugins block
-			def matcher = buildGradle.text =~ /(?s)plugins \{(?<ids>.*?)}/
-			assert matcher.find()
-			def ids = matcher.group("ids")
-
-			def pluginBlock = """
-                plugins {
-                    ${ids}
-                    id 'loom-test-plugin'
-                }
-            """
-
-			buildGradle.text = buildGradle.text.replaceAll("(?s)(plugins \\{.*?})", pluginBlock)
-
 			def sourceSrc = new File("src/test/groovy/net/fabricmc/loom/test/integration/buildSrc/" + name)
 			def targetSrc = new File(buildSrcDir, "src/main/groovy/net/fabricmc/loom/test/integration/buildSrc/" + name)
 
 			FileUtils.copyDirectory(sourceSrc, targetSrc)
+
+			if (apply) {
+				// Patch the new plugin into the end of the plugins block
+				def matcher = buildGradle.text =~ /(?s)plugins \{(?<ids>.*?)}/
+				assert matcher.find()
+				def ids = matcher.group("ids")
+
+				def pluginBlock = """
+					plugins {
+						${ids}
+						id 'loom-test-plugin'
+					}
+				"""
+
+				buildGradle.text = buildGradle.text.replaceAll("(?s)(plugins \\{.*?})", pluginBlock)
+			}
 		}
 
 		void writeBuildSrcDeps(GradleRunner runner) {
@@ -331,10 +342,6 @@ trait GradleProjectTestTrait {
                     ${dependencies}
                 }
             """
-		}
-
-		void enableMultiProjectOptimisation() {
-			getGradleProperties() << "\n${Constants.Properties.MULTI_PROJECT_OPTIMISATION}=true"
 		}
 	}
 }

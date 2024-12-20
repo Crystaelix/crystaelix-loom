@@ -17,6 +17,7 @@ on:
       - 'dev/1.5'
       - 'dev/1.6'
       - 'dev/1.7'
+      - 'dev/1.9'
 
 jobs:
   build:

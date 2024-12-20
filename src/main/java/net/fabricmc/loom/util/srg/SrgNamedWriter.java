@@ -31,12 +31,13 @@ import java.nio.file.Path;
 
 import org.cadixdev.lorenz.MappingSet;
 import org.cadixdev.lorenz.io.srg.SrgWriter;
+import org.gradle.api.logging.Logger;
 
 import net.fabricmc.lorenztiny.TinyMappingsReader;
 import net.fabricmc.mappingio.tree.MappingTree;
 
 public class SrgNamedWriter {
-	public static void writeTo(Path srgFile, MappingTree mappings, String from, String to, boolean includeIdentityMappings) throws IOException {
+	public static void writeTo(Logger logger, Path srgFile, MappingTree mappings, String from, String to, boolean includeIdentityMappings) throws IOException {
 		Files.deleteIfExists(srgFile);
 
 		try (SrgWriter writer = newSrgWriter(Files.newBufferedWriter(srgFile), includeIdentityMappings)) {

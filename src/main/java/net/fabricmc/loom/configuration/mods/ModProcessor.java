@@ -64,7 +64,7 @@ import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.kotlin.KotlinClasspathService;
 import net.fabricmc.loom.util.kotlin.KotlinRemapperClassloader;
-import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.AtRemapper;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
@@ -82,12 +82,12 @@ public class ModProcessor {
 
 	private final Project project;
 	private final Configuration sourceConfiguration;
-	private final SharedServiceManager serviceManager;
+	private final ServiceFactory serviceFactory;
 
-	public ModProcessor(Project project, Configuration sourceConfiguration, SharedServiceManager serviceManager) {
+	public ModProcessor(Project project, Configuration sourceConfiguration, ServiceFactory serviceFactory) {
 		this.project = project;
 		this.sourceConfiguration = sourceConfiguration;
-		this.serviceManager = serviceManager;
+		this.serviceFactory = serviceFactory;
 	}
 
 	public void processMods(List<ModDependency> remapList) throws IOException {
@@ -175,7 +175,7 @@ public class ModProcessor {
 		}
 
 		MappingOption mappingOption = MappingOption.forPlatform(extension);
-		MemoryMappingTree mappings = mappingConfiguration.getMappingsService(serviceManager, mappingOption).getMappingTree();
+		MemoryMappingTree mappings = mappingConfiguration.getMappingsService(project, serviceFactory, mappingOption).getMappingTree();
 		LoggerFilter.replaceSystemOut();
 
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
@@ -185,7 +185,7 @@ public class ModProcessor {
 				.extraAnalyzeVisitor(AccessTransformerAnalyzeVisitorProvider.createFromMods(remapList, extension.getPlatform().get()))
 				.extraAnalyzeVisitor(AccessWidenerAnalyzeVisitorProvider.createFromMods(fromM, remapList, extension.getPlatform().get()));
 
-		final KotlinClasspathService kotlinClasspathService = KotlinClasspathService.getOrCreateIfRequired(serviceManager, project);
+		final KotlinClasspathService kotlinClasspathService = serviceFactory.getOrNull(KotlinClasspathService.createOptions(project));
 		KotlinRemapperClassloader kotlinRemapperClassloader = null;
 
 		if (kotlinClasspathService != null) {
@@ -211,7 +211,7 @@ public class ModProcessor {
 		}
 
 		for (RemapperExtensionHolder holder : extension.getRemapperExtensions().get()) {
-			holder.apply(builder, fromM, toM, project.getObjects());
+			holder.apply(builder, fromM, toM);
 		}
 
 		final TinyRemapper remapper = builder.build();

@@ -36,7 +36,7 @@ public abstract class RunGameTask extends AbstractRunTask {
 	@Inject
 	public RunGameTask(RunConfigSettings settings) {
 		super(proj -> {
-			ForgeSourceRootHelper.addForgeSourceRoots(proj, settings, (modSources, project) -> SourceSetHelper.getGradleClasspath(modSources));
+			ForgeSourceRootHelper.addForgeSourceRoots(proj, settings, SourceSetHelper::getGradleClasspath);
 			return RunConfig.runConfig(proj, settings);
 		});
 

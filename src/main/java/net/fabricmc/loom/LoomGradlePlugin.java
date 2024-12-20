@@ -42,7 +42,6 @@ import net.fabricmc.loom.configuration.CompileConfiguration;
 import net.fabricmc.loom.configuration.FabricApiExtension;
 import net.fabricmc.loom.configuration.LoomConfigurations;
 import net.fabricmc.loom.configuration.MavenPublication;
-import net.fabricmc.loom.configuration.ide.IdeConfiguration;
 import net.fabricmc.loom.configuration.ide.idea.IdeaConfiguration;
 import net.fabricmc.loom.configuration.sandbox.SandboxConfiguration;
 import net.fabricmc.loom.decompilers.DecompilerConfiguration;
@@ -68,7 +67,6 @@ public class LoomGradlePlugin implements BootstrappedPlugin {
 			LoomTasks.class,
 			DecompilerConfiguration.class,
 			IdeaConfiguration.class,
-			IdeConfiguration.class,
 			SandboxConfiguration.class
 	);
 
@@ -101,7 +99,6 @@ public class LoomGradlePlugin implements BootstrappedPlugin {
 		// Apply default plugins
 		project.apply(ImmutableMap.of("plugin", "java-library"));
 		project.apply(ImmutableMap.of("plugin", "eclipse"));
-		project.apply(ImmutableMap.of("plugin", "idea"));
 
 		// Setup extensions
 		project.getExtensions().create(LoomGradleExtensionAPI.class, "loom", LoomGradleExtensionImpl.class, project, LoomFiles.create(project));

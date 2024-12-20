@@ -37,6 +37,7 @@ import codechicken.diffpatch.cli.PatchOperation;
 import codechicken.diffpatch.util.LoggingOutputStream;
 import codechicken.diffpatch.util.PatchMode;
 import com.google.common.base.Stopwatch;
+import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -54,13 +55,13 @@ import net.fabricmc.loom.configuration.providers.forge.mcpconfig.steplogic.Const
 import net.fabricmc.loom.configuration.sources.ForgeSourcesRemapper;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.SourceRemapper;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
-import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
+import net.fabricmc.loom.util.service.ServiceFactory;
 
 // TODO: NeoForge support
+// TODO: Config cache support
 public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 	/**
 	 * The SRG Minecraft file produced by the MCP executor.
@@ -94,7 +95,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 			throw new UnsupportedOperationException("Cannot run Forge's patched decompilation with a processed Minecraft jar");
 		}
 
-		try (var tempFiles = new TempFiles(); var serviceManager = new ScopedSharedServiceManager()) {
+		try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
 			Path cache = tempFiles.directory("loom-decompilation");
 
 			// Transform game jar before decompiling
@@ -109,9 +110,9 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 			getLogger().lifecycle(":applying Forge patches");
 			Path patched = sourcePatch(cache, rawDecompiled);
 			// Step 3: remap
-			remap(patched, serviceManager);
+			remap(patched, serviceFactory);
 			// Step 4: add Forge's own sources
-			ForgeSourcesRemapper.addForgeSources(getProject(), serviceManager, null, getOutputJar().get().getAsFile().toPath());
+			ForgeSourcesRemapper.addForgeSources(getProject(), serviceFactory, null, getOutputJar().get().getAsFile().toPath());
 		}
 	}
 
@@ -159,8 +160,8 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 		return output;
 	}
 
-	private void remap(Path input, SharedServiceManager serviceManager) {
-		SourceRemapper remapper = new SourceRemapper(getProject(), serviceManager, "srg", "named");
+	private void remap(Path input, ServiceFactory serviceFactory) {
+		SourceRemapper remapper = new SourceRemapper(getProject(), serviceFactory, "srg", "named");
 		remapper.scheduleRemapSources(input.toFile(), getOutputJar().get().getAsFile(), false, true, () -> {
 		});
 		remapper.remapAll();
@@ -196,7 +197,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 
 			final FileCollection classpath = DependencyDownloader.download(getProject(), LoomVersions.MERGETOOL.mavenNotation() + ":fatjar", false, true);
 
-			ForgeToolExecutor.exec(getProject(), spec -> {
+			ForgeToolValueSource.exec(getProject(), spec -> {
 				spec.setClasspath(classpath);
 				spec.args(
 						"--strip",

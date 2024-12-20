@@ -55,6 +55,7 @@ import java.util.stream.Stream;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.UserdevConfig;
+import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.util.MappingOption;
 import dev.architectury.loom.util.TempFiles;
 import net.minecraftforge.fart.api.Transformer;
@@ -80,13 +81,11 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.function.FsPathConsumer;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
-import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.mappingio.tree.MappingTree;
@@ -215,15 +214,12 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	public void remapJar() throws Exception {
+	public void remapJar(ServiceFactory serviceFactory) throws Exception {
 		if (dirty) {
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				String sourceNamespace = IntermediaryNamespaces.intermediary(project);
-				remapPatchedJar(serviceManager, minecraftPatchedIntermediateAtJar, minecraftPatchedJar, sourceNamespace, "official");
-				remapCoreMods(minecraftPatchedJar, serviceManager);
-				applyLoomPatchVersion(minecraftPatchedJar);
-			}
-
+			String sourceNamespace = IntermediaryNamespaces.intermediary(project);
+			remapPatchedJar(serviceFactory, minecraftPatchedIntermediateAtJar, minecraftPatchedJar, sourceNamespace, "official");
+			remapCoreMods(minecraftPatchedJar, serviceFactory);
+			applyLoomPatchVersion(minecraftPatchedJar);
 			fillClientExtraJar();
 		}
 
@@ -237,9 +233,9 @@ public class MinecraftPatchedProvider {
 		copyNonClassFiles(minecraftProvider.getMinecraftClientJar().toPath(), minecraftClientExtra);
 	}
 
-	private TinyRemapper buildRemapper(SharedServiceManager serviceManager, Path input, String from, String to) throws IOException {
+	private TinyRemapper buildRemapper(ServiceFactory serviceFactory, Path input, String from, String to) throws IOException {
 		final MappingOption mappingOption = MappingOption.forPlatform(getExtension());
-		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
+		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(project, serviceFactory, mappingOption);
 		MemoryMappingTree mappings = mappingsService.getMappingTree();
 
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
@@ -432,13 +428,13 @@ public class MinecraftPatchedProvider {
 		}, paths -> paths.stream().map(fs::getPath).toList());
 	}
 
-	protected void remapPatchedJar(SharedServiceManager serviceManager, Path mcInput, Path mcOutput, String from, String to) throws Exception {
+	protected void remapPatchedJar(ServiceFactory serviceFactory, Path mcInput, Path mcOutput, String from, String to) throws Exception {
 		logger.lifecycle(":remapping minecraft (TinyRemapper, {} -> {})", from, to);
 		Path forgeJar = getForgeJar().toPath();
 		Path forgeUserdevJar = getForgeUserdevJar().toPath();
 		Files.deleteIfExists(mcOutput);
 
-		TinyRemapper remapper = buildRemapper(serviceManager, mcInput, from, to);
+		TinyRemapper remapper = buildRemapper(serviceFactory, mcInput, from, to);
 
 		try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(mcOutput).build()) {
 			outputConsumer.addNonClassFiles(mcInput);
@@ -490,9 +486,9 @@ public class MinecraftPatchedProvider {
 		logger.lifecycle(":merged forge in" + stopwatch.stop());
 	}
 
-	private void remapCoreMods(Path patchedJar, SharedServiceManager serviceManager) throws Exception {
+	private void remapCoreMods(Path patchedJar, ServiceFactory serviceFactory) throws Exception {
 		final MappingOption mappingOption = MappingOption.forPlatform(getExtension());
-		final TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
+		final TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(project, serviceFactory, mappingOption);
 		final MappingTree mappings = mappingsService.getMappingTree();
 		CoreModClassRemapper.remapJar(project, getExtension().getPlatform().get(), patchedJar, mappings);
 	}
@@ -513,7 +509,7 @@ public class MinecraftPatchedProvider {
 	}
 
 	private void patchJars(Path clean, Path output, Path patches) {
-		ForgeToolExecutor.exec(project, spec -> {
+		ForgeToolValueSource.exec(project, spec -> {
 			UserdevConfig.BinaryPatcherConfig config = getExtension().getForgeUserdevProvider().getConfig().binpatcher();
 			final FileCollection download = DependencyDownloader.download(project, config.dependency());
 			spec.classpath(download);

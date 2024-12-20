@@ -46,6 +46,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.library.MinecraftLibr
 import net.fabricmc.loom.configuration.providers.minecraft.library.processors.RuntimeLog4jLibraryProcessor;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.Platform;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 
 public class MinecraftLibraryProvider {
 	private static final Platform platform = Platform.CURRENT;
@@ -121,14 +122,26 @@ public class MinecraftLibraryProvider {
 	}
 
 	private List<Library> processLibraries(List<Library> libraries) {
-		final JavaVersion javaVersion = project.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
-		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), javaVersion);
+		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), getTargetRuntimeJavaVersion());
 
 		if (libraryContext.usesLWJGL3()) {
 			isLWJGL3 = true;
 		}
 
 		return processorManager.processLibraries(libraries, libraryContext);
+	}
+
+	private JavaVersion getTargetRuntimeJavaVersion() {
+		final Object property = GradleUtils.getProperty(project, Constants.Properties.RUNTIME_JAVA_COMPATIBILITY_VERSION);
+
+		if (property != null) {
+			// This is very much a last ditch effort to allow users to set the runtime java version
+			// It's not recommended and will likely cause support confusion if it has been changed without good reason.
+			project.getLogger().warn("Runtime java compatibility version has manually been set to: %s".formatted(property));
+			return JavaVersion.toVersion(property);
+		}
+
+		return JavaVersion.current();
 	}
 
 	private void applyClientLibrary(Library library) {

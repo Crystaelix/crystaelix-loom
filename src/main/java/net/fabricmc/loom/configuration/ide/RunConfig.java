@@ -75,7 +75,7 @@ public class RunConfig {
 	public List<String> vmArgs = new ArrayList<>();
 	public List<String> programArgs = new ArrayList<>();
 	public List<String> vscodeBeforeRun = new ArrayList<>();
-	public SourceSet sourceSet;
+	public transient SourceSet sourceSet;
 	public Map<String, Object> environmentVariables;
 	public String projectName;
 

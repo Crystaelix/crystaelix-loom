@@ -44,12 +44,10 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 		setup:
 		def gradle = gradleProject(
 				repo: "https://github.com/FabricMC/fabric.git",
-				commit: "41bc64cd617f03d49ecc4a4f7788cb65d465415c",
+				commit: "70277babddfaf52ee30013af94764da19473b3b1",
 				version: version,
 				patch: "fabric_api"
 				)
-
-		gradle.enableMultiProjectOptimisation()
 
 		// Disable the mixin ap if needed. Fabric API is a large enough test project to see if something breaks.
 		if (disableMixinAp) {
@@ -65,7 +63,7 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 				.replace('id "fabric-loom" version "1.6.11"', 'id "com.crystaelix.loom"')
 				.replace('"fabric-loom"', '"com.crystaelix.loom"') + mixinApPatch
 
-		def minecraftVersion = "1.21"
+		def minecraftVersion = "1.21.4-pre3"
 		def server = ServerRunner.create(gradle.projectDir, minecraftVersion)
 				.withMod(gradle.getOutputFile("fabric-api-999.0.0.jar"))
 
@@ -82,7 +80,7 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 
 				dependencies {
                     minecraft "com.mojang:minecraft:${minecraftVersion}"
-                    mappings "net.fabricmc:yarn:${minecraftVersion}+build.1:v2"
+                    mappings "net.fabricmc:yarn:${minecraftVersion}+build.2:v2"
 
 					modImplementation "net.fabricmc.fabric-api:fabric-api:999.0.0"
                 }
@@ -100,7 +98,7 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 			"runDatagen",
 			"-x",
 			"runGametest"
-		]) // Note: checkstyle does not appear to like being ran in a test runner
+		], configurationCache: false) // Note: checkstyle does not appear to like being ran in a test runner
 		gradle.printOutputFiles()
 
 		def serverResult = server.run()
@@ -108,7 +106,6 @@ class FabricAPITest extends Specification implements GradleProjectTestTrait {
 
 		then:
 		result.task(":build").outcome == SUCCESS
-		result.task(":prepareRemapJar").outcome == SUCCESS
 
 		def biomeApiJar = new File(gradle.mavenLocalDir, "net/fabricmc/fabric-api/fabric-biome-api-v1/999.0.0/fabric-biome-api-v1-999.0.0.jar")
 		new File(gradle.mavenLocalDir, "net/fabricmc/fabric-api/fabric-biome-api-v1/999.0.0/fabric-biome-api-v1-999.0.0-sources.jar").exists()

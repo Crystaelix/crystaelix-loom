@@ -31,6 +31,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import com.google.common.base.Stopwatch;
+import dev.architectury.loom.forge.tool.ForgeToolExecutor;
 import dev.architectury.loom.legacyforge.CoreModManagerTransformer;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.Project;
@@ -45,10 +46,9 @@ import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.ZipUtils;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
+import net.fabricmc.loom.util.service.ServiceFactory;
 
 public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 	private Path minecraftOfficialJar;
@@ -110,7 +110,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 	}
 
 	@Override
-	public void remapJar() throws Exception {
+	public void remapJar(ServiceFactory serviceFactory) throws Exception {
 		// MergeTool produce classes with hashes that do not match pre FG3 Forge patches.
 		// We instead have to patch split jars first.
 		// We do not strip the client jar because legacy mappings do not contain unobfuscated classes which Forge patches.
@@ -145,10 +145,8 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 			if (dirty || Files.notExists(minecraftPatchedOfficialJar)) {
 				this.dirty = true;
 
-				try (var serviceManager = new ScopedSharedServiceManager()) {
-					mergePatchedJars();
-					mergeForge(minecraftPatchedOfficialJar);
-				}
+				mergePatchedJars();
+				mergeForge(minecraftPatchedOfficialJar);
 			}
 		}
 
@@ -156,10 +154,8 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		if (dirty || Files.notExists(minecraftPatchedIntermediateJar)) {
 			this.dirty = true;
 
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				String targetNamespace = IntermediaryNamespaces.intermediary(project);
-				remapPatchedJar(serviceManager, minecraftPatchedOfficialJar, minecraftPatchedIntermediateJar, "official", targetNamespace);
-			}
+			String targetNamespace = IntermediaryNamespaces.intermediary(project);
+			remapPatchedJar(serviceFactory, minecraftPatchedOfficialJar, minecraftPatchedIntermediateJar, "official", targetNamespace);
 		}
 
 		// Step 3: Access transform
@@ -168,7 +164,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 			accessTransformForge();
 		}
 
-		super.remapJar();
+		super.remapJar(serviceFactory);
 	}
 
 	void mergePatchedJars() throws Exception {

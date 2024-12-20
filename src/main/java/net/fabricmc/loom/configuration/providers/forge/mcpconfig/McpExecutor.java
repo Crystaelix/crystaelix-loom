@@ -44,13 +44,14 @@ import com.google.common.base.Stopwatch;
 import com.google.common.hash.Hashing;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.forge.tool.ForgeToolExecutor;
+import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.logging.LogLevel;
 import org.gradle.api.logging.Logger;
-import org.gradle.process.JavaExecSpec;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
@@ -67,7 +68,6 @@ import net.fabricmc.loom.configuration.providers.forge.mcpconfig.steplogic.StepL
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.steplogic.StripLogic;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.download.DownloadBuilder;
 import net.fabricmc.loom.util.function.CollectionUtil;
 import net.fabricmc.loom.util.gradle.GradleUtils;
@@ -368,8 +368,8 @@ public final class McpExecutor {
 		}
 
 		@Override
-		public void javaexec(Action<? super JavaExecSpec> configurator) {
-			ForgeToolExecutor.exec(project, configurator).rethrowFailure().assertNormalExitValue();
+		public void javaexec(Action<? super ForgeToolExecutor.Settings> configurator) {
+			ForgeToolValueSource.exec(project, configurator);
 		}
 
 		@Override

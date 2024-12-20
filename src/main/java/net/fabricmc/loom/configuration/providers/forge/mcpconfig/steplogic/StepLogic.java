@@ -31,9 +31,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import dev.architectury.loom.forge.tool.ForgeToolExecutor;
 import org.gradle.api.Action;
 import org.gradle.api.logging.Logger;
-import org.gradle.process.JavaExecSpec;
 
 import net.fabricmc.loom.configuration.providers.forge.ConfigValue;
 import net.fabricmc.loom.util.download.DownloadBuilder;
@@ -64,7 +64,7 @@ public interface StepLogic {
 		Path downloadFile(String url) throws IOException;
 		Path downloadDependency(String notation);
 		DownloadBuilder downloadBuilder(String url);
-		void javaexec(Action<? super JavaExecSpec> configurator);
+		void javaexec(Action<? super ForgeToolExecutor.Settings> configurator);
 		Set<File> getMinecraftLibraries();
 
 		default List<String> resolve(List<ConfigValue> configValues) {

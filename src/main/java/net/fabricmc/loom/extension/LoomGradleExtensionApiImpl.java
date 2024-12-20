@@ -79,13 +79,16 @@ import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpecBuil
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.minecraft.ManifestLocations;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
+import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.task.GenerateSourcesTask;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeprecationHelper;
 import net.fabricmc.loom.util.MirrorUtil;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.fmj.FabricModJson;
 import net.fabricmc.loom.util.fmj.FabricModJsonFactory;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 /**
@@ -141,9 +144,9 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 				.empty();
 		this.log4jConfigs = project.files(directories.getDefaultLog4jConfigFile());
 		this.accessWidener = project.getObjects().fileProperty();
-		this.versionsManifests = new ManifestLocations("versions_manifest");
-		this.versionsManifests.addBuiltIn(-2, MirrorUtil.getVersionManifests(project), "versions_manifest");
-		this.versionsManifests.addBuiltIn(-1, MirrorUtil.getExperimentalVersions(project), "experimental_versions_manifest");
+		this.versionsManifests = new ManifestLocations();
+		this.versionsManifests.add("mojang", MirrorUtil.getVersionManifests(project), -2);
+		this.versionsManifests.add("fabric_experimental", MirrorUtil.getExperimentalVersions(project), -1);
 		this.customMetadata = project.getObjects().property(String.class);
 		this.knownIndyBsms = project.getObjects().setProperty(String.class).convention(Set.of(
 				"java/lang/invoke/StringConcatFactory",
@@ -175,7 +178,23 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		this.minecraftJarProcessors.finalizeValueOnRead();
 
 		//noinspection unchecked
-		this.minecraftJarConfiguration = project.getObjects().property((Class<MinecraftJarConfiguration<?, ?, ?>>) (Class<?>) MinecraftJarConfiguration.class).convention(MinecraftJarConfiguration.MERGED);
+		this.minecraftJarConfiguration = project.getObjects().property((Class<MinecraftJarConfiguration<?, ?, ?>>) (Class<?>) MinecraftJarConfiguration.class)
+				.convention(project.provider(() -> {
+					final LoomGradleExtension extension = LoomGradleExtension.get(project);
+					final MinecraftMetadataProvider metadataProvider = extension.getMetadataProvider();
+
+					// if no configuration is selected by the user, attempt to select one
+					// based on the mc version and which sides are present for it
+					if (!metadataProvider.getVersionMeta().downloads().containsKey("server")) {
+						return MinecraftJarConfiguration.CLIENT_ONLY;
+					} else if (!metadataProvider.getVersionMeta().downloads().containsKey("client")) {
+						return MinecraftJarConfiguration.SERVER_ONLY;
+					} else if (metadataProvider.getVersionMeta().isVersionOrNewer(Constants.RELEASE_TIME_1_3)) {
+						return MinecraftJarConfiguration.MERGED;
+					} else {
+						return MinecraftJarConfiguration.LEGACY_MERGED;
+					}
+				}));
 		this.minecraftJarConfiguration.finalizeValueOnRead();
 
 		this.accessWidener.finalizeValueOnRead();
@@ -201,7 +220,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 			interfaceInjection.getEnableDependencyInterfaceInjection().convention(true).finalizeValueOnRead();
 		});
 		this.platform = project.provider(Suppliers.memoize(() -> {
-			Object platformProperty = project.findProperty(PLATFORM_PROPERTY);
+			Object platformProperty = GradleUtils.getProperty(project, PLATFORM_PROPERTY);
 
 			if (platformProperty != null) {
 				ModPlatform platform = ModPlatform.valueOf(Objects.toString(platformProperty).toUpperCase(Locale.ROOT));
@@ -213,7 +232,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 				return platform;
 			}
 
-			Object forgeProperty = project.findProperty(FORGE_PROPERTY);
+			Object forgeProperty = GradleUtils.getProperty(project, FORGE_PROPERTY);
 
 			if (forgeProperty != null) {
 				project.getLogger().warn("Project " + project.getPath() + " is using property " + FORGE_PROPERTY + " to enable forge mode. Please use '" + PLATFORM_PROPERTY + " = forge' instead!");
@@ -325,7 +344,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	@Override
 	public String getModVersion() {
 		try {
-			final FabricModJson fabricModJson = FabricModJsonFactory.createFromSourceSetsNullable(SourceSetHelper.getMainSourceSet(getProject()));
+			final FabricModJson fabricModJson = FabricModJsonFactory.createFromSourceSetsNullable(getProject(), SourceSetHelper.getMainSourceSet(getProject()));
 
 			if (fabricModJson == null) {
 				throw new RuntimeException("Could not find a fabric.mod.json file in the main sourceset");
@@ -493,7 +512,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 			holder = objectFactory.newInstance(RemapperExtensionHolder.class, RemapperParameters.None.INSTANCE);
 		}
 
-		holder.getRemapperExtensionClass().set(remapperExtensionClass);
+		holder.getRemapperExtensionClass().set(remapperExtensionClass.getName());
 		remapperExtensions.add(holder);
 	}
 

@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2016-2020 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,27 +22,39 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.task;
+package net.fabricmc.loom.test.unit.service
 
-import java.io.File;
-import java.io.IOException;
+import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.Property
 
-import org.gradle.api.tasks.TaskAction;
-import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import net.fabricmc.loom.task.service.MappingsService
+import net.fabricmc.loom.test.util.GradleTestUtil
 
-public class CleanEclipseRunsTask extends AbstractLoomTask {
-	@TaskAction
-	public void cleanRuns() throws IOException {
-		EclipseModel eclipseModel = getProject().getExtensions().getByType(EclipseModel.class);
-		File clientRunConfigs = new File(getProject().getRootDir(), eclipseModel.getProject().getName() + "_client.launch");
-		File serverRunConfigs = new File(getProject().getRootDir(), eclipseModel.getProject().getName() + "_server.launch");
+class MappingsServiceTest extends ServiceTestBase {
+	def "get mapping tree"() {
+		given:
+		MappingsService service = factory.get(new TestOptions(
+				mappingsFile: GradleTestUtil.mockRegularFileProperty(new File("src/test/resources/mappings/PosInChunk.mappings")),
+				from: GradleTestUtil.mockProperty("intermediary"),
+				to: GradleTestUtil.mockProperty("named"),
+				))
 
-		if (clientRunConfigs.exists()) {
-			clientRunConfigs.delete();
-		}
+		when:
+		def mappingTree = service.memoryMappingTree
 
-		if (serverRunConfigs.exists()) {
-			serverRunConfigs.delete();
-		}
+		then:
+		mappingTree.getClasses().size() == 2
+
+		service.from == "intermediary"
+		service.to == "named"
+	}
+
+	static class TestOptions implements MappingsService.Options {
+		RegularFileProperty mappingsFile
+		Property<String> from
+		Property<String> to
+		Property<Boolean> remapLocals = GradleTestUtil.mockProperty(false)
+		Property<Boolean> AllowNoneExistent = GradleTestUtil.mockProperty(false)
+		Property<String> serviceClass = serviceClassProperty(MappingsService.TYPE)
 	}
 }

@@ -22,30 +22,31 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.extension;
+package net.fabricmc.loom.util.service;
 
-import javax.inject.Inject;
+import org.gradle.api.Action;
+import org.gradle.api.Project;
+import org.gradle.api.provider.Provider;
 
-import org.gradle.api.problems.ProblemReporter;
-import org.gradle.api.problems.Problems;
-import org.gradle.api.problems.Severity;
-
-public abstract class LoomProblemReporter {
-	private final ProblemReporter problemReporter;
-
-	@Inject
-	public LoomProblemReporter(Problems problems) {
-		this.problemReporter = problems.forNamespace("net.fabricmc.loom");
-	}
-
-	public void reportSelfResolvingDependencyUsage() {
-		problemReporter.reporting(spec -> spec
-				.id("loom-deprecated-selfresolvingdependency", "SelfResolvingDependency is deprecated")
-				.details("SelfResolvingDependency has been deprecated for removal in Gradle 9")
-				.solution("Please replace usages of SelfResolvingDependency")
-				.documentedAt("https://github.com/gradle/gradle/pull/27420")
-				.severity(Severity.WARNING)
-				.stackLocation()
-		);
+/**
+ * A record to hold the options and service class for a service.
+ * @param optionsClass The options class for the service.
+ * @param serviceClass The service class.
+ */
+public record ServiceType<O extends Service.Options, S extends Service<O>>(Class<O> optionsClass, Class<S> serviceClass) {
+	/**
+	 * Create an instance of the options class for the given service class.
+	 * @param project The {@link Project} to create the options for.
+	 * @param action An action to configure the options.
+	 * @return The created options instance.
+	 */
+	public Provider<O> create(Project project, Action<O> action) {
+		return project.provider(() -> {
+			O options = project.getObjects().newInstance(optionsClass);
+			options.getServiceClass().set(serviceClass.getName());
+			options.getServiceClass().finalizeValue();
+			action.execute(options);
+			return options;
+		});
 	}
 }

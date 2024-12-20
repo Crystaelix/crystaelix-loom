@@ -84,7 +84,8 @@ public record SpecContextImpl(List<FabricModJson> modDependencies, List<FabricMo
 			}
 		}
 
-		if (!GradleUtils.getBooleanProperty(project, Constants.Properties.DISABLE_PROJECT_DEPENDENT_MODS)) {
+		// TODO provide a project isolated way of doing this.
+		if (!extension.isProjectIsolationActive() && !GradleUtils.getBooleanProperty(project, Constants.Properties.DISABLE_PROJECT_DEPENDENT_MODS)) {
 			// Add all the dependent projects
 			for (Project dependentProject : getDependentProjects(project).toList()) {
 				mods.addAll(fmjCache.computeIfAbsent(dependentProject.getPath(), $ -> {
@@ -97,8 +98,8 @@ public record SpecContextImpl(List<FabricModJson> modDependencies, List<FabricMo
 	}
 
 	private static Stream<Project> getDependentProjects(Project project) {
-		final Stream<Project> runtimeProjects = getLoomProjectDependencies(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
-		final Stream<Project> compileProjects = getLoomProjectDependencies(project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
+		final Stream<Project> runtimeProjects = getLoomProjectDependencies(project, project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+		final Stream<Project> compileProjects = getLoomProjectDependencies(project, project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
 
 		return Stream.concat(runtimeProjects, compileProjects)
 				.distinct();
@@ -154,19 +155,19 @@ public record SpecContextImpl(List<FabricModJson> modDependencies, List<FabricMo
 
 	// Returns a list of Loom Projects found in both the runtime and compile classpath
 	private static Stream<Project> getCompileRuntimeProjectDependencies(Project project) {
-		final Stream<Project> runtimeProjects = getLoomProjectDependencies(project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
-		final List<Project> compileProjects = getLoomProjectDependencies(project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME)).toList();
+		final Stream<Project> runtimeProjects = getLoomProjectDependencies(project, project.getConfigurations().getByName(JavaPlugin.RUNTIME_CLASSPATH_CONFIGURATION_NAME));
+		final List<Project> compileProjects = getLoomProjectDependencies(project, project.getConfigurations().getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME)).toList();
 
 		return runtimeProjects
 				.filter(compileProjects::contains); // Use the intersection of the two configurations.
 	}
 
 	// Returns a list of Loom Projects found in the provided Configuration
-	private static Stream<Project> getLoomProjectDependencies(Configuration configuration) {
+	private static Stream<Project> getLoomProjectDependencies(Project project, Configuration configuration) {
 		return configuration.getAllDependencies()
 				.withType(ProjectDependency.class)
 				.stream()
-				.map(ProjectDependency::getDependencyProject)
+				.map((d) -> project.project(d.getPath()))
 				.filter(GradleUtils::isLoomProject);
 	}
 

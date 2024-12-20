@@ -47,7 +47,6 @@ import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.ide.idea.IdeaUtils;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.extension.MixinExtension;
-import net.fabricmc.loom.task.PrepareJarRemapTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoomVersions;
 
@@ -124,11 +123,6 @@ public abstract class AnnotationProcessorInvoker<T extends Task> {
 				args.put("MSG_" + key, value);
 			});
 
-			if (loomExtension.multiProjectOptimisation()) {
-				// Ensure that all of the mixin mappings have been generated before we create the mixin mappings.
-				runBeforePrepare(project, task);
-			}
-
 			project.getLogger().debug("Outputting refmap to dir: " + getRefmapDestinationDir(task) + " for compile task: " + task);
 			args.forEach((k, v) -> passArgument(task, k, v));
 		} catch (IOException e) {
@@ -158,12 +152,6 @@ public abstract class AnnotationProcessorInvoker<T extends Task> {
 		for (Map.Entry<SourceSet, T> entry : invokerTasks.entrySet()) {
 			passMixinArguments(entry.getValue(), entry.getKey());
 		}
-	}
-
-	private void runBeforePrepare(Project project, Task compileTask) {
-		project.getGradle().allprojects(otherProject -> {
-			otherProject.getTasks().withType(PrepareJarRemapTask.class, prepareRemapTask -> prepareRemapTask.mustRunAfter(compileTask));
-		});
 	}
 
 	private static void checkPattern(String input, Pattern pattern) {

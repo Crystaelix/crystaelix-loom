@@ -24,13 +24,13 @@
 
 package net.fabricmc.loom.kotlin.remapping
 
-import kotlinx.metadata.jvm.KotlinClassMetadata
-import kotlinx.metadata.jvm.Metadata
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.Remapper
 import org.objectweb.asm.tree.AnnotationNode
 import org.slf4j.LoggerFactory
+import kotlin.metadata.jvm.KotlinClassMetadata
+import kotlin.metadata.jvm.Metadata
 
 class KotlinClassMetadataRemappingAnnotationVisitor(
     private val remapper: Remapper,
@@ -62,8 +62,14 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
                     "is using (${KotlinVersion.CURRENT}).",
             )
         }
+        val metadata = KotlinClassMetadata.readLenient(header)
+        if (metadata.version.major < 1 || (metadata.version.major == 1 && metadata.version.minor < 4)) {
+            logger.warn("$className is not supported by kotlin metadata remapping (version: ${metadata.version})")
+            accept(next)
+            return
+        }
 
-        when (val metadata = KotlinClassMetadata.readLenient(header)) {
+        when (metadata) {
             is KotlinClassMetadata.Class -> {
                 var klass = metadata.kmClass
                 klass = KotlinClassRemapper(remapper).remap(klass)

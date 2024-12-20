@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,13 +22,11 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.util.service;
+package net.fabricmc.loom.test.unit.processor.classes;
 
-import java.io.Closeable;
-import java.io.IOException;
-
-public interface SharedService extends Closeable {
-	@Override
-	default void close() throws IOException {
+public class DoublePassingGenericTargetClass<F, S> {
+	public static class Pair<F, S> {
+		Pair(F ignoredF, S ignoredS) {
+		}
 	}
 }

@@ -26,6 +26,7 @@ package net.fabricmc.loom.configuration;
 
 import static net.fabricmc.loom.util.Constants.Configurations;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
@@ -34,6 +35,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
@@ -49,6 +51,7 @@ import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
+import org.gradle.api.tasks.testing.Test;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.InterfaceInjectionExtensionAPI;
@@ -74,7 +77,6 @@ import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvid
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
-import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
@@ -86,13 +88,13 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftPr
 import net.fabricmc.loom.configuration.sources.ForgeSourcesRemapper;
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.util.Checksum;
-import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.ProcessUtil;
 import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
-import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.loom.util.gradle.daemon.DaemonUtils;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
+import net.fabricmc.loom.util.service.ServiceFactory;
 
 public abstract class CompileConfiguration implements Runnable {
 	@Inject
@@ -110,8 +112,8 @@ public abstract class CompileConfiguration implements Runnable {
 			javadoc.setClasspath(main.getOutput().plus(main.getCompileClasspath()));
 		});
 
-		afterEvaluationWithService((serviceManager) -> {
-			final ConfigContext configContext = new ConfigContextImpl(getProject(), serviceManager, extension);
+		afterEvaluationWithService((serviceFactory) -> {
+			final ConfigContext configContext = new ConfigContextImpl(getProject(), serviceFactory, extension);
 
 			MinecraftSourceSets.get(getProject()).afterEvaluate(getProject());
 
@@ -129,9 +131,9 @@ public abstract class CompileConfiguration implements Runnable {
 
 				LoomDependencyManager dependencyManager = new LoomDependencyManager();
 				extension.setDependencyManager(dependencyManager);
-				dependencyManager.handleDependencies(getProject(), serviceManager);
+				dependencyManager.handleDependencies(getProject(), serviceFactory);
 			} catch (Exception e) {
-				ExceptionUtil.processException(e, getProject());
+				ExceptionUtil.processException(e, DaemonUtils.Context.fromProject(getProject()));
 				disownLock();
 				throw ExceptionUtil.createDescriptiveWrapper(RuntimeException::new, "Failed to setup Minecraft", e);
 			}
@@ -146,6 +148,7 @@ public abstract class CompileConfiguration implements Runnable {
 			}
 
 			configureDecompileTasks(configContext);
+			configureTestTask();
 
 			if (extension.isForgeLike()) {
 				if (extension.isDataGenEnabled()) {
@@ -159,7 +162,7 @@ public abstract class CompileConfiguration implements Runnable {
 				//   because of https://github.com/architectury/architectury-loom/issues/72.
 				if (!ModConfigurationRemapper.isCIBuild()) {
 					try {
-						ForgeSourcesRemapper.addBaseForgeSources(getProject());
+						ForgeSourcesRemapper.addBaseForgeSources(getProject(), configContext.serviceFactory());
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -167,9 +170,7 @@ public abstract class CompileConfiguration implements Runnable {
 			}
 		});
 
-		finalizedBy("idea", "genIdeaWorkspace");
 		finalizedBy("eclipse", "genEclipseRuns");
-		finalizedBy("cleanEclipse", "cleanEclipseRuns");
 
 		// Add the "dev" jar to the "namedElements" configuration
 		getProject().artifacts(artifactHandler -> artifactHandler.add(Configurations.NAMED_ELEMENTS, getTasks().named("jar")));
@@ -200,12 +201,9 @@ public abstract class CompileConfiguration implements Runnable {
 		final LoomGradleExtension extension = configContext.extension();
 
 		final MinecraftMetadataProvider metadataProvider = MinecraftMetadataProvider.create(configContext);
+		extension.setMetadataProvider(metadataProvider);
 
 		var jarConfiguration = extension.getMinecraftJarConfiguration().get();
-
-		if (jarConfiguration == MinecraftJarConfiguration.MERGED && !metadataProvider.getVersionMeta().isVersionOrNewer(Constants.RELEASE_TIME_1_3)) {
-			jarConfiguration = MinecraftJarConfiguration.LEGACY_MERGED;
-		}
 
 		// Provide the vanilla mc jars
 		final MinecraftProvider minecraftProvider = jarConfiguration.createMinecraftProvider(metadataProvider, configContext);
@@ -225,7 +223,7 @@ public abstract class CompileConfiguration implements Runnable {
 		setupDependencyProviders(project, extension);
 
 		final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
-		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceManager(), mappingsDep, minecraftProvider);
+		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceFactory(), mappingsDep, minecraftProvider);
 		extension.setMappingConfiguration(mappingConfiguration);
 
 		if (extension.isForgeLike()) {
@@ -238,7 +236,10 @@ public abstract class CompileConfiguration implements Runnable {
 
 		if (extension.isForgeLike()) {
 			extension.setForgeRunsProvider(ForgeRunsProvider.create(project));
-			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().remapJar();
+		}
+
+		if (minecraftProvider instanceof ForgeMinecraftProvider patched) {
+			patched.getPatchedProvider().remapJar(configContext.serviceFactory());
 		}
 
 		// Provide the remapped mc jars
@@ -337,6 +338,26 @@ public abstract class CompileConfiguration implements Runnable {
 		extension.getMinecraftJarConfiguration().get()
 				.createDecompileConfiguration(getProject())
 				.afterEvaluation();
+	}
+
+	private void configureTestTask() {
+		final LoomGradleExtension extension = LoomGradleExtension.get(getProject());
+
+		if (extension.getMods().isEmpty()) {
+			return;
+		}
+
+		getProject().getTasks().named(JavaPlugin.TEST_TASK_NAME, Test.class, test -> {
+			String classPathGroups = extension.getMods().stream()
+					.map(modSettings ->
+							SourceSetHelper.getClasspath(modSettings, getProject()).stream()
+									.map(File::getAbsolutePath)
+									.collect(Collectors.joining(File.pathSeparator))
+					)
+					.collect(Collectors.joining(File.pathSeparator+File.pathSeparator));;
+
+			test.systemProperty("fabric.classPathGroups", classPathGroups);
+		});
 	}
 
 	private LockFile getLockFile() {
@@ -537,10 +558,12 @@ public abstract class CompileConfiguration implements Runnable {
 		dependencyProviders.handleDependencies(project);
 	}
 
-	private void afterEvaluationWithService(Consumer<SharedServiceManager> consumer) {
+	private void afterEvaluationWithService(Consumer<ServiceFactory> consumer) {
 		GradleUtils.afterSuccessfulEvaluation(getProject(), () -> {
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				consumer.accept(serviceManager);
+			try (var serviceFactory = new ScopedServiceFactory()) {
+				consumer.accept(serviceFactory);
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
 			}
 		});
 	}

@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -56,7 +57,6 @@ import net.fabricmc.loom.configuration.providers.minecraft.SignatureFixerApplyVi
 import net.fabricmc.loom.extension.LoomFiles;
 import net.fabricmc.loom.util.SidedClassVisitor;
 import net.fabricmc.loom.util.TinyRemapperHelper;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
 import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
@@ -86,11 +86,18 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 	public List<MinecraftJar> provide(ProvideContext context) throws Exception {
 		final List<RemappedJars> remappedJars = getRemappedJars();
-		assert !remappedJars.isEmpty();
+		final List<MinecraftJar> minecraftJars = remappedJars.stream()
+				.map(RemappedJars::outputJar)
+				.toList();
 
-		if (!areOutputsValid(remappedJars) || context.refreshOutputs()) {
+		if (remappedJars.isEmpty()) {
+			throw new IllegalStateException("No remapped jars provided");
+		}
+
+		if (!areOutputsValid(remappedJars) || context.refreshOutputs() || !hasBackupJars(minecraftJars)) {
 			try {
 				remapInputs(remappedJars, context.configContext());
+				createBackupJars(minecraftJars);
 			} catch (Throwable t) {
 				cleanOutputs(remappedJars);
 
@@ -109,9 +116,29 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 			}
 		}
 
-		return remappedJars.stream()
-				.map(RemappedJars::outputJar)
-				.toList();
+		return minecraftJars;
+	}
+
+	// Create two copies of the remapped jar, the backup jar is used as the input of genSources
+	public static Path getBackupJarPath(MinecraftJar minecraftJar) {
+		final Path outputJarPath = minecraftJar.getPath();
+		return outputJarPath.resolveSibling(outputJarPath.getFileName() + ".backup");
+	}
+
+	protected boolean hasBackupJars(List<MinecraftJar> minecraftJars) {
+		for (MinecraftJar minecraftJar : minecraftJars) {
+			if (!Files.exists(getBackupJarPath(minecraftJar))) {
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	protected void createBackupJars(List<MinecraftJar> minecraftJars) throws IOException {
+		for (MinecraftJar minecraftJar : minecraftJars) {
+			Files.copy(minecraftJar.getPath(), getBackupJarPath(minecraftJar), StandardCopyOption.REPLACE_EXISTING);
+		}
 	}
 
 	public record ProvideContext(boolean applyDependencies, boolean refreshOutputs, ConfigContext configContext) {
@@ -206,11 +233,11 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		Files.deleteIfExists(remappedJars.outputJarPath());
 
 		final Set<String> classNames = extension.isForgeLike() ? InnerClassRemapper.readClassNames(remappedJars.inputJar()) : Set.of();
-		final Map<String, String> remappedSignatures = SignatureFixerApplyVisitor.getRemappedSignatures(getTargetNamespace() == MappingsNamespace.INTERMEDIARY, mappingConfiguration, getProject(), configContext.serviceManager(), toM);
+		final Map<String, String> remappedSignatures = SignatureFixerApplyVisitor.getRemappedSignatures(getTargetNamespace() == MappingsNamespace.INTERMEDIARY, mappingConfiguration, getProject(), configContext.serviceFactory(), toM);
 		final MinecraftVersionMeta.JavaVersion javaVersion = minecraftProvider.getVersionInfo().javaVersion();
 		final boolean fixRecords = javaVersion != null && javaVersion.majorVersion() >= 16;
 
-		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceManager(), fromM, toM, fixRecords, (builder) -> {
+		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceFactory(), fromM, toM, fixRecords, (builder) -> {
 			builder.extraPostApplyVisitor(new SignatureFixerApplyVisitor(remappedSignatures));
 			if (extension.isNeoForge()) builder.extension(new MixinExtension(inputTag -> true));
 			configureRemapper(remappedJars, builder);
@@ -234,21 +261,19 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		getMavenHelper(remappedJars.type()).savePom();
 
 		if (extension.isForgeLikeAndOfficial()) {
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				final MappingOption mappingOption = MappingOption.forPlatform(extension);
-				final TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
-				final String className;
+			final MappingOption mappingOption = MappingOption.forPlatform(extension);
+			final TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(project, configContext.serviceFactory(), mappingOption);
+			final String className;
 
-				if (extension.isNeoForge()) {
-					className = "net.neoforged.neoforge.registries.ObjectHolderRegistry";
-				} else {
-					className = "net.minecraftforge.registries.ObjectHolderRegistry";
-				}
-
-				final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
-				final MemoryMappingTree mappings = mappingsService.getMappingTree();
-				RemapObjectHolderVisitor.remapObjectHolder(remappedJars.outputJar().getPath(), className, mappings, sourceNamespace, "named");
+			if (extension.isNeoForge()) {
+				className = "net.neoforged.neoforge.registries.ObjectHolderRegistry";
+			} else {
+				className = "net.minecraftforge.registries.ObjectHolderRegistry";
 			}
+
+			final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
+			final MemoryMappingTree mappings = mappingsService.getMappingTree();
+			RemapObjectHolderVisitor.remapObjectHolder(remappedJars.outputJar().getPath(), className, mappings, sourceNamespace, "named");
 		}
 	}
 
@@ -269,6 +294,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 	private void cleanOutputs(List<RemappedJars> remappedJars) throws IOException {
 		for (RemappedJars remappedJar : remappedJars) {
 			Files.deleteIfExists(remappedJar.outputJarPath());
+			Files.deleteIfExists(getBackupJarPath(remappedJar.outputJar()));
 		}
 	}
 

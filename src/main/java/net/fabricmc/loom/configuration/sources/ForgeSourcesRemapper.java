@@ -45,6 +45,7 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import dev.architectury.loom.forge.tool.ForgeToolExecutor;
 import dev.architectury.loom.util.MappingOption;
 import org.apache.commons.io.output.NullOutputStream;
 import org.cadixdev.lorenz.MappingSet;
@@ -61,18 +62,16 @@ import net.fabricmc.loom.task.GenerateSourcesTask;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
-import net.fabricmc.loom.util.ForgeToolExecutor;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.SourceRemapper;
 import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
-import net.fabricmc.loom.util.service.ScopedSharedServiceManager;
-import net.fabricmc.loom.util.service.SharedServiceManager;
+import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.lorenztiny.TinyMappingsReader;
 
 public class ForgeSourcesRemapper {
-	public static void addBaseForgeSources(Project project) throws IOException {
+	public static void addBaseForgeSources(Project project, ServiceFactory serviceFactory) throws IOException {
 		List<Path> minecraftJars = LoomGradleExtension.get(project).getMinecraftJars(MappingsNamespace.NAMED);
 		Path minecraftJar;
 
@@ -89,18 +88,16 @@ public class ForgeSourcesRemapper {
 		Path sourcesJar = GenerateSourcesTask.getJarFileWithSuffix("-sources.jar", minecraftJar).toPath();
 
 		if (!Files.exists(sourcesJar)) {
-			try (var serviceManager = new ScopedSharedServiceManager()) {
-				addForgeSources(project, serviceManager, minecraftJar, sourcesJar);
-			}
+			addForgeSources(project, serviceFactory, minecraftJar, sourcesJar);
 		}
 	}
 
-	public static void addForgeSources(Project project, SharedServiceManager serviceManager, @Nullable Path inputJar, Path sourcesJar) throws IOException {
+	public static void addForgeSources(Project project, ServiceFactory serviceFactory, @Nullable Path inputJar, Path sourcesJar) throws IOException {
 		try (FileSystemUtil.Delegate inputFs = inputJar == null ? null : FileSystemUtil.getJarFileSystem(inputJar, true);
 			FileSystemUtil.Delegate outputFs = FileSystemUtil.getJarFileSystem(sourcesJar, true)) {
 			ThreadingUtils.TaskCompleter taskCompleter = ThreadingUtils.taskCompleter();
 
-			provideForgeSources(project, serviceManager, path -> {
+			provideForgeSources(project, serviceFactory, path -> {
 				Path inputPath = inputFs == null ? null : inputFs.get().getPath(path.replace(".java", ".class"));
 
 				if (inputPath != null && Files.notExists(inputPath)) {
@@ -130,7 +127,7 @@ public class ForgeSourcesRemapper {
 		}
 	}
 
-	public static void provideForgeSources(Project project, SharedServiceManager serviceManager, Predicate<String> classFilter, BiConsumer<String, byte[]> consumer) throws IOException {
+	public static void provideForgeSources(Project project, ServiceFactory serviceFactory, Predicate<String> classFilter, BiConsumer<String, byte[]> consumer) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		List<Path> forgeInstallerSources = new ArrayList<>();
 		Path legacySources = null;
@@ -159,7 +156,7 @@ public class ForgeSourcesRemapper {
 		Map<String, byte[]> forgeSources = extractSources(forgeInstallerSources);
 		forgeSources.keySet().removeIf(classFilter.negate());
 		project.getLogger().lifecycle(":extracted {} forge source classes", forgeSources.size());
-		remapSources(project, serviceManager, forgeSources);
+		remapSources(project, serviceFactory, forgeSources);
 		forgeSources.forEach(consumer);
 
 		if (legacySources != null) {
@@ -167,7 +164,7 @@ public class ForgeSourcesRemapper {
 		}
 	}
 
-	private static void remapSources(Project project, SharedServiceManager serviceManager, Map<String, byte[]> sources) throws IOException {
+	private static void remapSources(Project project, ServiceFactory serviceFactory, Map<String, byte[]> sources) throws IOException {
 		File tmpInput = File.createTempFile("tmpInputForgeSources", null);
 		tmpInput.delete();
 		tmpInput.deleteOnExit();
@@ -201,7 +198,7 @@ public class ForgeSourcesRemapper {
 			System.setErr(new PrintStream(NullOutputStream.NULL_OUTPUT_STREAM));
 		}
 
-		remapForgeSourcesInner(project, serviceManager, tmpInput.toPath(), tmpOutput.toPath());
+		remapForgeSourcesInner(project, serviceFactory, tmpInput.toPath(), tmpOutput.toPath());
 
 		if (!ForgeToolExecutor.shouldShowVerboseStderr(project)) {
 			System.setOut(out);
@@ -238,13 +235,13 @@ public class ForgeSourcesRemapper {
 		}
 	}
 
-	private static void remapForgeSourcesInner(Project project, SharedServiceManager serviceManager, Path tmpInput, Path tmpOutput) throws IOException {
+	private static void remapForgeSourcesInner(Project project, ServiceFactory serviceFactory, Path tmpInput, Path tmpOutput) throws IOException {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		Mercury mercury = SourceRemapper.createMercuryWithClassPath(project, false);
 
 		final MappingOption mappingOption = MappingOption.forPlatform(extension);
 		final String sourceNamespace = IntermediaryNamespaces.intermediary(project);
-		TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(serviceManager, mappingOption);
+		TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(project, serviceFactory, mappingOption);
 		MappingSet mappings = new TinyMappingsReader(mappingsService.getMappingTree(), sourceNamespace, "named").read();
 
 		for (Map.Entry<String, String> entry : TinyRemapperHelper.JSR_TO_JETBRAINS.entrySet()) {

@@ -112,10 +112,6 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 	@ApiStatus.Internal
 	@Input
-	protected abstract Property<ModPlatform> getPlatform();
-
-	@ApiStatus.Internal
-	@Input
 	@Optional
 	protected abstract Property<ForgeInputs> getForgeInputs();
 
@@ -153,9 +149,6 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		getNativesDirectoryPath().set(getExtension().getFiles().getNativesDirectory(getProject()).getAbsolutePath());
 		getDevLauncherConfig().set(getExtension().getFiles().getDevLauncherConfig());
 
-		getPlatform().set(getExtension().getPlatform());
-		getPlatform().finalizeValue();
-
 		getPlatformMappingFile().set(getProject().getLayout().file(getProject().provider(() -> getExtension().getPlatformMappingFile().toFile())));
 		getPlatformMappingFile().finalizeValue();
 		getMappingJars().from(getProject().getConfigurations().getByName(Constants.Configurations.MAPPINGS_FINAL));
@@ -187,7 +180,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			assetsDirectory = new File(assetsDirectory, "/legacy/" + versionInfo.id());
 		}
 
-		final ModPlatform platform = getPlatform().get();
+		final ModPlatform platform = getModPlatform().get();
 		boolean quilt = platform == ModPlatform.QUILT;
 		final LaunchConfig launchConfig = new LaunchConfig()
 				.property(!quilt ? "fabric.development" : "loader.development", "true")

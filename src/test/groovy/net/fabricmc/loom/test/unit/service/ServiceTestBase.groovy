@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,36 +22,29 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.util.service;
+package net.fabricmc.loom.test.unit.service
 
-import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import org.gradle.api.provider.Property
+import spock.lang.Specification
 
-import org.gradle.api.provider.Property;
+import net.fabricmc.loom.test.util.GradleTestUtil
+import net.fabricmc.loom.util.service.ScopedServiceFactory
+import net.fabricmc.loom.util.service.Service
+import net.fabricmc.loom.util.service.ServiceType
 
-// Massive hack to work around WorkerExecutor.noIsolation() doing isolation checks.
-public final class UnsafeWorkQueueHelper {
-	private static final Map<String, SharedService> SERVICE_MAP = new ConcurrentHashMap<>();
+abstract class ServiceTestBase extends Specification {
+	ScopedServiceFactory factory
 
-	private UnsafeWorkQueueHelper() {
+	def setup() {
+		factory = new ScopedServiceFactory()
 	}
 
-	public static String create(SharedService service) {
-		final String uuid = UUID.randomUUID().toString();
-		SERVICE_MAP.put(uuid, service);
-
-		return uuid;
+	def cleanup() {
+		factory.close()
+		factory = null
 	}
 
-	public static <S> S get(Property<String> property, Class<S> clazz) {
-		SharedService service = SERVICE_MAP.remove(property.get());
-
-		if (service == null) {
-			throw new NullPointerException("Failed to get service for " + clazz);
-		}
-
-		//noinspection unchecked
-		return (S) service;
+	static Property<String> serviceClassProperty(ServiceType<? extends Service.Options, ? extends Service> type) {
+		return GradleTestUtil.mockProperty(type.serviceClass().name)
 	}
 }

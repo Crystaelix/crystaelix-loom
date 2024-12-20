@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2016-2020 FabricMC
+ * Copyright (c) 2024 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,24 +22,26 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.ide;
+package net.fabricmc.loom.test.integration.buildSrc.multiMcVersions
 
-import javax.inject.Inject;
+import org.gradle.api.Plugin
+import org.gradle.api.Project
+import org.gradle.api.plugins.BasePluginExtension
 
-import org.gradle.api.Project;
-import org.gradle.plugins.ide.idea.model.IdeaModel;
-
-public abstract class IdeConfiguration implements Runnable {
-	@Inject
-	protected abstract Project getProject();
-
+class TestPlugin implements Plugin<Project> {
 	@Override
-	public void run() {
-		IdeaModel ideaModel = (IdeaModel) getProject().getExtensions().getByName("idea");
+	void apply(Project project) {
+		project.group = "com.example"
+		project.version = "1.0.0"
 
-		ideaModel.getModule().getExcludeDirs().addAll(getProject().files(".gradle", "build", ".idea", "out").getFiles());
-		ideaModel.getModule().setDownloadJavadoc(true);
-		ideaModel.getModule().setDownloadSources(true);
-		ideaModel.getModule().setInheritOutputDirs(true);
+		project.getExtensions().configure(BasePluginExtension.class) {
+			it.archivesName = project.rootProject.isolated.name + "-" + project.name
+		}
+
+		def minecraftVersion = project.name.substring(7)
+
+		project.getDependencies().add("minecraft", "com.mojang:minecraft:$minecraftVersion")
+		project.getDependencies().add("mappings", "net.fabricmc:yarn:$minecraftVersion+build.1:v2")
+		project.getDependencies().add("modImplementation", "net.fabricmc:fabric-loader:0.16.9")
 	}
 }

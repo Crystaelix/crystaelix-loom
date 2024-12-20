@@ -45,7 +45,8 @@ class PatchedDecompileTest extends Specification implements GradleProjectTestTra
 				.replace('@JAVA_VERSION@', javaVersion)
 
 		when:
-		def result = gradle.run(task: "genForgePatchedSources")
+		// TODO: Enable configuration cache if/when the task supports it
+		def result = gradle.run(task: "genForgePatchedSources", configurationCache: false)
 
 		then:
 		result.task(":genForgePatchedSources").outcome == SUCCESS
