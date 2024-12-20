@@ -62,6 +62,8 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 
 	@Override
 	public Property<String> getDefaultRefmapName() {
+		checkMixinApEnabled();
+
 		return defaultRefmapName;
 	}
 
@@ -80,6 +82,8 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 
 	@Override
 	protected PatternSet add0(SourceSet sourceSet, Provider<String> refmapName) {
+		checkMixinApEnabled();
+
 		PatternSet pattern = new PatternSet().setIncludes(Collections.singletonList("**/*.json"));
 		MixinExtension.setMixinInformationContainer(sourceSet, new MixinExtension.MixinInformationContainer(sourceSet, refmapName, pattern));
 

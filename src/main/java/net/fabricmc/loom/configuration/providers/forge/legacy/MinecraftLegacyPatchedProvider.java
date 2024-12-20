@@ -158,7 +158,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 
 			try (var serviceManager = new ScopedSharedServiceManager()) {
 				String targetNamespace = IntermediaryNamespaces.intermediary(project);
-				remapJar(serviceManager, minecraftPatchedOfficialJar, minecraftPatchedIntermediateJar, "official", targetNamespace);
+				remapPatchedJar(serviceManager, minecraftPatchedOfficialJar, minecraftPatchedIntermediateJar, "official", targetNamespace);
 			}
 		}
 

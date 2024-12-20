@@ -66,7 +66,13 @@ public record ForgeRunTemplate(
 	public static final Codec<Map<String, ForgeRunTemplate>> MAP_CODEC = Codec.unboundedMap(Codec.STRING, CODEC)
 			.xmap(
 					map -> {
-						final Map<String, ForgeRunTemplate> newMap = new HashMap<>(map);
+						final Map<String, ForgeRunTemplate> newMap = new HashMap<>();
+
+						// TODO: Remove this hack once we patch DLI to support clientData as env
+						for (Map.Entry<String, ForgeRunTemplate> entry : map.entrySet()) {
+							String name = entry.getKey().replaceAll("clientData", "dataClient").replaceAll("serverData", "dataServer");
+							newMap.put(name, entry.getValue());
+						}
 
 						// Iterate through all templates and fill in empty names.
 						// The NeoForge format doesn't include the name property, so we'll use the map keys

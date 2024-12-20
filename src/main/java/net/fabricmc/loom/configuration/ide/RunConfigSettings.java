@@ -404,6 +404,30 @@ public class RunConfigSettings implements Named {
 	}
 
 	/**
+	 * Configure run config with the default data options.
+	 *
+	 * <p>This method can only be used on NeoForge.
+	 */
+	@ApiStatus.Experimental
+	public void clientData() {
+		ModPlatform.assertForgeLike(getExtension(), () -> "RunConfigSettings.clientData() is only usable on NeoForge.");
+		environment("dataClient");
+		forgeTemplate("dataClient");
+	}
+
+	/**
+	 * Configure run config with the default data options.
+	 *
+	 * <p>This method can only be used on NeoForge.
+	 */
+	@ApiStatus.Experimental
+	public void serverData() {
+		ModPlatform.assertForgeLike(getExtension(), () -> "RunConfigSettings.serverData() is only usable on NeoForge.");
+		environment("dataServer");
+		forgeTemplate("dataServer");
+	}
+
+	/**
 	 * Applies a Forge run config template to these settings.
 	 *
 	 * <p>Calling this method resets the {@link #getDefaultMainClass() defaultMainClass} of this

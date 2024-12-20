@@ -1,5 +1,6 @@
 package dev.architectury.loom.forge;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -10,6 +11,7 @@ import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 
 import net.fabricmc.loom.configuration.providers.forge.ForgeRunTemplate;
+import net.fabricmc.loom.util.IOFunction;
 
 public record UserdevConfig(
 		String mcp,
@@ -23,7 +25,7 @@ public record UserdevConfig(
 		List<String> libraries,
 		Map<String, ForgeRunTemplate> runs,
 		List<String> sass,
-		List<String> ats,
+		AccessTransformerLocation ats,
 		List<String> universalFilters
 ) {
 	public static final Codec<List<String>> STRING_LIST_CODEC = Codec.either(Codec.STRING.listOf(), Codec.STRING)
@@ -40,7 +42,7 @@ public record UserdevConfig(
 			Codec.STRING.listOf().fieldOf("libraries").forGetter(UserdevConfig::libraries),
 			ForgeRunTemplate.MAP_CODEC.fieldOf("runs").forGetter(UserdevConfig::runs),
 			Codec.STRING.listOf().optionalFieldOf("sass", List.of()).forGetter(UserdevConfig::sass),
-			STRING_LIST_CODEC.optionalFieldOf("ats", List.of()).forGetter(UserdevConfig::ats),
+			AccessTransformerLocation.CODEC.fieldOf("ats").forGetter(UserdevConfig::ats),
 			Codec.STRING.listOf().optionalFieldOf("universalFilters", List.of()).forGetter(UserdevConfig::universalFilters)
 	).apply(instance, UserdevConfig::new));
 
@@ -49,5 +51,39 @@ public record UserdevConfig(
 				Codec.STRING.fieldOf("version").forGetter(BinaryPatcherConfig::dependency),
 				Codec.STRING.listOf().fieldOf("args").forGetter(BinaryPatcherConfig::args)
 		).apply(instance, BinaryPatcherConfig::new));
+	}
+
+	public sealed interface AccessTransformerLocation {
+		Codec<AccessTransformerLocation> CODEC = Codec.either(Codec.STRING, Codec.STRING.listOf()).xmap(
+				either -> either.map(Directory::new, FileList::new),
+				location -> location.visit(Either::left, Either::right)
+		);
+
+		<T> T visit(Function<String, T> ifDirectory, Function<List<String>, T> ifFileList);
+		<T> T visitIo(IOFunction<String, T> ifDirectory, IOFunction<List<String>, T> ifFileList) throws IOException;
+
+		record Directory(String path) implements AccessTransformerLocation {
+			@Override
+			public <T> T visit(Function<String, T> ifDirectory, Function<List<String>, T> ifFileList) {
+				return ifDirectory.apply(path);
+			}
+
+			@Override
+			public <T> T visitIo(IOFunction<String, T> ifDirectory, IOFunction<List<String>, T> ifFileList) throws IOException {
+				return ifDirectory.apply(path);
+			}
+		}
+
+		record FileList(List<String> paths) implements AccessTransformerLocation {
+			@Override
+			public <T> T visit(Function<String, T> ifDirectory, Function<List<String>, T> ifFileList) {
+				return ifFileList.apply(paths);
+			}
+
+			@Override
+			public <T> T visitIo(IOFunction<String, T> ifDirectory, IOFunction<List<String>, T> ifFileList) throws IOException {
+				return ifFileList.apply(paths);
+			}
+		}
 	}
 }

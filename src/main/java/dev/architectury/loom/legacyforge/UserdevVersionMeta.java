@@ -75,7 +75,7 @@ public record UserdevVersionMeta(
 						)
 				),
 				List.of(),
-				List.of("merged_at.cfg", "src/main/resources/forge_at.cfg", "src/main/resources/fml_at.cfg"),
+				new UserdevConfig.AccessTransformerLocation.FileList(List.of("merged_at.cfg", "src/main/resources/forge_at.cfg", "src/main/resources/fml_at.cfg")),
 				List.of("^(?!binpatches\\.pack\\.lzma$).*$")
 		);
 	}
