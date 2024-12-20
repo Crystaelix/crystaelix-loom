@@ -141,7 +141,7 @@ public class MinecraftLibraryProvider {
 			return JavaVersion.toVersion(property);
 		}
 
-		return JavaVersion.current();
+		return project.getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
 	}
 
 	private void applyClientLibrary(Library library) {
