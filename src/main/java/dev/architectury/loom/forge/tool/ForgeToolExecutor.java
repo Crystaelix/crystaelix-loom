@@ -77,13 +77,13 @@ public abstract class ForgeToolExecutor {
 			if (settings.getShowVerboseStdout().get()) {
 				spec.setStandardOutput(System.out);
 			} else {
-				spec.setStandardOutput(NullOutputStream.INSTANCE);
+				spec.setStandardOutput(NullOutputStream.NULL_OUTPUT_STREAM);
 			}
 
 			if (settings.getShowVerboseStderr().get()) {
 				spec.setErrorOutput(System.err);
 			} else {
-				spec.setErrorOutput(NullOutputStream.INSTANCE);
+				spec.setErrorOutput(NullOutputStream.NULL_OUTPUT_STREAM);
 			}
 		});
 	}
