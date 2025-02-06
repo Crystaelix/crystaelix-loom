@@ -116,6 +116,7 @@ public record ForgeRunTemplate(
 			settings.getEnvironmentVariables().putIfAbsent(key, resolved);
 		});
 
+		// TODO: Also remove this hack once DLI supports clientData as the env
 		if (this.name.equals("dataClient") || this.name.equals("dataServer")) {
 			for (ConfigValue arg : args) {
 				settings.programArg(arg.resolve(configValueResolver));
