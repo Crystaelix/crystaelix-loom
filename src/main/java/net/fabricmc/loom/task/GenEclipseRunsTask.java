@@ -33,11 +33,9 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import dev.architectury.loom.util.ForgeSourceRootHelper;
-import org.apache.commons.io.FileUtils;
-import org.gradle.api.Project;
 import javax.inject.Inject;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
@@ -51,8 +49,8 @@ import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 	@Nested
@@ -84,6 +82,7 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 
 			final String name = settings.getName();
 			final File configs = new File(project.getProjectDir(), eclipseModel.getProject().getName() + "_" + name + ".launch");
+			ForgeSourceRootHelper.addForgeSourceRoots(project, settings, SourceSetHelper::getEclipseClasspath);
 			final RunConfig configInst = RunConfig.runConfig(project, settings);
 			final String config;
 
