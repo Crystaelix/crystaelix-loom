@@ -27,7 +27,7 @@ def baseVersion = '1.9'
 
 def ENV = System.getenv()
 //def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
-def runNumber = new Date().format('yyyyMMdd.HHmm')
+def runNumber = "0"
 
 def isSnapshot = ENV.PR_NUM != null
 
@@ -315,6 +315,7 @@ tasks.withType(Test).configureEach {
 }
 
 
+import org.gradle.api.internal.artifacts.configurations.ConfigurationRoles
 import org.gradle.util.GradleVersion
 import org.w3c.dom.Document
 import org.w3c.dom.Element
