@@ -48,6 +48,24 @@ public record ForgeRunTemplate(
 		Map<String, ConfigValue> env,
 		Map<String, ConfigValue> props
 ) implements Named {
+	public static final Codec<Map<String, ConfigValue>> ENV_CODEC = Codec.unboundedMap(Codec.STRING, ConfigValue.CODEC)
+			.xmap(
+				map -> {
+					final Map<String, ConfigValue> newMap = new HashMap<>();
+
+					for (Map.Entry<String, ConfigValue> entry : map.entrySet()) {
+						if (entry.getValue() instanceof ConfigValue.Variable variable && variable.name().equals("source_roots")) {
+							continue;
+						}
+
+						newMap.put(entry.getKey(), entry.getValue());
+					}
+
+					return newMap;
+				},
+				Function.identity()
+		);
+
 	public static final Codec<ForgeRunTemplate> CODEC = RecordCodecBuilder.create(instance -> instance.group(
 			Codec.STRING.optionalFieldOf("name", "") // note: empty is used since DFU crashes with null
 					.forGetter(ForgeRunTemplate::name),
@@ -57,7 +75,7 @@ public record ForgeRunTemplate(
 					.forGetter(ForgeRunTemplate::args),
 			ConfigValue.CODEC.listOf().optionalFieldOf("jvmArgs", List.of())
 					.forGetter(ForgeRunTemplate::jvmArgs),
-			Codec.unboundedMap(Codec.STRING, ConfigValue.CODEC).optionalFieldOf("env", Map.of())
+			ENV_CODEC.optionalFieldOf("env", Map.of())
 					.forGetter(ForgeRunTemplate::env),
 			Codec.unboundedMap(Codec.STRING, ConfigValue.CODEC).optionalFieldOf("props", Map.of())
 					.forGetter(ForgeRunTemplate::props)
