@@ -32,10 +32,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.NamedDomainObjectContainer;
@@ -53,6 +55,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.Platform;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
+import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public class RunConfigSettings implements Named {
 	/**
@@ -339,6 +342,16 @@ public class RunConfigSettings implements Named {
 
 	public Map<String, Object> getEnvironmentVariables() {
 		return environmentVariables;
+	}
+
+	public Map<String, Object> getEnvironmentVariablesWithForgeSourceRoots(BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
+		if (classpathFunc == null) {
+			return environmentVariables;
+		}
+
+		Map<String, Object> map = new HashMap<>(environmentVariables);
+		map.computeIfAbsent("MOD_CLASSES", $ -> ForgeSourceRootHelper.getForgeSourceRoots(project, this, classpathFunc));
+		return map;
 	}
 
 	public void environmentVariable(String name, Object value) {

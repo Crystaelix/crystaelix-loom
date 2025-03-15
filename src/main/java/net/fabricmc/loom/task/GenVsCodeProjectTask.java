@@ -41,7 +41,6 @@ import javax.inject.Inject;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import dev.architectury.loom.util.ForgeSourceRootHelper;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
@@ -86,8 +85,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 				continue;
 			}
 
-			ForgeSourceRootHelper.addForgeSourceRoots(getProject(), settings, SourceSetHelper::getVscodeClasspath);
-			final VsCodeConfiguration configuration = VsCodeConfiguration.fromRunConfig(getProject(), RunConfig.runConfig(getProject(), settings));
+			final VsCodeConfiguration configuration = VsCodeConfiguration.fromRunConfig(getProject(), RunConfig.runConfig(getProject(), settings, SourceSetHelper::getVscodeClasspath));
 			configurations.add(configuration);
 		}
 

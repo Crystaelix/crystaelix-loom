@@ -16,30 +16,35 @@ import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public class ForgeSourceRootHelper {
-	public static void addForgeSourceRoots(Project project, RunConfigSettings settings, BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
+	public static String getForgeSourceRoots(Project project, RunConfigSettings settings, BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
+		if (classpathFunc == null) {
+			return null;
+		}
+
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 
-		if (extension.isModernForgeLike()) {
-			settings.getEnvironmentVariables().computeIfAbsent("MOD_CLASSES", $ -> {
-				Multimap<String, String> modClasses = MultimapBuilder.linkedHashKeys().arrayListValues().build();
-				NamedDomainObjectContainer<ModSettings> mods = extension.getMods();
-
-				if (!settings.getMods().isEmpty()) {
-					mods = settings.getMods();
-				}
-
-				for (ModSettings mod : mods) {
-					for (SourceSetReference modSourceSet : mod.getModSourceSets().get()) {
-						for (File file : classpathFunc.apply(modSourceSet, project)) {
-							modClasses.put(mod.getName(), file.getAbsolutePath());
-						}
-					}
-				}
-
-				return modClasses.entries().stream()
-						.map(entry -> entry.getKey() + "%%" + entry.getValue())
-						.collect(Collectors.joining(File.pathSeparator));
-			});
+		if (!extension.isModernForgeLike()) {
+			return null;
 		}
+
+		Multimap<String, String> modClasses = MultimapBuilder.linkedHashKeys().arrayListValues().build();
+		NamedDomainObjectContainer<ModSettings> mods = extension.getMods();
+
+		if (!settings.getMods().isEmpty()) {
+			mods = settings.getMods();
+		}
+
+		for (ModSettings mod : mods) {
+			for (SourceSetReference modSourceSet : mod.getModSourceSets().get()) {
+				for (File file : classpathFunc.apply(modSourceSet, project)) {
+					modClasses.put(mod.getName(), file.getAbsolutePath());
+				}
+			}
+		}
+
+		String value = modClasses.entries().stream()
+				.map(entry -> entry.getKey() + "%%" + entry.getValue())
+				.collect(Collectors.joining(File.pathSeparator));
+		return value.isEmpty() ? null : value;
 	}
 }

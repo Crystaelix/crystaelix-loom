@@ -24,6 +24,7 @@
 
 package net.fabricmc.loom.configuration.ide;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -38,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -126,6 +128,10 @@ public class RunConfig {
 	}
 
 	public static RunConfig runConfig(Project project, RunConfigSettings settings) {
+		return runConfig(project, settings, null);
+	}
+
+	public static RunConfig runConfig(Project project, RunConfigSettings settings, BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
 		settings.evaluateNow();
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		LibraryContext context = new LibraryContext(extension.getMinecraftProvider().getVersionInfo(), JavaVersion.current());
@@ -192,7 +198,7 @@ public class RunConfig {
 		runConfig.vmArgs.addAll(settings.getVmArgs());
 		runConfig.vmArgs.add("-Dfabric.dli.main=" + mainClass);
 		runConfig.environmentVariables = new HashMap<>();
-		runConfig.environmentVariables.putAll(settings.getEnvironmentVariables());
+		runConfig.environmentVariables.putAll(settings.getEnvironmentVariablesWithForgeSourceRoots(classpathFunc));
 		runConfig.projectName = project.getName();
 
 		for (Consumer<RunConfig> consumer : extension.getSettingsPostEdit()) {
