@@ -129,7 +129,7 @@ public final class SourceSetHelper {
 		final List<File> classpath = getGradleClasspath(reference, project);
 
 		classpath.addAll(getIdeaClasspath(reference, project));
-		classpath.addAll(getIdeaModuleCompileOutput(reference));
+		classpath.addAll(getIdeaModuleCompileOutput(reference, project));
 		classpath.addAll(getEclipseClasspath(reference, project));
 		classpath.addAll(getVscodeClasspath(reference, project));
 
@@ -145,6 +145,8 @@ public final class SourceSetHelper {
 		if (resources != null) {
 			classpath.add(resources);
 		}
+
+		classpath.addAll(output.getClassesDirs().getFiles());
 
 		// Add dev jars from dependency projects if the source set is "main".
 		if (SourceSet.MAIN_SOURCE_SET_NAME.equals(reference.sourceSet().getName()) && !reference.project().getPath().equals(project.getPath())
@@ -191,7 +193,7 @@ public final class SourceSetHelper {
 		return List.of(outputDir, outputDir);
 	}
 
-	private static List<File> getIdeaModuleCompileOutput(SourceSetReference reference) {
+	public static List<File> getIdeaModuleCompileOutput(SourceSetReference reference, Project project) {
 		final File dotIdea = new File(reference.project().getRootDir(), ".idea");
 
 		if (!dotIdea.exists()) {
@@ -205,8 +207,8 @@ public final class SourceSetHelper {
 		final File sourceSetOutDir = new File(outDir, name.equals(SourceSet.MAIN_SOURCE_SET_NAME) ? "production" : name);
 
 		return List.of(
-				new File(sourceSetOutDir, "classes"),
-				new File(sourceSetOutDir, "resources")
+				new File(sourceSetOutDir, "resources"),
+				new File(sourceSetOutDir, "classes")
 		);
 	}
 

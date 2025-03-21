@@ -43,10 +43,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
-import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.services.ServiceReference;
-import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
@@ -64,8 +62,8 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	@ServiceReference(SyncTaskBuildService.NAME)
 	abstract Property<SyncTaskBuildService> getSyncTask();
 
-	@Input
-	protected abstract ListProperty<VsCodeConfiguration> getLaunchConfigurations();
+	//@Input
+	//protected abstract ListProperty<VsCodeConfiguration> getLaunchConfigurations();
 
 	@OutputFile
 	protected abstract RegularFileProperty getLaunchJson();
@@ -73,7 +71,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	@Inject
 	public GenVsCodeProjectTask() {
 		setGroup(Constants.TaskGroup.IDE);
-		getLaunchConfigurations().set(getProject().provider(this::getConfigurations));
+		//getLaunchConfigurations().set(getProject().provider(this::getConfigurations));
 		getLaunchJson().convention(getProject().getRootProject().getLayout().getProjectDirectory().file(".vscode/launch.json"));
 	}
 
@@ -118,7 +116,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 			root.add("configurations", configurations);
 		}
 
-		for (VsCodeConfiguration configuration : getLaunchConfigurations().get()) {
+		for (VsCodeConfiguration configuration : getConfigurations()) {
 			final JsonElement configurationJson = LoomGradlePlugin.GSON.toJsonTree(configuration);
 
 			final List<JsonElement> toRemove = new LinkedList<>();

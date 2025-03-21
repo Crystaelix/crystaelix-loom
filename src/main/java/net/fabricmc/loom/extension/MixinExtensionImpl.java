@@ -40,13 +40,14 @@ import org.gradle.api.Task;
 import org.gradle.api.UnknownTaskException;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.plugins.BasePluginExtension;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.util.PatternSet;
 import org.jetbrains.annotations.NotNull;
+
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinExtension {
 	private boolean isDefault;
@@ -95,7 +96,7 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 	@Override
 	@NotNull
 	public Stream<SourceSet> getMixinSourceSetsStream() {
-		return project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().stream()
+		return SourceSetHelper.getSourceSets(project).stream()
 				.filter(sourceSet -> MixinExtension.getMixinInformationContainer(sourceSet) != null);
 	}
 
@@ -137,7 +138,7 @@ public class MixinExtensionImpl extends MixinExtensionApiImpl implements MixinEx
 	}
 
 	private void initDefault() {
-		project.getExtensions().getByType(JavaPluginExtension.class).getSourceSets().forEach(sourceSet -> {
+		SourceSetHelper.getSourceSets(project).forEach(sourceSet -> {
 			if (sourceSet.getName().equals("main")) {
 				add(sourceSet);
 			} else {

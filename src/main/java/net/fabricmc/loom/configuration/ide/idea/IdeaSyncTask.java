@@ -33,6 +33,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.BiFunction;
 
 import javax.inject.Inject;
 import javax.xml.parsers.DocumentBuilder;
@@ -48,7 +49,6 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -65,22 +65,26 @@ import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.task.AbstractLoomTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
+import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public abstract class IdeaSyncTask extends AbstractLoomTask {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IdeaSyncTask.class);
 
-	@Nested
-	protected abstract ListProperty<IntelijRunConfig> getIdeaRunConfigs();
+	protected abstract Property<ClasspathType> getClasspathType();
+
+	//@Nested
+	//protected abstract ListProperty<IntelijRunConfig> getIdeaRunConfigs();
 
 	@Inject
 	public IdeaSyncTask() {
 		setGroup(Constants.TaskGroup.IDE);
-		getIdeaRunConfigs().set(getProject().provider(this::getRunConfigs));
+		getClasspathType().convention(ClasspathType.GRADLE);
+		//getIdeaRunConfigs().set(getProject().provider(this::getRunConfigs));
 	}
 
 	@TaskAction
 	public void runTask() throws IOException {
-		for (IntelijRunConfig config : getIdeaRunConfigs().get()) {
+		for (IntelijRunConfig config : getRunConfigs()) {
 			config.writeLaunchFile();
 		}
 	}
@@ -99,14 +103,20 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 				continue;
 			}
 
-			RunConfig config = RunConfig.runConfig(getProject(), settings, SourceSetHelper::getIdeaClasspath);
+			IntelijRunConfig irc = getProject().getObjects().newInstance(IntelijRunConfig.class);
+
+			BiFunction<SourceSetReference, Project, List<File>> classpathFunc = switch (getClasspathType().get()) {
+			case GRADLE -> SourceSetHelper::getGradleClasspath;
+			case IDEA -> SourceSetHelper::getIdeaClasspath;
+			case IDEA_MODULE -> SourceSetHelper::getIdeaModuleCompileOutput;
+			};
+			RunConfig config = RunConfig.runConfig(getProject(), settings, classpathFunc);
 			String name = config.configName.replaceAll("[^a-zA-Z0-9$_]", "_");
 
 			File runConfigFile = new File(runConfigsDir, name + projectPath + ".xml");
 			String runConfigXml = config.fromDummy("idea_run_config_template.xml", true, getProject());
 			final List<String> excludedLibraryPaths = config.getExcludedLibraryPaths(getProject());
 
-			IntelijRunConfig irc = getProject().getObjects().newInstance(IntelijRunConfig.class);
 			irc.getRunConfigXml().set(runConfigXml);
 			irc.getExcludedLibraryPaths().set(excludedLibraryPaths);
 			irc.getLaunchFile().set(runConfigFile);
@@ -114,6 +124,10 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 		}
 
 		return configs;
+	}
+
+	public enum ClasspathType {
+		GRADLE, IDEA, IDEA_MODULE;
 	}
 
 	public interface IntelijRunConfig {

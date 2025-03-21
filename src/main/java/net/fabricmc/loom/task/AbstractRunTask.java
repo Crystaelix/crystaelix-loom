@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
@@ -89,6 +90,9 @@ public abstract class AbstractRunTask extends JavaExec {
 						config.get().getExcludedLibraryPaths(getProject()),
 						config.get().configName)
 				)));
+
+		JavaPluginExtension java = getProject().getExtensions().getByType(JavaPluginExtension.class);
+		getJavaLauncher().set(getJavaToolchainService().launcherFor(java.getToolchain()));
 
 		getArgumentProviders().add(() -> config.get().programArgs);
 		getMainClass().set(config.map(runConfig -> runConfig.mainClass));

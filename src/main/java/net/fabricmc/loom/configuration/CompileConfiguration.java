@@ -45,7 +45,6 @@ import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
 import org.gradle.api.plugins.JavaPlugin;
-import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.tasks.AbstractCopyTask;
 import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskContainer;
@@ -152,7 +151,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 			if (extension.isForgeLike()) {
 				if (extension.isDataGenEnabled()) {
-					getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName("main").resources(files -> {
+					SourceSetHelper.getSourceSets(getProject()).getByName("main").resources(files -> {
 						files.srcDir(getProject().file("src/generated/resources"));
 					});
 				}
@@ -184,7 +183,7 @@ public abstract class CompileConfiguration implements Runnable {
 		if (extension.isForgeLike()) {
 			// Create default mod from main source set
 			extension.mods(mods -> {
-				final SourceSet main = getProject().getExtensions().getByType(JavaPluginExtension.class).getSourceSets().getByName(SourceSet.MAIN_SOURCE_SET_NAME);
+				final SourceSet main = SourceSetHelper.getSourceSets(getProject()).getByName(SourceSet.MAIN_SOURCE_SET_NAME);
 				mods.create("main").sourceSet(main);
 			});
 		}
