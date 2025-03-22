@@ -39,6 +39,7 @@ import org.gradle.api.provider.Provider;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.providers.BundleMetadata;
+import net.fabricmc.loom.configuration.providers.minecraft.library.LWJGL2ExcludeLibraryProcessor;
 import net.fabricmc.loom.configuration.providers.minecraft.library.Library;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryContext;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryProcessorManager;
@@ -54,7 +55,6 @@ public class MinecraftLibraryProvider {
 	private final Project project;
 	private final MinecraftProvider minecraftProvider;
 	private final LibraryProcessorManager processorManager;
-	private boolean isLWJGL3 = false;
 
 	public MinecraftLibraryProvider(MinecraftProvider minecraftProvider, Project project) {
 		this.project = project;
@@ -69,6 +69,10 @@ public class MinecraftLibraryProvider {
 
 		if (extension.getRuntimeOnlyLog4j().get()) {
 			enabledProcessors.add(RuntimeLog4jLibraryProcessor.class.getSimpleName());
+		}
+
+		if (extension.isCleanroom()) {
+			enabledProcessors.add(LWJGL2ExcludeLibraryProcessor.class.getSimpleName());
 		}
 
 		final Provider<String> libraryProcessorsProperty = project.getProviders().gradleProperty(Constants.Properties.LIBRARY_PROCESSORS);
@@ -123,11 +127,6 @@ public class MinecraftLibraryProvider {
 
 	private List<Library> processLibraries(List<Library> libraries) {
 		final LibraryContext libraryContext = new LibraryContext(minecraftProvider.getVersionInfo(), getTargetRuntimeJavaVersion());
-
-		if (libraryContext.usesLWJGL3()) {
-			isLWJGL3 = true;
-		}
-
 		return processorManager.processLibraries(libraries, libraryContext);
 	}
 
@@ -180,9 +179,5 @@ public class MinecraftLibraryProvider {
 		if (created instanceof ModuleDependency md) {
 			md.setTransitive(false);
 		}
-	}
-
-	public boolean isLWJGL3() {
-		return isLWJGL3;
 	}
 }

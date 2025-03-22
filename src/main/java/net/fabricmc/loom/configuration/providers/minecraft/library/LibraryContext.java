@@ -91,6 +91,14 @@ public final class LibraryContext {
 	}
 
 	/**
+	 * @return True when using LWJGL 2
+	 */
+	public boolean usesLWJGL2() {
+		return versionMeta.libraries().stream()
+				.anyMatch(library -> library.name().startsWith("org.lwjgl.lwjgl:lwjgl:2"));
+	}
+
+	/**
 	 * @return True when using LWJGL 3
 	 */
 	public boolean usesLWJGL3() {

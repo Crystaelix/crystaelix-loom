@@ -52,9 +52,10 @@ import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.FileSystemUtil;
+import net.fabricmc.loom.util.Platform;
 import net.fabricmc.loom.util.PropertyUtil;
-import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
 import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
+import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class ForgeLibrariesProvider {
@@ -100,6 +101,13 @@ public class ForgeLibrariesProvider {
 				if (extension.isForge() && extension.getForgeProvider().getVersion().getMajorVersion() >= Constants.Forge.MIN_BOOTSTRAP_DEV_VERSION) {
 					String version = lib.substring(lib.lastIndexOf(":"));
 					dependencies.add(project.getDependencies().create("net.minecraftforge:bootstrap-dev" + version));
+				}
+			}
+
+			if ((lib.startsWith("org.lwjgl:lwjgl") || lib.startsWith("org.lwjgl3:lwjgl3")) && !lib.contains("natives")) {
+				// Fix Cleanroom lwjgl natives
+				if (extension.isCleanroom()) {
+					dependencies.add(project.getDependencies().create(lib + ":natives-" + getLWJGL3NativesClassifier()));
 				}
 			}
 
@@ -245,6 +253,32 @@ public class ForgeLibrariesProvider {
 		} catch (IOException e) {
 			throw new IOException("Could not remap object holders in " + outputJar, e);
 		}
+	}
+
+	private static String getLWJGL3NativesClassifier() {
+		Platform platform = Platform.CURRENT;
+
+		String classifier = switch (platform.getOperatingSystem()) {
+		case WINDOWS -> {
+			if (platform.getArchitecture().is64Bit()) {
+				yield "windows";
+			} else {
+				yield "windows-x86";
+			}
+		}
+		case MAC_OS -> "macos";
+		case LINUX -> "linux";
+		};
+
+		if (platform.getArchitecture().isArm() && platform.getArchitecture().is64Bit()) {
+			classifier += "-arm64";
+		}
+
+		if (platform.getArchitecture().isRiscV()) {
+			classifier += "-riscv64";
+		}
+
+		return classifier;
 	}
 
 	/**

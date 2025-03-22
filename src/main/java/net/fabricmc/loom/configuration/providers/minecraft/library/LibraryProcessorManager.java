@@ -51,6 +51,7 @@ public class LibraryProcessorManager {
 			LoomNativeSupportLibraryProcessor::new,
 			LWJGL2MavenLibraryProcessor::new,
 			LWJGL3UpgradeLibraryProcessor::new,
+			LWJGL2ExcludeLibraryProcessor::new,
 			ObjcBridgeUpgradeLibraryProcessor::new,
 			RuntimeLog4jLibraryProcessor::new
 	);
