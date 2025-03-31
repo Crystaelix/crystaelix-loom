@@ -74,16 +74,17 @@ import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
 import net.fabricmc.loom.util.srg.MCPReader;
-import net.fabricmc.loom.util.srg.SrgNamedWriter;
-import net.fabricmc.loom.util.srg.TsrgNamedWriter;
 import net.fabricmc.mappingio.MappingReader;
+import net.fabricmc.mappingio.MappingVisitor;
+import net.fabricmc.mappingio.MappingWriter;
+import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter;
+import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.stitch.Command;
 import net.fabricmc.stitch.commands.CommandProposeFieldNames;
-import net.fabricmc.stitch.commands.tinyv2.TinyFile;
-import net.fabricmc.stitch.commands.tinyv2.TinyV2Writer;
 
 public class MappingConfiguration {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MappingConfiguration.class);
@@ -292,17 +293,26 @@ public class MappingConfiguration {
 				MemoryMappingTree mappingTree = mappingsService.getMappingTree();
 
 				if (Files.notExists(srgToNamedSrg) || extension.refreshDeps()) {
-					SrgNamedWriter.writeTo(project.getLogger(), srgToNamedSrg, mappingTree, "srg", "named", extension.isLegacyForgeLike());
+					try (MappingWriter writer = MappingWriter.create(srgToNamedSrg, MappingFormat.SRG_FILE)) {
+						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "named"), "srg");
+						mappingTree.accept(visitor);
+					}
 				}
 
 				if (extension.isLegacyForgeLike() && (Files.notExists(officialToSrgSrg) || extension.refreshDeps())) {
-					SrgNamedWriter.writeTo(project.getLogger(), officialToSrgSrg, mappingTree, "official", "srg", true);
-					Files.copy(officialToSrgSrg, notchSrgSrg, StandardCopyOption.REPLACE_EXISTING);
-					Files.copy(officialToSrgSrg, joinedSrg, StandardCopyOption.REPLACE_EXISTING);
+					try (MappingWriter writer = MappingWriter.create(officialToSrgSrg, MappingFormat.SRG_FILE)) {
+						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "srg"), "official");
+						mappingTree.accept(visitor);
+						Files.copy(officialToSrgSrg, notchSrgSrg, StandardCopyOption.REPLACE_EXISTING);
+						Files.copy(officialToSrgSrg, joinedSrg, StandardCopyOption.REPLACE_EXISTING);
+					}
 				}
 
 				if (extension.isCleanroom() && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {
-					TsrgNamedWriter.writeTo(project.getLogger(), srgToNamedTsrg, mappingTree, "srg", "named");
+					try (MappingWriter writer = MappingWriter.create(srgToNamedTsrg, MappingFormat.TSRG_FILE)) {
+						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "named"), "srg");
+						mappingTree.accept(visitor);
+					}
 				}
 			}
 		}
@@ -430,8 +440,11 @@ public class MappingConfiguration {
 		}
 
 		Path srgPath = getRawSrgFile(project);
-		TinyFile file = new MCPReader(intermediaryTinyPath, srgPath).read(mcpJar);
-		TinyV2Writer.write(file, tinyMappings);
+		MappingTree tree = new MCPReader(intermediaryTinyPath, srgPath).read(mcpJar);
+
+		try (MappingWriter writer = MappingWriter.create(tinyMappings, MappingFormat.TINY_2_FILE)) {
+			tree.accept(writer);
+		}
 	}
 
 	private boolean isMCP(Path path) throws IOException {

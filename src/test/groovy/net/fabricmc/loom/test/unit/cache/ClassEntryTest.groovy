@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021 FabricMC
+ * Copyright (c) 2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,26 +22,42 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.util.srg;
+package net.fabricmc.loom.test.unit.cache
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import spock.lang.Specification
 
-import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
-import org.gradle.api.logging.Logger;
+import net.fabricmc.loom.decompilers.cache.ClassEntry
 
-import net.fabricmc.lorenztiny.TinyMappingsReader;
-import net.fabricmc.mappingio.tree.MappingTree;
+class ClassEntryTest extends Specification {
+	def "valid class entry"() {
+		when:
+		def classEntry = new ClassEntry(name, innerClasses, superClasses)
+		then:
+		// Just make sure the constructor doesn't throw an exception
+		classEntry != null
+		where:
+		name | innerClasses | superClasses
+		"net/fabricmc/Test.class" | [] | []
+		"net/fabricmc/Test.class" | [
+			"net/fabricmc/Test\$Inner.class"
+		] | ["java/lang/List.class"]
+	}
 
-public class TsrgNamedWriter {
-	public static void writeTo(Logger logger, Path srgFile, MappingTree mappings, String from, String to) throws IOException {
-		Files.deleteIfExists(srgFile);
-
-		try (TSrgWriter writer = new TSrgWriter(Files.newBufferedWriter(srgFile))) {
-			try (TinyMappingsReader reader = new TinyMappingsReader(mappings, from, to)) {
-				writer.write(reader.read());
-			}
-		}
+	def "invalid class entry"() {
+		when:
+		new ClassEntry(name, innerClasses, superClasses)
+		then:
+		thrown IllegalArgumentException
+		where:
+		name | innerClasses | superClasses
+		"net/fabricmc/Test" | [] | []
+		"net/fabricmc/Test.class" | ["net/fabricmc/Test\$Inner"] | ["java/lang/List.class"]
+		"net/fabricmc/Test.class" | [
+			"net/fabricmc/Test\$Inner.class"
+		] | ["java/lang/List"]
+		"net/fabricmc/Test.class" | ["net/Test\$Inner.class"] | ["java/lang/List.class"]
+		"net/fabricmc/Test.class" | [
+			"net/fabricmc/Bar\$Inner.class"
+		] | []
 	}
 }
