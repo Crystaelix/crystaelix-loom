@@ -74,7 +74,6 @@ import net.fabricmc.tinyremapper.NonClassCopyMode;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
-import net.fabricmc.tinyremapper.extension.mixin.common.Logger;
 
 public class ModProcessor {
 	private static final String toM = MappingsNamespace.NAMED.toString();
@@ -208,7 +207,7 @@ public class ModProcessor {
 		}
 
 		if (requiresSemiStaticMixinRemap) {
-			builder.extension(new MixinExtension(EnumSet.of(MixinExtension.AnnotationTarget.HARD), Logger.Level.WARN, remapMixinsHard::contains));
+			builder.extension(new MixinExtension(EnumSet.of(MixinExtension.AnnotationTarget.HARD), remapMixinsHard::contains));
 		}
 
 		for (RemapperExtensionHolder holder : extension.getRemapperExtensions().get()) {
