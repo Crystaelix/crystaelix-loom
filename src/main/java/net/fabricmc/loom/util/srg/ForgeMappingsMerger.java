@@ -318,7 +318,7 @@ public final class ForgeMappingsMerger {
 			for (MethodData method : methods) {
 				if (method != preferred) {
 					MappingTree.ClassMapping clazz = output.getClass(method.obfOwner());
-					clazz.getMethods().removeIf(m -> m.getSrcName().equals(method.obfName()) && m.getSrcDesc().equals(method.obfDesc()));
+					clazz.removeMethod(method.obfName(), method.obfDesc());
 				}
 			}
 		}
