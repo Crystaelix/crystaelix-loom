@@ -70,6 +70,7 @@ import net.fabricmc.loom.util.gradle.SourceSetReference;
 public abstract class IdeaSyncTask extends AbstractLoomTask {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IdeaSyncTask.class);
 
+	@Input
 	protected abstract Property<ClasspathType> getClasspathType();
 
 	//@Nested
