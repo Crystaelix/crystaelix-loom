@@ -155,10 +155,10 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		));
 		this.knownIndyBsms.finalizeValueOnRead();
 		this.transitiveAccessWideners = project.getObjects().property(Boolean.class)
-				.convention(true);
+				.convention(false);
 		this.transitiveAccessWideners.finalizeValueOnRead();
 		this.modProvidedJavadoc = project.getObjects().property(Boolean.class)
-				.convention(project.provider(() -> !isForgeLike()));
+				.convention(false);
 		this.modProvidedJavadoc.finalizeValueOnRead();
 		this.intermediary = project.getObjects().property(String.class)
 				.convention(DEFAULT_INTERMEDIARY_URL);
@@ -207,7 +207,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		this.splitModDependencies.finalizeValueOnRead();
 
 		this.interfaceInjectionExtension = project.getObjects().newInstance(InterfaceInjectionExtensionAPI.class);
-		this.interfaceInjectionExtension.getIsEnabled().convention(true);
+		this.interfaceInjectionExtension.getIsEnabled().convention(false);
 
 		this.splitEnvironmentalSourceSet = project.getObjects().property(Boolean.class).convention(false);
 		this.splitEnvironmentalSourceSet.finalizeValueOnRead();
