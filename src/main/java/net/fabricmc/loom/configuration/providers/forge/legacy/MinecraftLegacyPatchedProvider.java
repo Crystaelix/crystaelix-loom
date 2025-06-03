@@ -33,6 +33,7 @@ import java.util.function.Predicate;
 import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.tool.ForgeToolExecutor;
 import dev.architectury.loom.legacyforge.CoreModManagerTransformer;
+import dev.architectury.loom.legacyforge.ModDiscovererTransformer;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -212,15 +213,26 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		// ForgeGradle "solves" this problem using a huge, gross hack (GradleForgeHacks and related classes), and only
 		// for ATs and coremods, not tweakers.
 		// We instead patch support directly into Forge.
-		ZipUtils.UnsafeUnaryOperator<byte[]> transform = original -> {
+		ZipUtils.UnsafeUnaryOperator<byte[]> coreModManagerTransform = original -> {
 			ClassReader reader = new ClassReader(original);
 			ClassWriter writer = new ClassWriter(reader, 0);
 			reader.accept(new CoreModManagerTransformer(writer, getExtension().getForgeProvider().getVersion()), 0);
 			return writer.toByteArray();
 		};
+		// Visual Studio Code may use a classpath jar to shorten the command line.
+		// Therefore, the classpath may need to be expanded to discover classpath mods properly.
+		// We patch support directly into Forge.
+		ZipUtils.UnsafeUnaryOperator<byte[]> modDiscovererTransform = original -> {
+			ClassReader reader = new ClassReader(original);
+			ClassWriter writer = new ClassWriter(reader, 0);
+			reader.accept(new ModDiscovererTransformer(writer, getExtension().getForgeProvider().getVersion()), 0);
+			return writer.toByteArray();
+		};
 		ZipUtils.transform(input, Map.of(
-				CoreModManagerTransformer.FORGE_FILE, transform,
-				CoreModManagerTransformer.CPW_FILE, transform
+				CoreModManagerTransformer.FORGE_FILE, coreModManagerTransform,
+				CoreModManagerTransformer.CPW_FILE, coreModManagerTransform,
+				ModDiscovererTransformer.FORGE_FILE, modDiscovererTransform,
+				ModDiscovererTransformer.CPW_FILE, modDiscovererTransform
 		));
 	}
 }
