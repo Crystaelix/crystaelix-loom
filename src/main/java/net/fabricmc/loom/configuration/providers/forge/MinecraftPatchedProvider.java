@@ -56,6 +56,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.UserdevConfig;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
+import dev.architectury.loom.neoforge.SidedJarIndexGenerator;
 import dev.architectury.loom.util.MappingOption;
 import dev.architectury.loom.util.TempFiles;
 import net.minecraftforge.fart.api.Transformer;
@@ -88,7 +89,6 @@ import net.fabricmc.loom.util.function.FsPathConsumer;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
-import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.MetaInfFixer;
@@ -220,23 +220,64 @@ public class MinecraftPatchedProvider {
 			remapPatchedJar(serviceFactory, minecraftPatchedIntermediateAtJar, minecraftPatchedJar, sourceNamespace, "official");
 			remapCoreMods(minecraftPatchedJar, serviceFactory);
 			applyLoomPatchVersion(minecraftPatchedJar);
-			fillClientExtraJar();
+			fillClientExtraJar(serviceFactory);
 		}
 
 		DependencyProvider.addDependency(project, minecraftClientExtra, Constants.Configurations.FORGE_EXTRA);
 	}
 
-	private void fillClientExtraJar() throws IOException {
+	private void fillClientExtraJar(ServiceFactory serviceFactory) throws IOException {
 		Files.deleteIfExists(minecraftClientExtra);
-		FileSystemUtil.getJarFileSystem(minecraftClientExtra, true).close();
+
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(minecraftClientExtra, true)) {
+			if (getExtension().isNeoForge()) {
+				Path manifestPath = fs.getPath("META-INF", "MANIFEST.MF");
+				generateNeoForgeDistManifest(serviceFactory, manifestPath);
+			}
+		}
 
 		copyNonClassFiles(minecraftProvider.getMinecraftClientJar().toPath(), minecraftClientExtra);
 	}
 
-	private TinyRemapper buildRemapper(ServiceFactory serviceFactory, Path input, String from, String to) throws IOException {
+	// Generates the jar manifest for NeoForge client-extra jars.
+	// The manifest includes a Minecraft-Dists attribute that specifies the dists in the current dev env,
+	// as well as Minecraft-Dist attributes on every dist-only file.
+	private void generateNeoForgeDistManifest(ServiceFactory serviceFactory, Path manifestPath) throws IOException {
+		MemoryMappingTree mappings = getMappingTree(serviceFactory);
+
+		Manifest manifest = new Manifest();
+		manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+		manifest.getMainAttributes().putValue("Minecraft-Dists", type.getNeoForgeDistsAttribute());
+
+		if (type == Type.MERGED) {
+			Path clientJar = minecraftProvider.getMinecraftClientJar().toPath();
+			Path serverJar = Objects.requireNonNullElse(
+					minecraftProvider.getMinecraftExtractedServerJar(),
+					minecraftProvider.getMinecraftServerJar()
+			).toPath();
+			SidedJarIndexGenerator generator = new SidedJarIndexGenerator(clientJar, serverJar, mappings);
+			generator.split((filePath, dist) -> {
+				var fileAttributes = new Attributes();
+				fileAttributes.putValue("Minecraft-Dist", dist);
+				manifest.getEntries().put(filePath, fileAttributes);
+			});
+		}
+
+		Files.createDirectories(manifestPath.getParent());
+
+		try (OutputStream out = Files.newOutputStream(manifestPath)) {
+			manifest.write(out);
+		}
+	}
+
+	private MemoryMappingTree getMappingTree(ServiceFactory serviceFactory) {
 		final MappingOption mappingOption = MappingOption.forPlatform(getExtension());
 		TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(project, serviceFactory, mappingOption);
-		MemoryMappingTree mappings = mappingsService.getMappingTree();
+		return mappingsService.getMappingTree();
+	}
+
+	private TinyRemapper buildRemapper(ServiceFactory serviceFactory, Path input, String from, String to) throws IOException {
+		MemoryMappingTree mappings = getMappingTree(serviceFactory);
 
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
 				.withMappings(TinyRemapperHelper.create(mappings, from, to, true))
@@ -487,9 +528,7 @@ public class MinecraftPatchedProvider {
 	}
 
 	private void remapCoreMods(Path patchedJar, ServiceFactory serviceFactory) throws Exception {
-		final MappingOption mappingOption = MappingOption.forPlatform(getExtension());
-		final TinyMappingsService mappingsService = getExtension().getMappingConfiguration().getMappingsService(project, serviceFactory, mappingOption);
-		final MappingTree mappings = mappingsService.getMappingTree();
+		MemoryMappingTree mappings = getMappingTree(serviceFactory);
 		CoreModClassRemapper.remapJar(project, getExtension().getPlatform().get(), patchedJar, mappings);
 	}
 
@@ -706,6 +745,11 @@ public class MinecraftPatchedProvider {
 			this.id = id;
 			this.mcpId = mcpId;
 			this.patches = patches;
+		}
+
+		// The value for Minecraft-Dists
+		private String getNeoForgeDistsAttribute() {
+			return this == MERGED ? "client server" : id;
 		}
 	}
 
