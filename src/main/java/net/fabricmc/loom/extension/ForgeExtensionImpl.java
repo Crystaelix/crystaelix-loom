@@ -49,6 +49,7 @@ public class ForgeExtensionImpl implements ForgeExtensionAPI {
 	private final SetProperty<String> mixinConfigs;
 	private final Property<Boolean> useCustomMixin;
 	private final Property<Boolean> useForgeLoggerConfig;
+	private final Property<Boolean> transitiveAccessTransformers;
 	private final List<String> dataGenMods = new ArrayList<>(); // not a property because it has custom adding logic
 
 	@Inject
@@ -60,6 +61,8 @@ public class ForgeExtensionImpl implements ForgeExtensionAPI {
 		mixinConfigs = project.getObjects().setProperty(String.class).empty();
 		useCustomMixin = project.getObjects().property(Boolean.class).convention(true);
 		useForgeLoggerConfig = project.getObjects().property(Boolean.class).convention(false);
+		transitiveAccessTransformers = project.getObjects().property(Boolean.class).convention(false);
+		transitiveAccessTransformers.finalizeValueOnRead();
 	}
 
 	@Override
@@ -100,6 +103,11 @@ public class ForgeExtensionImpl implements ForgeExtensionAPI {
 	@Override
 	public Property<Boolean> getUseForgeLoggerConfig() {
 		return useForgeLoggerConfig;
+	}
+
+	@Override
+	public Property<Boolean> getEnableTransitiveAccessTransformers() {
+		return transitiveAccessTransformers;
 	}
 
 	@Override

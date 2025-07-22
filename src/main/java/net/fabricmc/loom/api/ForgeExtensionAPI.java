@@ -114,6 +114,13 @@ public interface ForgeExtensionAPI {
 	Property<Boolean> getUseForgeLoggerConfig();
 
 	/**
+	 * When true loom will apply transitive access transformers from compile dependencies.
+	 *
+	 * @return the property controlling the transitive access transformers
+	 */
+	Property<Boolean> getEnableTransitiveAccessTransformers();
+
+	/**
 	 * A list of mod IDs for mods applied for data generation.
 	 * The returned list is unmodifiable but not immutable - it will reflect changes done with
 	 * {@link #dataGen(Action)}.

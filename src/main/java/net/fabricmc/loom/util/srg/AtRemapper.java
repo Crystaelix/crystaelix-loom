@@ -89,7 +89,7 @@ public class AtRemapper {
 					}
 				}
 
-				Files.walk(fs.getPath("/"), 1).filter(path -> path.toString().endsWith("at.cfg")).forEach(atPaths::add);
+				Files.walk(fs.getPath("/"), 1).filter(path -> path.toString().endsWith("_at.cfg")).forEach(atPaths::add);
 			}
 
 			for (Path atPath : atPaths) {

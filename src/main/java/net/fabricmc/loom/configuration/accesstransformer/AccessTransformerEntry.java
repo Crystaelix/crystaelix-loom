@@ -32,7 +32,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.fmj.FabricModJson;
 
 public interface AccessTransformerEntry {
@@ -50,10 +49,10 @@ public interface AccessTransformerEntry {
 		}
 	}
 
-	record Mod(FabricModJson fmj, String hash) implements AccessTransformerEntry {
+	record Mod(FabricModJson fmj, String path, String hash) implements AccessTransformerEntry {
 		@Override
 		public Reader openReader() throws IOException {
-			final byte[] bytes = fmj.getSource().read(Constants.Forge.ACCESS_TRANSFORMER_PATH);
+			final byte[] bytes = fmj.getSource().read(path);
 			return new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8);
 		}
 

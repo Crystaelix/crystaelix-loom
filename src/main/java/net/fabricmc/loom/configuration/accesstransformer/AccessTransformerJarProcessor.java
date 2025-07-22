@@ -24,6 +24,7 @@
 
 package net.fabricmc.loom.configuration.accesstransformer;
 
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -35,6 +36,9 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
+import java.util.jar.Manifest;
 
 import javax.inject.Inject;
 
@@ -62,17 +66,20 @@ import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.fmj.FabricModJson;
+import net.fabricmc.loom.util.fmj.ModMetadataFabricModJson;
 
 public class AccessTransformerJarProcessor implements MinecraftJarProcessor<AccessTransformerJarProcessor.Spec> {
 	private static final Logger LOGGER = Logging.getLogger(AccessTransformerJarProcessor.class);
 	private final String name;
 	private final Project project;
+	private final boolean includeTransitive;
 	private final Iterable<File> localAccessTransformers;
 
 	@Inject
-	public AccessTransformerJarProcessor(String name, Project project, Iterable<File> localAccessTransformers) {
+	public AccessTransformerJarProcessor(String name, Project project, boolean includeTransitive, Iterable<File> localAccessTransformers) {
 		this.name = name;
 		this.project = project;
+		this.includeTransitive = includeTransitive;
 		this.localAccessTransformers = localAccessTransformers;
 	}
 
@@ -94,22 +101,53 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 		}
 
 		for (FabricModJson localMod : context.localMods()) {
-			final byte[] bytes;
+			addEntries(localMod, entries);
+		}
 
-			try {
-				// TODO: Shouldn't we check for the mods.toml AT list on Neo?
-				bytes = localMod.getSource().read(Constants.Forge.ACCESS_TRANSFORMER_PATH);
-			} catch (FileNotFoundException | NoSuchFileException e) {
-				continue;
-			} catch (IOException e) {
-				throw ExceptionUtil.createDescriptiveWrapper(UncheckedIOException::new, "Could not read accesstransformer.cfg", e);
+		if (includeTransitive) {
+			for (FabricModJson fabricModJson : context.modDependencies()) {
+				addEntries(fabricModJson, entries);
 			}
-
-			final String hash = Hashing.sha256().hashBytes(bytes).toString();
-			entries.add(new AccessTransformerEntry.Mod(localMod, hash));
 		}
 
 		return !entries.isEmpty() ? new Spec(entries) : null;
+	}
+
+	private void addEntries(FabricModJson fabricModJson, List<AccessTransformerEntry> entries) {
+		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		Set<String> atPaths = new TreeSet<>();
+		atPaths.add(Constants.Forge.ACCESS_TRANSFORMER_PATH);
+
+		if (fabricModJson instanceof ModMetadataFabricModJson modMetadataFabricModJson) {
+			atPaths.addAll(modMetadataFabricModJson.getModMetadata().getAccessTransformers(extension.getPlatform().get()));
+		}
+
+		try {
+			Manifest manifest = new Manifest(new ByteArrayInputStream(fabricModJson.getSource().read("META-INF/MANIFEST.MF")));
+			String atList = manifest.getMainAttributes().getValue(Constants.LegacyForge.ACCESS_TRANSFORMERS_MANIFEST_KEY);
+
+			if (atList != null) {
+				for (String atFile : atList.split(" ")) {
+					atPaths.add("META-INF/" + atFile);
+				}
+			}
+		} catch (FileNotFoundException | NoSuchFileException ignored) {
+			;
+		} catch (IOException e) {
+			throw ExceptionUtil.createDescriptiveWrapper(UncheckedIOException::new, "Could not read manifest", e);
+		}
+
+		for (String atPath : atPaths) {
+			try {
+				byte[] bytes = fabricModJson.getSource().read(atPath);
+				String hash = Hashing.sha256().hashBytes(bytes).toString();
+				entries.add(new AccessTransformerEntry.Mod(fabricModJson, atPath, hash));
+			} catch (FileNotFoundException | NoSuchFileException ignored) {
+				;
+			} catch (IOException e) {
+				throw ExceptionUtil.createDescriptiveWrapper(UncheckedIOException::new, "Could not read accesstransformer.cfg", e);
+			}
+		}
 	}
 
 	@Override
@@ -161,7 +199,7 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 	public static void executeAt(Project project, Path input, Path output, AccessTransformerConfiguration configuration) throws IOException {
 		LoomVersions accessTransformer = chooseAccessTransformer(project);
 		String mainClass = accessTransformer == LoomVersions.ACCESS_TRANSFORMERS_NEO ? "net.neoforged.accesstransformer.cli.TransformerProcessor"
-						: "net.minecraftforge.accesstransformer.TransformerProcessor";
+				: "net.minecraftforge.accesstransformer.TransformerProcessor";
 		FileCollection classpath = new DependencyDownloader(project)
 				.add(accessTransformer.mavenNotation())
 				.add(LoomVersions.ASM.mavenNotation())

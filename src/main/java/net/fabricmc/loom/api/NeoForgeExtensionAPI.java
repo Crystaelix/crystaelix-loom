@@ -25,6 +25,7 @@
 package net.fabricmc.loom.api;
 
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.provider.Property;
 
 /**
  * This is the NeoForge extension API available to build scripts.
@@ -47,4 +48,11 @@ public interface NeoForgeExtensionAPI {
 	 * @param file the file, evaluated as per {@link org.gradle.api.Project#file(Object)}
 	 */
 	void accessTransformer(Object file);
+
+	/**
+	 * When true loom will apply transitive access transformers from compile dependencies.
+	 *
+	 * @return the property controlling the transitive access transformers
+	 */
+	Property<Boolean> getEnableTransitiveAccessTransformers();
 }

@@ -296,14 +296,17 @@ public abstract class CompileConfiguration implements Runnable {
 
 		if (extension.isForgeLike()) {
 			FileCollection accessTransformers;
+			boolean enableTransitiveAccessTransformers;
 
 			if (extension.isNeoForge()) {
 				accessTransformers = extension.getNeoForge().getAccessTransformers();
+				enableTransitiveAccessTransformers = extension.getNeoForge().getEnableTransitiveAccessTransformers().get();
 			} else {
 				accessTransformers = extension.getForge().getAccessTransformers();
+				enableTransitiveAccessTransformers = extension.getForge().getEnableTransitiveAccessTransformers().get();
 			}
 
-			extension.addMinecraftJarProcessor(AccessTransformerJarProcessor.class, "loom:access-transformer", configContext.project(), accessTransformers);
+			extension.addMinecraftJarProcessor(AccessTransformerJarProcessor.class, "loom:access-transformer", configContext.project(), enableTransitiveAccessTransformers, accessTransformers);
 		}
 	}
 

@@ -28,15 +28,19 @@ import javax.inject.Inject;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.provider.Property;
 
 import net.fabricmc.loom.api.NeoForgeExtensionAPI;
 
 public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	private final ConfigurableFileCollection accessTransformers;
+	private final Property<Boolean> transitiveAccessTransformers;
 
 	@Inject
 	public NeoForgeExtensionImpl(Project project) {
 		accessTransformers = project.getObjects().fileCollection();
+		transitiveAccessTransformers = project.getObjects().property(Boolean.class).convention(false);
+		transitiveAccessTransformers.finalizeValueOnRead();
 	}
 
 	@Override
@@ -47,5 +51,10 @@ public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	@Override
 	public void accessTransformer(Object file) {
 		accessTransformers.from(file);
+	}
+
+	@Override
+	public Property<Boolean> getEnableTransitiveAccessTransformers() {
+		return transitiveAccessTransformers;
 	}
 }
