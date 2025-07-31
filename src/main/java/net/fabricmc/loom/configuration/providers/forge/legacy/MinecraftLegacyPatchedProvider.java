@@ -123,6 +123,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 					McpExecutor executor = createMcpExecutor(tempFiles.directory("loom-mcp"));
 					Path output = executor.enqueue(type == Type.CLIENT_ONLY ? "downloadClient" : "strip").execute();
 					patchJars(output, minecraftPatchedOfficialJar, type);
+					mergeForge(minecraftPatchedOfficialJar);
 				}
 			}
 		} else {

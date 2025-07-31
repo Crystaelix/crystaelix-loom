@@ -46,6 +46,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
+import java.util.function.UnaryOperator;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
@@ -63,9 +64,11 @@ import net.minecraftforge.fart.api.Transformer;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
+import org.objectweb.asm.AnnotationVisitor;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.FieldVisitor;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -520,11 +523,12 @@ public class MinecraftPatchedProvider {
 			}
 
 			copyUserdevFiles(forgeUserdevJar, output);
+			removeForRemoval(output);
 
 			Files.copy(output, input, StandardCopyOption.REPLACE_EXISTING);
 		}
 
-		logger.lifecycle(":merged forge in" + stopwatch.stop());
+		logger.lifecycle(":merged forge in " + stopwatch.stop());
 	}
 
 	private void remapCoreMods(Path patchedJar, ServiceFactory serviceFactory) throws Exception {
@@ -682,6 +686,62 @@ public class MinecraftPatchedProvider {
 
 			Files.copy(sourcePath, targetPath);
 		});
+	}
+
+	private void removeForRemoval(Path jarFile) throws IOException {
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jarFile, false)) {
+			ThreadingUtils.TaskCompleter completer = ThreadingUtils.taskCompleter();
+			UnaryOperator<AnnotationVisitor> annotationVisitorWrapper = av -> new AnnotationVisitor(Opcodes.ASM9, av) {
+				@Override
+				public void visit(String name, Object value) {
+					if (!"forRemoval".equals(name)) super.visit(name, value);
+				}
+			};
+
+			for (Path file : (Iterable<? extends Path>) Files.walk(fs.getPath("/"))::iterator) {
+				if (!file.toString().endsWith(".class")) continue;
+
+				completer.add(() -> {
+					byte[] bytes = Files.readAllBytes(file);
+					ClassReader reader = new ClassReader(bytes);
+					ClassWriter writer = new ClassWriter(0);
+
+					reader.accept(new ClassVisitor(Opcodes.ASM9, writer) {
+						@Override
+						public FieldVisitor visitField(int access, String name, String descriptor, String signature, Object value) {
+							return new FieldVisitor(Opcodes.ASM9, super.visitField(access, name, descriptor, signature, value)) {
+								@Override
+								public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+									AnnotationVisitor av = super.visitAnnotation(descriptor, visible);
+									if ("Ljava/lang/Deprecated;".equals(descriptor)) return annotationVisitorWrapper.apply(av);
+									return av;
+								}
+							};
+						}
+
+						@Override
+						public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+							return new MethodVisitor(Opcodes.ASM9, super.visitMethod(access, name, descriptor, signature, exceptions)) {
+								@Override
+								public AnnotationVisitor visitAnnotation(String descriptor, boolean visible) {
+									AnnotationVisitor av = super.visitAnnotation(descriptor, visible);
+									if ("Ljava/lang/Deprecated;".equals(descriptor)) return annotationVisitorWrapper.apply(av);
+									return av;
+								}
+							};
+						}
+					}, 0);
+
+					byte[] out = writer.toByteArray();
+
+					if (!Arrays.equals(bytes, out)) {
+						Files.write(file, out);
+					}
+				});
+			}
+
+			completer.complete();
+		}
 	}
 
 	public void applyLoomPatchVersion(Path target) throws IOException {
