@@ -1,6 +1,6 @@
 [versions]
 kotlin = "2.0.21"
-asm = "9.7.1"
+asm = "9.8"
 commons-io = "2.15.1"
 gson = "2.10.1"
 guava = "33.0.0-jre"
@@ -12,6 +12,7 @@ mapping-io = "0.7.1"
 lorenz-tiny = "4.0.2"
 mercury = "0.1.4.17"
 loom-native = "0.2.0"
+unpick = "3.0.0-beta.9"
 
 # Plugins
 spotless = "6.25.0"
@@ -19,7 +20,7 @@ test-retry = "1.5.6"
 checkstyle = "10.17.0"
 codenarc = "3.4.0"
 
-# Forge libraries
+# Architectury libraries
 forge-installertools = "1.2.0"
 lorenz = "0.5.3"
 forge-autorenamingtool = "1.0.2"
@@ -28,8 +29,7 @@ forge-diffpatch = "2.0.7"
 night-config = "3.6.7"
 datafixerupper = "6.0.8"
 at = "1.0.1"
-
-# Legacy Forge libraries
+jankson = "1.2.3"
 commons-compress = "1.25.0"
 
 [libraries]
@@ -51,12 +51,14 @@ fabric-mapping-io = { module = "net.fabricmc:mapping-io", version.ref = "mapping
 fabric-lorenz-tiny = { module = "net.fabricmc:lorenz-tiny", version.ref = "lorenz-tiny" }
 fabric-mercury = { module = "dev.architectury:mercury", version.ref = "mercury" }
 fabric-loom-nativelib = { module = "net.fabricmc:fabric-loom-native", version.ref = "loom-native" }
+fabric-unpick = { module = "net.fabricmc.unpick:unpick", version.ref = "unpick" }
+fabric-unpick-utils = { module = "net.fabricmc.unpick:unpick-format-utils", version.ref = "unpick" }
 
 # Misc
 kotlin-gradle-plugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
 kotlin-metadata = { module = "org.jetbrains.kotlin:kotlin-metadata-jvm", version.ref = "kotlin" }
 
-# Forge support
+# Architectury
 forge-installertools = { module = "net.minecraftforge:installertools", version.ref = "forge-installertools" }
 lorenz = { module = "org.cadixdev:lorenz", version.ref = "lorenz" }
 forge-autorenamingtool = { module = "net.minecraftforge:ForgeAutoRenamingTool", version.ref = "forge-autorenamingtool" }
@@ -65,6 +67,7 @@ forge-diffpatch = { module = "net.minecraftforge:DiffPatch", version.ref = "forg
 night-config-toml = { module = "com.electronwill.night-config:toml", version.ref = "night-config" }
 datafixerupper = { module = "com.mojang:datafixerupper", version.ref = "datafixerupper" }
 at = { module = "dev.architectury:at", version.ref = "at" }
+jankson = { module = "blue.endless:jankson", version.ref = "jankson" }
 
 # Legacy Forge support
 commons-compress = { module = "org.apache.commons:commons-compress", version.ref = "commons-compress" }

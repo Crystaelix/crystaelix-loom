@@ -155,6 +155,11 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 
 	boolean isProjectIsolationActive();
 
+	/**
+	 * @return true when '--write-verification-metadata` is set
+	 */
+	boolean isCollectingDependencyVerificationMetadata();
+
 	// ===================
 	//  Architectury Loom
 	// ===================
@@ -210,4 +215,6 @@ public interface LoomGradleExtension extends LoomGradleExtensionAPI {
 	default Path getPlatformMappingFile() {
 		return getMappingConfiguration().getPlatformMappingFile(this);
 	}
+
+	boolean manualRefreshDeps();
 }

@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.function.Predicate;
 
 import com.google.common.base.Stopwatch;
-import dev.architectury.loom.forge.tool.ForgeToolExecutor;
+import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.legacyforge.CoreModManagerTransformer;
 import dev.architectury.loom.legacyforge.ModDiscovererTransformer;
 import dev.architectury.loom.util.TempFiles;
@@ -44,6 +44,7 @@ import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.providers.forge.ForgeProvider;
 import net.fabricmc.loom.configuration.providers.forge.MinecraftPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
+import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutorBuilder;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DependencyDownloader;
@@ -120,8 +121,10 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 				this.dirty = true;
 
 				try (var tempFiles = new TempFiles()) {
-					McpExecutor executor = createMcpExecutor(tempFiles.directory("loom-mcp"));
-					Path output = executor.enqueue(type == Type.CLIENT_ONLY ? "downloadClient" : "strip").execute();
+					McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"));
+					builder.enqueue(type == Type.CLIENT_ONLY ? "downloadClient" : "strip");
+					McpExecutor executor = serviceFactory.get(builder.build());
+					Path output = executor.execute();
 					patchJars(output, minecraftPatchedOfficialJar, type);
 					mergeForge(minecraftPatchedOfficialJar);
 				}
@@ -131,14 +134,18 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 				this.dirty = true;
 
 				try (var tempFiles = new TempFiles()) {
-					McpExecutor executor = createMcpExecutor(tempFiles.directory("loom-mcp"), Type.CLIENT_ONLY);
-					Path output = executor.enqueue("downloadClient").execute();
+					McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"), Type.CLIENT_ONLY);
+					builder.enqueue("downloadClient");
+					McpExecutor executor = serviceFactory.get(builder.build());
+					Path output = executor.execute();
 					patchJars(output, minecraftPatchedClientOfficialJar, Type.CLIENT_ONLY);
 				}
 
 				try (var tempFiles = new TempFiles()) {
-					McpExecutor executor = createMcpExecutor(tempFiles.directory("loom-mcp"), Type.SERVER_ONLY);
-					Path output = executor.enqueue("strip").execute();
+					McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"), Type.SERVER_ONLY);
+					builder.enqueue("strip");
+					McpExecutor executor = serviceFactory.get(builder.build());
+					Path output = executor.execute();
 					patchJars(output, minecraftPatchedServerOfficialJar, Type.SERVER_ONLY);
 				}
 			}
@@ -175,7 +182,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 
 		FileCollection classpath = DependencyDownloader.download(project, LoomVersions.MERGETOOL.mavenNotation() + ":fatjar", false, true);
 
-		ForgeToolExecutor.exec(project, spec -> {
+		ForgeToolValueSource.exec(project, spec -> {
 			spec.setClasspath(classpath);
 			spec.args(
 					"--client", minecraftPatchedClientOfficialJar.toAbsolutePath().toString(),

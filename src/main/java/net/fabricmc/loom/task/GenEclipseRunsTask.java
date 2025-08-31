@@ -37,8 +37,10 @@ import javax.inject.Inject;
 
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
@@ -50,18 +52,18 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class GenEclipseRunsTask extends AbstractLoomTask {
-	//@Nested
-	//protected abstract ListProperty<EclipseRunConfig> getEclipseRunConfigs();
+	@Nested
+	protected abstract ListProperty<EclipseRunConfig> getEclipseRunConfigs();
 
 	@Inject
 	public GenEclipseRunsTask() {
 		setGroup(Constants.TaskGroup.IDE);
-		//getEclipseRunConfigs().set(getProject().provider(() -> getRunConfigs(getProject())));
+		getEclipseRunConfigs().set(getProject().provider(() -> getRunConfigs(getProject())));
 	}
 
 	@TaskAction
 	public void genRuns() throws IOException {
-		for (EclipseRunConfig runConfig : getRunConfigs(getProject())) {
+		for (EclipseRunConfig runConfig : getEclipseRunConfigs().get()) {
 			runConfig.writeLaunchFile();
 		}
 	}

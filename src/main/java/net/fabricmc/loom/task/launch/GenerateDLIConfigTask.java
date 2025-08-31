@@ -65,7 +65,6 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.MappedMinecraf
 import net.fabricmc.loom.task.AbstractLoomTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
-import net.fabricmc.loom.util.PropertyUtil;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
@@ -115,6 +114,11 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	@Input
 	@Optional
 	protected abstract Property<ForgeInputs> getForgeInputs();
+
+	@ApiStatus.Internal
+	@Input
+	@Optional
+	protected abstract Property<LegacyForgeInputs> getLegacyForgeInputs();
 
 	@ApiStatus.Internal
 	@InputFile
@@ -167,6 +171,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			if (getExtension().isForge()) {
 				getForgeInputs().set(getProject().provider(() -> new ForgeInputs(getProject(), getExtension())));
 			}
+
+			if (getExtension().isLegacyForgeLike()) {
+				getLegacyForgeInputs().set(getProject().provider(() -> new LegacyForgeInputs(getProject(), getExtension())));
+			}
 		} else {
 			getRunTemplates().empty();
 		}
@@ -197,7 +205,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.property("client", "org.lwjgl.librarypath", nativesPath);
 		}
 
-		if (!getExtension().isModernForgeLike()) {
+		if (!platform.isModernForgeLike()) {
 			launchConfig
 					.argument("client", "--assetIndex")
 					.argument("client", versionInfo.assetIndex().fabricId(getMinecraftVersion().get()))
@@ -205,7 +213,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					.argument("client", assetsDirectory.getAbsolutePath());
 		}
 
-		if (!getExtension().isForgeLike()) {
+		if (!platform.isForgeLike()) {
 			if (getSplitSourceSets().get()) {
 				launchConfig.property("client", !quilt ? "fabric.gameJarPath.client" : "loader.gameJarPath.client", getClientGameJarPath().get());
 				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getCommonGameJarPath().get());
@@ -219,7 +227,8 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		if (quilt) {
 			launchConfig
 					.argument("client", "--version")
-					.argument("client", "Architectury Loom");
+					.argument("client", "Architectury Loom")
+					.property("loader.enable_quilt_mod_json5_in_dev_env", "true");
 		}
 
 		if (platform.isForgeLike()) {
@@ -257,7 +266,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				launchConfig
 						.property("mixin.env.remapRefMap", "true")
 						// Just in case
-						.property("mixin.env.refMapRemappingFile", getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString());
+						.property("mixin.env.refMapRemappingFile", forgeInputs.srgToNamedSrg());
 
 				if (forgeInputs.useCustomMixin()) {
 					// See mixin remapper service in forge-runtime
@@ -279,8 +288,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				}
 			}
 
-			if (getExtension().isLegacyForgeLike()) {
-				if (getExtension().getForgeProvider().getVersion().cpwFml()) {
+			if (platform.isLegacyForgeLike()) {
+				final LegacyForgeInputs legacyForgeInputs = Objects.requireNonNull(getLegacyForgeInputs().getOrNull());
+
+				if (legacyForgeInputs.cpwFml()) {
 					launchConfig
 							.argument("client", "--tweakClass")
 							.argument("client", Constants.LegacyForge.CPW_FML_TWEAKER)
@@ -300,19 +311,19 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 						.argument("--userProperties")
 						.argument("{}");
 
-				String srgPath = !getExtension().isCleanroom()
-						? getExtension().getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString()
-						: getExtension().getMappingConfiguration().srgToNamedTsrg.toAbsolutePath().toString();
+				String srgPath = platform != ModPlatform.CLEANROOM
+						? legacyForgeInputs.srgToNamedSrg()
+						: legacyForgeInputs.srgToNamedTSrg();
 
 				launchConfig
 						.property("net.minecraftforge.gradle.GradleStart.srg.srg-mcp", srgPath)
-						.property("net.minecraftforge.gradle.GradleStart.srg.notch-srg", getExtension().getMappingConfiguration().officialToSrgSrg.toAbsolutePath().toString())
-						.property("net.minecraftforge.gradle.GradleStart.srgDir", getExtension().getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString())
-						.property("net.minecraftforge.gradle.GradleStart.csvDir", getExtension().getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString())
+						.property("net.minecraftforge.gradle.GradleStart.srg.notch-srg", legacyForgeInputs.officialToSrgSrg())
+						.property("net.minecraftforge.gradle.GradleStart.srgDir", legacyForgeInputs.mappingsWorkingDir())
+						.property("net.minecraftforge.gradle.GradleStart.csvDir", legacyForgeInputs.mappingsWorkingDir())
 						.property("mixin.env.remapRefMap", "true")
 						.property("mixin.env.refMapRemappingFile", srgPath);
 
-				Set<String> mixinConfigs = PropertyUtil.getAndFinalize(getExtension().getForge().getMixinConfigs());
+				Set<String> mixinConfigs = legacyForgeInputs.mixinConfigs();
 
 				if (!mixinConfigs.isEmpty()) {
 					for (String config : mixinConfigs) {
@@ -436,6 +447,27 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 					extension.getForge().getMixinConfigs().get(),
 					extension.getForge().getUseCustomMixin().get(),
 					extension.getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString()
+			);
+		}
+	}
+
+	@ApiStatus.Internal
+	public record LegacyForgeInputs(
+			Set<String> mixinConfigs,
+			boolean cpwFml,
+			String srgToNamedSrg,
+			String srgToNamedTSrg,
+			String officialToSrgSrg,
+			String mappingsWorkingDir
+	) implements Serializable {
+		public LegacyForgeInputs(Project project, LoomGradleExtension extension) {
+			this(
+					extension.getForge().getMixinConfigs().get(),
+					extension.getForgeProvider().getVersion().cpwFml(),
+					extension.getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString(),
+					extension.getMappingConfiguration().srgToNamedTsrg.toAbsolutePath().toString(),
+					extension.getMappingConfiguration().officialToSrgSrg.toAbsolutePath().toString(),
+					extension.getMappingConfiguration().mappingsWorkingDir().toAbsolutePath().toString()
 			);
 		}
 	}

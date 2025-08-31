@@ -3,10 +3,7 @@ package dev.architectury.loom.forge.tool;
 import java.util.Collection;
 import java.util.List;
 
-import javax.inject.Inject;
-
 import org.apache.commons.io.output.NullOutputStream;
-import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.LogLevel;
@@ -15,17 +12,22 @@ import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Optional;
 import org.gradle.process.ExecOperations;
 import org.gradle.process.ExecResult;
+import org.gradle.process.JavaExecSpec;
 import org.jetbrains.annotations.Nullable;
 
 /**
  * Contains helpers for executing Forge's command line tools
  * with suppressed output streams to prevent annoying log spam.
+ *
+ * <p>To execute Forge tools during project config, use {@link ForgeToolValueSource};
+ * to execute them during config or tasks, use {@link ForgeToolService}.
  */
-public abstract class ForgeToolExecutor {
-	@Inject
-	protected abstract ExecOperations getExecOperations();
+public final class ForgeToolExecutor {
+	private ForgeToolExecutor() {
+	}
 
 	public static boolean shouldShowVerboseStdout(Project project) {
 		// if running with INFO or DEBUG logging
@@ -42,63 +44,68 @@ public abstract class ForgeToolExecutor {
 		settings.getExecutable().set(JavaExecutableFetcher.getJavaToolchainExecutable(project));
 		settings.getShowVerboseStdout().set(shouldShowVerboseStdout(project));
 		settings.getShowVerboseStderr().set(shouldShowVerboseStderr(project));
+
+		// call this to ensure the fields aren't null when used in services
+		// (otherwise, the JSON serialization crashes)
+		settings.getProgramArgs();
+		settings.getJvmArgs();
+		settings.getMainClass();
+		settings.getExecClasspath();
+
 		return settings;
 	}
 
-	/**
-	 * Executes an external Java process.
-	 *
-	 * <p>This method cannot be used during configuration.
-	 * Use {@link ForgeToolValueSource#exec(Project, Action)} for those cases.
-	 *
-	 * @param project      the project
-	 * @param configurator the {@code javaexec} configuration action
-	 * @return the execution result
-	 */
-	public static ExecResult exec(Project project, Action<? super Settings> configurator) {
-		final Settings settings = getDefaultSettings(project);
-		configurator.execute(settings);
-		return project.getObjects().newInstance(ForgeToolExecutor.class).exec(settings);
+	static ExecResult exec(ExecOperations execOperations, Settings settings) {
+		return execOperations.javaexec(spec -> applyToSpec(settings, spec));
 	}
 
-	private ExecResult exec(Settings settings) {
-		return exec(getExecOperations(), settings);
+	private static void applyToSpec(Settings settings, JavaExecSpec spec) {
+		final @Nullable String executable = settings.getExecutable().getOrNull();
+		if (executable != null) spec.setExecutable(executable);
+		final @Nullable String mainClass = settings.getMainClass().getOrNull();
+		if (mainClass != null) spec.getMainClass().set(mainClass);
+		spec.setArgs(settings.getProgramArgs().get());
+		spec.setJvmArgs(settings.getJvmArgs().get());
+		spec.setClasspath(settings.getExecClasspath());
+
+		if (settings.getShowVerboseStdout().get()) {
+			spec.setStandardOutput(System.out);
+		} else {
+			spec.setStandardOutput(NullOutputStream.INSTANCE);
+		}
+
+		if (settings.getShowVerboseStderr().get()) {
+			spec.setErrorOutput(System.err);
+		} else {
+			spec.setErrorOutput(NullOutputStream.INSTANCE);
+		}
 	}
 
-	public static ExecResult exec(ExecOperations execOperations, Settings settings) {
-		return execOperations.javaexec(spec -> {
-			final @Nullable String executable = settings.getExecutable().getOrNull();
-			if (executable != null) spec.setExecutable(executable);
-			spec.getMainClass().set(settings.getMainClass());
-			spec.setArgs(settings.getProgramArgs().get());
-			spec.setJvmArgs(settings.getJvmArgs().get());
-			spec.setClasspath(settings.getExecClasspath());
-
-			if (settings.getShowVerboseStdout().get()) {
-				spec.setStandardOutput(System.out);
-			} else {
-				spec.setStandardOutput(NullOutputStream.NULL_OUTPUT_STREAM);
-			}
-
-			if (settings.getShowVerboseStderr().get()) {
-				spec.setErrorOutput(System.err);
-			} else {
-				spec.setErrorOutput(NullOutputStream.NULL_OUTPUT_STREAM);
-			}
-		});
+	static void copySettings(Settings source, Settings target) {
+		target.getExecutable().set(source.getExecutable());
+		target.getMainClass().set(source.getMainClass());
+		target.getProgramArgs().set(source.getProgramArgs());
+		target.getJvmArgs().set(source.getJvmArgs());
+		target.getExecClasspath().setFrom(source.getExecClasspath());
+		target.getShowVerboseStdout().set(source.getShowVerboseStdout());
+		target.getShowVerboseStderr().set(source.getShowVerboseStderr());
 	}
 
 	public interface Settings {
 		@Input
+		@Optional
 		Property<String> getExecutable();
 
 		@Input
+		@Optional
 		ListProperty<String> getProgramArgs();
 
 		@Input
+		@Optional
 		ListProperty<String> getJvmArgs();
 
 		@Input
+		@Optional
 		Property<String> getMainClass();
 
 		@Classpath

@@ -18,12 +18,12 @@ tasks.withType(JavaCompile).configureEach {
 
 tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 	kotlinOptions {
-		jvmTarget = "17"
+		jvmTarget = "21"
 	}
 }
 
 group = "com.crystaelix"
-def baseVersion = '1.10'
+def baseVersion = '1.11'
 
 def ENV = System.getenv()
 //def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
@@ -145,6 +145,9 @@ dependencies {
 	// source code remapping
 	implementation libs.fabric.mercury
 
+	implementation libs.fabric.unpick
+	implementation libs.fabric.unpick.utils
+
 	// Kotlin
 	implementation(libs.kotlin.metadata) {
 		transitive = false
@@ -165,6 +168,9 @@ dependencies {
 	// Forge mods.toml parsing
 	implementation libs.night.config.toml
 
+	// quilt.mod.json5 parsing
+	implementation libs.jankson
+
 	// Legacy Forge patch parsing
 	implementation libs.commons.compress
 
@@ -180,6 +186,9 @@ dependencies {
 	}
 	testImplementation testLibs.mockito
 	testImplementation testLibs.java.debug
+	testImplementation testLibs.bcprov
+	testImplementation testLibs.bcutil
+	testImplementation testLibs.bcpkix
 
 	compileOnly runtimeLibs.jetbrains.annotations
 	testCompileOnly runtimeLibs.jetbrains.annotations
@@ -205,13 +214,13 @@ base {
 }
 
 tasks.withType(JavaCompile).configureEach {
-	it.options.release = 17
+	it.options.release = 21
 }
 
 java {
 	withSourcesJar()
-	sourceCompatibility = JavaVersion.VERSION_17
-	targetCompatibility = JavaVersion.VERSION_17
+	sourceCompatibility = JavaVersion.VERSION_21
+	targetCompatibility = JavaVersion.VERSION_21
 }
 
 spotless {
@@ -364,6 +373,7 @@ publishing {
 tasks.register('writeActionsTestMatrix') {
 	doLast {
 		def testMatrix = []
+		def extendedTests = Boolean.parseBoolean(System.getenv('EXTENDED_TESTS') ?: 'false')
 		file('src/test/groovy/net/fabricmc/loom/test/integration').traverse {
 			if (it.name.endsWith("Test.groovy")) {
 				if (it.name.endsWith("ReproducibleBuildTest.groovy")) {
@@ -371,18 +381,13 @@ tasks.register('writeActionsTestMatrix') {
 					return
 				}
 
-				if (it.name.endsWith("DebugLineNumbersTest.groovy")) {
+				if (it.name.endsWith("DebugLineNumbersTest.groovy") && !extendedTests) {
 					// Known flakey test
 					return
 				}
 
 				if (it.name.endsWith("FabricAPITest.groovy")) {
 					// Arch: Disabled as it hangs
-					return
-				}
-
-				if (it.name.endsWith("NeoForge1206Test.groovy") || it.name.endsWith("Forge1206Test.groovy")) {
-					// Arch: The 1.20.6 tests require Java 21
 					return
 				}
 
@@ -395,9 +400,6 @@ tasks.register('writeActionsTestMatrix') {
 
 		// Run all the unit tests together
 		testMatrix.add("net.fabricmc.loom.test.unit.*")
-
-		// Kotlin tests
-		testMatrix.add("net.fabricmc.loom.test.kotlin.*")
 
 		def json = groovy.json.JsonOutput.toJson(testMatrix)
 		def output = file("build/test_matrix.json")

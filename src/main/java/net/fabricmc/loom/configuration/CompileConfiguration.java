@@ -39,6 +39,7 @@ import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.forge.ForgeSourcesService;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -84,7 +85,6 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.IntermediaryMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
-import net.fabricmc.loom.configuration.sources.ForgeSourcesRemapper;
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.ExceptionUtil;
@@ -161,7 +161,7 @@ public abstract class CompileConfiguration implements Runnable {
 				//   because of https://github.com/architectury/architectury-loom/issues/72.
 				if (!ModConfigurationRemapper.isCIBuild()) {
 					try {
-						ForgeSourcesRemapper.addBaseForgeSources(getProject(), configContext.serviceFactory());
+						ForgeSourcesService.addForgeSourcesDuringProjectConfiguration(getProject(), configContext.serviceFactory());
 					} catch (IOException e) {
 						e.printStackTrace();
 					}
@@ -369,7 +369,7 @@ public abstract class CompileConfiguration implements Runnable {
 	private LockFile getLockFile() {
 		final LoomGradleExtension extension = LoomGradleExtension.get(getProject());
 		final Path cacheDirectory = extension.getFiles().getUserCache().toPath();
-		final String pathHash = Checksum.projectHash(getProject());
+		final String pathHash = Checksum.of(getProject()).sha1().hex();
 		return new LockFile(
 				cacheDirectory.resolve("." + pathHash + ".lock"),
 				"Lock for cache='%s', project='%s'".formatted(

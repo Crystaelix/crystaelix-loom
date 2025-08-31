@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2020-2024 FabricMC
+ * Copyright (c) 2020-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,10 +30,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.UncheckedIOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystem;
 import java.nio.file.Files;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
@@ -50,12 +48,12 @@ import java.util.function.UnaryOperator;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.UserdevConfig;
+import dev.architectury.loom.forge.tool.AccessTransformerService;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.neoforge.SidedJarIndexGenerator;
 import dev.architectury.loom.util.MappingOption;
@@ -75,10 +73,10 @@ import org.objectweb.asm.Opcodes;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
-import net.fabricmc.loom.configuration.accesstransformer.AccessTransformerJarProcessor;
 import net.fabricmc.loom.configuration.providers.forge.legacy.MinecraftLegacyPatchedProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
 import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutor;
+import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpExecutorBuilder;
 import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.TinyMappingsService;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
@@ -89,6 +87,7 @@ import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.function.FsPathConsumer;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.CoreModClassRemapper;
 import net.fabricmc.loom.util.srg.InnerClassRemapper;
@@ -198,9 +197,11 @@ public class MinecraftPatchedProvider {
 		if (Files.notExists(minecraftIntermediateJar)) {
 			this.dirty = true;
 
-			try (var tempFiles = new TempFiles()) {
-				McpExecutor executor = createMcpExecutor(tempFiles.directory("loom-mcp"));
-				Path output = executor.enqueue("rename").execute();
+			try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
+				McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"));
+				builder.enqueue("rename");
+				McpExecutor executor = serviceFactory.get(builder.build());
+				Path output = executor.execute();
 				Files.copy(output, minecraftIntermediateJar);
 			}
 		}
@@ -408,68 +409,16 @@ public class MinecraftPatchedProvider {
 	protected void accessTransformForge() throws IOException {
 		Path input = minecraftPatchedIntermediateJar;
 		Path target = minecraftPatchedIntermediateAtJar;
-		accessTransform(project, input, target);
-	}
-
-	public static void accessTransform(Project project, Path input, Path target) throws IOException {
 		Stopwatch stopwatch = Stopwatch.createStarted();
+		logger.lifecycle(":access transforming minecraft");
 
-		project.getLogger().lifecycle(":access transforming minecraft");
-
-		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
-		Files.deleteIfExists(target);
-
-		try (
-				TempFiles tempFiles = new TempFiles();
-				FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(userdevJar)
-		) {
-			AccessTransformerJarProcessor.executeAt(project, input, target, args -> {
-				for (String atFile : extractAccessTransformers(userdevJar, extension.getForgeUserdevProvider().getConfig().ats(), tempFiles)) {
-					args.add("--atFile");
-					args.add(atFile);
-				}
-			});
+		try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
+			AccessTransformerService service = serviceFactory.get(AccessTransformerService.createOptionsForLoaderAts(project, tempFiles));
+			Files.deleteIfExists(target);
+			service.execute(input, target);
 		}
 
-		project.getLogger().lifecycle(":access transformed minecraft in " + stopwatch.stop());
-	}
-
-	private static List<String> extractAccessTransformers(Path jar, UserdevConfig.AccessTransformerLocation location, TempFiles tempFiles) throws IOException {
-		final List<String> extracted = new ArrayList<>();
-
-		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(jar)) {
-			for (Path atFile : getAccessTransformerPaths(fs, location)) {
-				List<String> atLines;
-
-				try {
-					atLines = Files.readAllLines(atFile, StandardCharsets.UTF_8);
-				} catch (NoSuchFileException e) {
-					continue;
-				}
-
-				// Fix 1.7 ats
-				String atStr = atLines.stream()
-						.map(line -> line.contains("<") && line.endsWith(")") ? line + "V" : line)
-						.collect(Collectors.joining("\n"));
-
-				Path tmpFile = tempFiles.file("at-conf", ".cfg");
-				Files.writeString(tmpFile, atStr, StandardCharsets.UTF_8);
-				extracted.add(tmpFile.toAbsolutePath().toString());
-			}
-		}
-
-		return extracted;
-	}
-
-	private static List<Path> getAccessTransformerPaths(FileSystemUtil.Delegate fs, UserdevConfig.AccessTransformerLocation location) throws IOException {
-		return location.visitIo(directory -> {
-			Path dirPath = fs.getPath(directory);
-
-			try (Stream<Path> paths = Files.list(dirPath)) {
-				return paths.toList();
-			}
-		}, paths -> paths.stream().map(fs::getPath).toList());
+		logger.lifecycle(":access transformed minecraft in " + stopwatch.stop());
 	}
 
 	protected void remapPatchedJar(ServiceFactory serviceFactory, Path mcInput, Path mcOutput, String from, String to) throws Exception {
@@ -764,13 +713,13 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
-	public McpExecutor createMcpExecutor(Path cache) {
+	public McpExecutorBuilder createMcpExecutor(Path cache) {
 		return createMcpExecutor(cache, type);
 	}
 
-	public McpExecutor createMcpExecutor(Path cache, Type type) {
+	public McpExecutorBuilder createMcpExecutor(Path cache, Type type) {
 		McpConfigProvider provider = getExtension().getMcpConfigProvider();
-		return new McpExecutor(project, minecraftProvider, cache, provider, type.mcpId);
+		return new McpExecutorBuilder(project, minecraftProvider, cache, provider, type.mcpId);
 	}
 
 	public Path getMinecraftIntermediateJar() {

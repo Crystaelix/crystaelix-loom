@@ -49,6 +49,7 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -73,19 +74,19 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 	@Input
 	protected abstract Property<ClasspathType> getClasspathType();
 
-	//@Nested
-	//protected abstract ListProperty<IntelijRunConfig> getIdeaRunConfigs();
+	@Nested
+	protected abstract ListProperty<IntelijRunConfig> getIdeaRunConfigs();
 
 	@Inject
 	public IdeaSyncTask() {
 		setGroup(Constants.TaskGroup.IDE);
 		getClasspathType().convention(ClasspathType.GRADLE);
-		//getIdeaRunConfigs().set(getProject().provider(this::getRunConfigs));
+		getIdeaRunConfigs().set(getProject().provider(this::getRunConfigs));
 	}
 
 	@TaskAction
 	public void runTask() throws IOException {
-		for (IntelijRunConfig config : getRunConfigs()) {
+		for (IntelijRunConfig config : getIdeaRunConfigs().get()) {
 			config.writeLaunchFile();
 		}
 	}

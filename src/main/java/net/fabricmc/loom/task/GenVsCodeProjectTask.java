@@ -43,8 +43,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.services.ServiceReference;
+import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 
@@ -62,8 +64,8 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	@ServiceReference(SyncTaskBuildService.NAME)
 	abstract Property<SyncTaskBuildService> getSyncTask();
 
-	//@Input
-	//protected abstract ListProperty<VsCodeConfiguration> getLaunchConfigurations();
+	@Input
+	protected abstract ListProperty<VsCodeConfiguration> getLaunchConfigurations();
 
 	@OutputFile
 	protected abstract RegularFileProperty getLaunchJson();
@@ -71,7 +73,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	@Inject
 	public GenVsCodeProjectTask() {
 		setGroup(Constants.TaskGroup.IDE);
-		//getLaunchConfigurations().set(getProject().provider(this::getConfigurations));
+		getLaunchConfigurations().set(getProject().provider(this::getConfigurations));
 		getLaunchJson().convention(getProject().getRootProject().getLayout().getProjectDirectory().file(".vscode/launch.json"));
 	}
 
@@ -116,7 +118,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 			root.add("configurations", configurations);
 		}
 
-		for (VsCodeConfiguration configuration : getConfigurations()) {
+		for (VsCodeConfiguration configuration : getLaunchConfigurations().get()) {
 			JsonObject configurationJson = LoomGradlePlugin.GSON.toJsonTree(configuration).getAsJsonObject();
 			configurationJson.remove("runDir");
 
@@ -165,18 +167,18 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 			Path projectPath = project.getProjectDir().toPath();
 			String relativeRunDir = rootPath.relativize(projectPath).resolve(runConfig.runDir).toString();
 			return new VsCodeConfiguration(
-				"java",
-				runConfig.configName,
-				"launch",
-				"${workspaceFolder}/" + relativeRunDir,
-				"integratedTerminal",
-				false,
-				runConfig.mainClass,
-				RunConfig.joinArguments(runConfig.vmArgs),
-				RunConfig.joinArguments(runConfig.programArgs),
-				new HashMap<>(runConfig.environmentVariables),
-				runConfig.projectName,
-				rootPath.resolve(relativeRunDir).toAbsolutePath().toString()
+					"java",
+					runConfig.configName,
+					"launch",
+					"${workspaceFolder}/" + relativeRunDir,
+					"integratedTerminal",
+					false,
+					runConfig.mainClass,
+					RunConfig.joinArguments(runConfig.vmArgs),
+					RunConfig.joinArguments(runConfig.programArgs),
+					new HashMap<>(runConfig.environmentVariables),
+					runConfig.projectName,
+					rootPath.resolve(relativeRunDir).toAbsolutePath().toString()
 			);
 		}
 	}

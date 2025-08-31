@@ -29,7 +29,7 @@ import org.objectweb.asm.Opcodes;
 
 public class Constants {
 	public static final String PLUGIN_ID = "com.crystaelix.loom";
-	public static final boolean PLUGIN_BETA = false;
+	public static final boolean PLUGIN_BETA = true;
 	public static final boolean PLUGIN_DEPRECATED = false;
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";
 	public static final String RESOURCES_BASE = "https://resources.download.minecraft.net/";
@@ -103,7 +103,6 @@ public class Constants {
 		 */
 		public static final String FORGE_RUNTIME_LIBRARY = "forgeRuntimeLibrary";
 		public static final String MAPPING_CONSTANTS = "mappingsConstants";
-		public static final String UNPICK_CLASSPATH = "unpick";
 		/**
 		 * A configuration that behaves like {@code runtimeOnly} but is not
 		 * exposed in {@code runtimeElements} to dependents. A bit like
@@ -178,6 +177,14 @@ public class Constants {
 		public static final String RUNTIME_JAVA_COMPATIBILITY_VERSION = "fabric.loom.runtimeJavaCompatibilityVersion";
 		public static final String DECOMPILE_CACHE_MAX_FILES = "fabric.loom.decompileCacheMaxFiles";
 		public static final String DECOMPILE_CACHE_MAX_AGE = "fabric.loom.decompileCacheMaxAge";
+		/**
+		 * Skip the signature verification of the Minecraft jar after downloading it.
+		 */
+		public static final String DISABLE_MINECRAFT_VERIFICATION = "fabric.loom.disableMinecraftVerification";
+		/**
+		 * When using the MojangMappingLayer this will remove names for non root methods by using the intermediary mappings.
+		 */
+		public static final String DROP_NON_INTERMEDIATE_ROOT_METHODS = "fabric.loom.dropNonIntermediateRootMethods";
 		public static final String ALLOW_MISMATCHED_PLATFORM_VERSION = "loom.allowMismatchedPlatformVersion";
 		public static final String IGNORE_DEPENDENCY_LOOM_VERSION_VALIDATION = "loom.ignoreDependencyLoomVersionValidation";
 	}
