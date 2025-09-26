@@ -33,7 +33,7 @@ import java.util.function.Predicate;
 import com.google.common.base.Stopwatch;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.legacyforge.CoreModManagerTransformer;
-import dev.architectury.loom.legacyforge.ModDiscovererTransformer;
+import dev.architectury.loom.legacyforge.FMLTweakerTransformer;
 import dev.architectury.loom.util.TempFiles;
 import org.gradle.api.Project;
 import org.gradle.api.file.FileCollection;
@@ -224,23 +224,23 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		ZipUtils.UnsafeUnaryOperator<byte[]> coreModManagerTransform = original -> {
 			ClassReader reader = new ClassReader(original);
 			ClassWriter writer = new ClassWriter(reader, 0);
-			reader.accept(new CoreModManagerTransformer(writer, getExtension().getForgeProvider().getVersion()), 0);
+			reader.accept(new CoreModManagerTransformer(writer, getExtension().getForgeProvider().getVersion()), ClassReader.EXPAND_FRAMES);
 			return writer.toByteArray();
 		};
 		// Visual Studio Code may use a classpath jar to shorten the command line.
 		// Therefore, the classpath may need to be expanded to discover classpath mods properly.
 		// We patch support directly into Forge.
-		ZipUtils.UnsafeUnaryOperator<byte[]> modDiscovererTransform = original -> {
+		ZipUtils.UnsafeUnaryOperator<byte[]> fmlTweakerTransform = original -> {
 			ClassReader reader = new ClassReader(original);
 			ClassWriter writer = new ClassWriter(reader, 0);
-			reader.accept(new ModDiscovererTransformer(writer, getExtension().getForgeProvider().getVersion()), 0);
+			reader.accept(new FMLTweakerTransformer(writer, getExtension().getForgeProvider().getVersion()), ClassReader.EXPAND_FRAMES);
 			return writer.toByteArray();
 		};
 		ZipUtils.transform(input, Map.of(
 				CoreModManagerTransformer.FORGE_FILE, coreModManagerTransform,
 				CoreModManagerTransformer.CPW_FILE, coreModManagerTransform,
-				ModDiscovererTransformer.FORGE_FILE, modDiscovererTransform,
-				ModDiscovererTransformer.CPW_FILE, modDiscovererTransform
+				FMLTweakerTransformer.FORGE_FILE, fmlTweakerTransform,
+				FMLTweakerTransformer.CPW_FILE, fmlTweakerTransform
 		));
 	}
 }
