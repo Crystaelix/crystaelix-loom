@@ -574,7 +574,7 @@ public class CoreModManagerTransformer extends ClassVisitor {
 			methodVisitor.visitVarInsn(ALOAD, 0);
 			methodVisitor.visitVarInsn(ALOAD, 11);
 			methodVisitor.visitVarInsn(ALOAD, 8);
-			methodVisitor.visitMethodInsn(INVOKESTATIC, pakkage + "fml/relauncher/CoreModManager", "loadCoreMod", "(Lnet/minecraft/launchwrapper/LaunchClassLoader;Ljava/lang/String;Ljava/io/File;)Lnet/minecraftforge/fml/relauncher/CoreModManager$FMLPluginWrapper;", false);
+			methodVisitor.visitMethodInsn(INVOKESTATIC, pakkage + "fml/relauncher/CoreModManager", "loadCoreMod", "(Lnet/minecraft/launchwrapper/LaunchClassLoader;Ljava/lang/String;Ljava/io/File;)L" + pakkage + "fml/relauncher/CoreModManager$FMLPluginWrapper;", false);
 			methodVisitor.visitInsn(POP);
 			methodVisitor.visitLabel(label22);
 			methodVisitor.visitLineNumber(740, label22);
