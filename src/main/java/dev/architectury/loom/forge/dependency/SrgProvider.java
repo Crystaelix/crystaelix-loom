@@ -35,9 +35,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import com.crystaelix.loom.util.McpMappingsScanner;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
 import dev.architectury.loom.util.DependencyDownloader;
-import dev.architectury.loom.util.McpMappingsScanner;
 import dev.architectury.loom.util.Stopwatch;
 import org.gradle.api.Project;
 import org.jetbrains.annotations.Nullable;

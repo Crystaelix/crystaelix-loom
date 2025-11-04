@@ -1,4 +1,4 @@
-package dev.architectury.loom.legacyforge;
+package com.crystaelix.loom.legacyforge;
 
 import static org.objectweb.asm.Opcodes.AALOAD;
 import static org.objectweb.asm.Opcodes.ACC_PRIVATE;

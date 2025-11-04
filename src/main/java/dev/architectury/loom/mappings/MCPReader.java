@@ -37,9 +37,9 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.crystaelix.loom.util.McpMappingsScanner;
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
-import dev.architectury.loom.util.McpMappingsScanner;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.util.FileSystemUtil;

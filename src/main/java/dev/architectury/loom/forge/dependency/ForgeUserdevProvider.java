@@ -30,12 +30,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
+import com.crystaelix.loom.legacyforge.UserdevVersionMeta;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.mojang.serialization.JsonOps;
 import dev.architectury.loom.forge.ForgeVersion;
 import dev.architectury.loom.forge.config.UserdevConfig;
-import dev.architectury.loom.legacyforge.UserdevVersionMeta;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;

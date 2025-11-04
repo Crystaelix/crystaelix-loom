@@ -1,4 +1,4 @@
-package dev.architectury.loom.legacyforge;
+package com.crystaelix.loom.legacyforge;
 
 import java.util.List;
 import java.util.Map;

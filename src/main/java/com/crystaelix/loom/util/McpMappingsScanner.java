@@ -1,4 +1,4 @@
-package dev.architectury.loom.util;
+package com.crystaelix.loom.util;
 
 import java.io.IOException;
 import java.nio.file.Files;

@@ -30,7 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 
-import dev.architectury.loom.legacyforge.LegacyPatchConverter;
+import com.crystaelix.loom.legacyforge.LegacyPatchConverter;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;

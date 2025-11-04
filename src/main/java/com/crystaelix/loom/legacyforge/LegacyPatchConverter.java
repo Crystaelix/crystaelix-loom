@@ -1,4 +1,4 @@
-package dev.architectury.loom.legacyforge;
+package com.crystaelix.loom.legacyforge;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

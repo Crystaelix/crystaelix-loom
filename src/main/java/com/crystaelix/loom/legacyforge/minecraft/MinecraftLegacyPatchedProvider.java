@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package dev.architectury.loom.legacyforge.minecraft;
+package com.crystaelix.loom.legacyforge.minecraft;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -30,11 +30,11 @@ import java.nio.file.Path;
 import java.util.Map;
 import java.util.function.Predicate;
 
+import com.crystaelix.loom.legacyforge.CoreModManagerTransformer;
+import com.crystaelix.loom.legacyforge.FMLTweakerTransformer;
 import dev.architectury.loom.forge.dependency.ForgeProvider;
 import dev.architectury.loom.forge.minecraft.MinecraftPatchedProvider;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
-import dev.architectury.loom.legacyforge.CoreModManagerTransformer;
-import dev.architectury.loom.legacyforge.FMLTweakerTransformer;
 import dev.architectury.loom.mcpconfig.McpExecutor;
 import dev.architectury.loom.mcpconfig.McpExecutorBuilder;
 import dev.architectury.loom.util.DependencyDownloader;

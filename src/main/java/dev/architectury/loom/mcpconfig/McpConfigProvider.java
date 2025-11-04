@@ -33,11 +33,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.crystaelix.loom.util.McpMappingsScanner;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.architectury.loom.forge.config.ConfigValue;
 import dev.architectury.loom.forge.dependency.DependencyProvider;
-import dev.architectury.loom.util.McpMappingsScanner;
 import org.cadixdev.lorenz.io.srg.SrgReader;
 import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
 import org.gradle.api.Project;

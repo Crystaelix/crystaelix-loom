@@ -50,6 +50,7 @@ import java.util.jar.Manifest;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
+import com.crystaelix.loom.legacyforge.minecraft.MinecraftLegacyPatchedProvider;
 import dev.architectury.loom.accesstransformer.AccessTransformerService;
 import dev.architectury.loom.forge.CoreModClassRemapper;
 import dev.architectury.loom.forge.InnerClassRemapper;
@@ -59,7 +60,6 @@ import dev.architectury.loom.forge.dependency.ForgeProvider;
 import dev.architectury.loom.forge.dependency.ForgeUserdevProvider;
 import dev.architectury.loom.forge.dependency.PatchProvider;
 import dev.architectury.loom.forge.tool.ForgeToolValueSource;
-import dev.architectury.loom.legacyforge.minecraft.MinecraftLegacyPatchedProvider;
 import dev.architectury.loom.mappings.MappingOption;
 import dev.architectury.loom.mcpconfig.McpConfigProvider;
 import dev.architectury.loom.mcpconfig.McpExecutor;

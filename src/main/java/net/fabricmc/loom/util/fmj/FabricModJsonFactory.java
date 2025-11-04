@@ -35,9 +35,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Optional;
 
+import com.crystaelix.loom.metadata.McModInfo;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonSyntaxException;
-import dev.architectury.loom.metadata.McModInfo;
 import dev.architectury.loom.metadata.ModMetadataFile;
 import dev.architectury.loom.metadata.ModMetadataFiles;
 import dev.architectury.loom.metadata.ModsToml;

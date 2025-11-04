@@ -44,12 +44,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import com.crystaelix.loom.util.McpMappingsScanner;
 import dev.architectury.loom.forge.ForgeMigratedMappingConfiguration;
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.mappings.ForgeMappingsMerger;
 import dev.architectury.loom.mappings.MCPReader;
 import dev.architectury.loom.mappings.MappingOption;
-import dev.architectury.loom.util.McpMappingsScanner;
 import dev.architectury.loom.util.Stopwatch;
 import org.apache.tools.ant.util.StringUtils;
 import org.gradle.api.Project;

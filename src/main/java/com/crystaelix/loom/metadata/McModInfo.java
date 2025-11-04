@@ -1,4 +1,4 @@
-package dev.architectury.loom.metadata;
+package com.crystaelix.loom.metadata;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +12,7 @@ import java.util.Set;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import dev.architectury.loom.metadata.JsonBackedModMetadataFile;
 import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor.InjectedInterface;
