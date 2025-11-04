@@ -25,16 +25,15 @@
 package net.fabricmc.loom.configuration.providers.forge;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.common.hash.Hashing;
 import dev.architectury.loom.forge.ModDirTransformerDiscovererPatch;
-import dev.architectury.loom.neoforge.LaunchHandlerPatcher;
+import dev.architectury.loom.neoforge.StringConstantPatcher;
 import dev.architectury.loom.util.ClassVisitorUtil;
+import dev.architectury.loom.util.MappingOption;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.artifacts.ModuleDependency;
@@ -49,25 +48,38 @@ import net.fabricmc.loom.configuration.mods.ModConfigurationRemapper;
 import net.fabricmc.loom.configuration.mods.dependency.LocalMavenHelper;
 import net.fabricmc.loom.configuration.providers.mappings.GradleMappingContext;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
+import net.fabricmc.loom.configuration.providers.mappings.TinyMappingsService;
+import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.Platform;
+import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.PropertyUtil;
+import net.fabricmc.loom.util.Version;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
+import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
 import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
+import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class ForgeLibrariesProvider {
+	private static final String FML_PATCH_VERSION = "-loom-patch-v1";
+
 	private static final String FML_LOADER_GROUP = "net.minecraftforge";
 	private static final String FML_LOADER_NAME = "fmlloader";
 	private static final String FANCYML_LOADER_GROUP = "net.neoforged.fancymodloader";
 	private static final String FANCYML_LOADER_NAME = "loader";
+	private static final Version FANCYML_LOADER_UNPROTECT_BACKEND_VERSION = Version.parse("10.0.14");
 
 	private static final String FORGE_OBJECT_HOLDER_FILE = "net/minecraftforge/fml/common/asm/ObjectHolderDefinalize.class";
 	private static final String FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE = "net/minecraftforge/fml/loading/ModDirTransformerDiscoverer.class";
 	private static final String NEOFORGE_OBJECT_HOLDER_FILE = "net/neoforged/fml/common/asm/ObjectHolderDefinalize.class";
 	private static final String NEOFORGE_LAUNCH_HANDLER_FILE = "net/neoforged/fml/loading/targets/CommonUserdevLaunchHandler.class";
+	private static final String NEOFORGE_LOADER_FILE = "net/neoforged/fml/loading/FMLLoader.class";
+	private static final String NEOFORGE_GAME_LOCATOR_FILE = "net/neoforged/fml/loading/moddiscovery/locators/GameLocator.class";
+	private static final String NEOFORGE_REQUIRED_SYSTEM_FILES_FILE = "net/neoforged/fml/loading/moddiscovery/locators/RequiredSystemFiles.class";
 
 	public static void provide(MappingConfiguration mappingConfiguration, Project project) throws Exception {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
@@ -125,22 +137,30 @@ public class ForgeLibrariesProvider {
 				.detachedConfiguration(dependencies.toArray(new Dependency[0]))
 				.getResolvedConfiguration();
 
+		boolean isFancyModLoader10OrNewer = false;
+
 		for (ResolvedArtifact artifact : config.getResolvedArtifacts()) {
 			final ModuleVersionIdentifier id = artifact.getModuleVersion().getId();
 			final Object dep;
 			final boolean isFML = FML_LOADER_GROUP.equals(id.getGroup()) && FML_LOADER_NAME.equals(id.getName());
 			final boolean isFancyML = FANCYML_LOADER_GROUP.equals(id.getGroup()) && FANCYML_LOADER_NAME.equals(id.getName());
 
+			if (isFancyML && extension.isNeoForge() && Version.parse(id.getVersion()).compareTo(FANCYML_LOADER_UNPROTECT_BACKEND_VERSION) >= 0) {
+				// Note: check extension.isNeoForge() to prevent this check triggering on legacy "47.x" versions of FML
+				// from before Neo replaced the versioning scheme.
+				isFancyModLoader10OrNewer = true;
+			}
+
 			if (isFML || isFancyML) {
 				// If FML, remap it.
-				try {
+				try (var serviceFactory = new ScopedServiceFactory()) {
 					if (isFML) {
 						project.getLogger().info(":remapping FML loader");
 					} else if (isFancyML) {
 						project.getLogger().info(":remapping FancyML loader");
 					}
 
-					dep = remapFmlLoader(project, artifact, mappingConfiguration);
+					dep = remapFmlLoader(project, serviceFactory, artifact, mappingConfiguration);
 				} catch (IOException e) {
 					throw ExceptionUtil.createDescriptiveWrapper(RuntimeException::new, "Could not remap FML", e);
 				}
@@ -156,18 +176,19 @@ public class ForgeLibrariesProvider {
 
 			DependencyProvider.addDependency(project, dep, Constants.Configurations.FORGE_DEPENDENCIES);
 		}
+
+		LoomVersions unprotect = isFancyModLoader10OrNewer ? LoomVersions.UNPROTECT_FANCYMODLOADER10 : LoomVersions.UNPROTECT_MODLAUNCHER;
+		DependencyProvider.addDependency(project, unprotect.mavenNotation(), Constants.Configurations.FORGE_EXTRA);
 	}
 
 	// Returns a Gradle dependency notation.
-	private static Object remapFmlLoader(Project project, ResolvedArtifact artifact, MappingConfiguration mappingConfiguration) throws IOException {
+	private static Object remapFmlLoader(Project project, ServiceFactory serviceFactory, ResolvedArtifact artifact, MappingConfiguration mappingConfiguration) throws IOException {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 
 		// A hash of the current mapping configuration. The transformations only need to be done once per mapping set.
 		// While the mappings ID is definitely valid in file names, splitting MC versions parts into nested directories
 		// isn't good.
-		final String mappingHash = Hashing.sha256()
-				.hashString(mappingConfiguration.mappingsIdentifier(), StandardCharsets.UTF_8)
-				.toString();
+		final String mappingHash = Checksum.of(mappingConfiguration.mappingsIdentifier() + FML_PATCH_VERSION).sha256().hex();
 
 		// Resolve the inputs and outputs.
 		final ModuleVersionIdentifier id = artifact.getModuleVersion().getId();
@@ -180,6 +201,9 @@ public class ForgeLibrariesProvider {
 		);
 		final Path inputJar = artifact.getFile().toPath();
 		final Path outputJar = mavenHelper.getOutputFile(null);
+
+		final TinyMappingsService mappingsService = mappingConfiguration.getMappingsService(project, serviceFactory, MappingOption.DEFAULT);
+		final MappingTree mappings = mappingsService.getMappingTree();
 
 		// Modify jar.
 		if (!Files.exists(outputJar) || extension.refreshDeps()) {
@@ -194,7 +218,7 @@ public class ForgeLibrariesProvider {
 				}
 
 				if (Files.exists(fs.getPath(FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE))) {
-					ClassVisitorUtil.rewriteClassFile(fs.getPath(FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE), ModDirTransformerDiscovererPatch::new);
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(FORGE_MOD_DIR_TRANSFORMER_DISCOVERER_FILE), true, ModDirTransformerDiscovererPatch::new);
 				}
 
 				if (Files.exists(fs.getPath(NEOFORGE_OBJECT_HOLDER_FILE))) {
@@ -202,7 +226,19 @@ public class ForgeLibrariesProvider {
 				}
 
 				if (Files.exists(fs.getPath(NEOFORGE_LAUNCH_HANDLER_FILE))) {
-					ClassVisitorUtil.rewriteClassFile(fs.getPath(NEOFORGE_LAUNCH_HANDLER_FILE), LaunchHandlerPatcher::new);
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(NEOFORGE_LAUNCH_HANDLER_FILE), StringConstantPatcher::forUserdevLaunchHandler);
+				}
+
+				if (Files.exists(fs.getPath(NEOFORGE_LOADER_FILE))) {
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(NEOFORGE_LOADER_FILE), next -> StringConstantPatcher.forFmlLoader(next, mappings));
+				}
+
+				if (Files.exists(fs.getPath(NEOFORGE_GAME_LOCATOR_FILE))) {
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(NEOFORGE_GAME_LOCATOR_FILE), next -> StringConstantPatcher.forGameLocator(next, mappings));
+				}
+
+				if (Files.exists(fs.getPath(NEOFORGE_REQUIRED_SYSTEM_FILES_FILE))) {
+					ClassVisitorUtil.rewriteClassFile(fs.getPath(NEOFORGE_REQUIRED_SYSTEM_FILES_FILE), next -> StringConstantPatcher.forRequiredSystemFiles(next, mappings));
 				}
 			}
 

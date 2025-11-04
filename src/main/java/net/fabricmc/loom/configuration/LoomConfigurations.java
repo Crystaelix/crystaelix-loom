@@ -206,12 +206,8 @@ public abstract class LoomConfigurations implements Runnable {
 			extendsFrom(JavaPlugin.TEST_RUNTIME_CLASSPATH_CONFIGURATION_NAME, Constants.Configurations.FORGE_EXTRA);
 
 			// Add shared dev-time dependencies
+			// TODO: Can we get rid of javax annotations on modern versions?
 			getDependencies().add(JavaPlugin.COMPILE_ONLY_CONFIGURATION_NAME, LoomVersions.JAVAX_ANNOTATIONS.mavenNotation());
-
-			// Add Forge/NeoForge dev-time dependencies
-			if (extension.isModernForgeLike()) {
-				getDependencies().add(Constants.Configurations.FORGE_EXTRA, LoomVersions.UNPROTECT.mavenNotation());
-			}
 
 			// Add Forge dev-time dependencies
 			if (extension.isForge()) {

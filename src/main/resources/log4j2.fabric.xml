@@ -58,10 +58,8 @@
 		</RollingRandomAccessFile>
 	</Appenders>
 	<Loggers>
-		<Logger level="${sys:fabric.log.mojang.level:-info}" name="com.mojang"/>
-		<Logger level="${sys:fabric.log.mojang.level:-info}" name="net.minecraft"/>
-		<Logger level="warn" name="cpw.mods.modlauncher.ClassTransformer"/>
-		<Root level="all">
+		<Logger level="${sys:fabric.log.level:-info}" name="net.minecraft"/>
+		<Root level="${sys:fabric.log.debug.level:-debug}">
 			<AppenderRef ref="DebugFile" level="${sys:fabric.log.debug.level:-debug}"/>
 			<AppenderRef ref="SysOut" level="${sys:fabric.log.console.level:-info}"/>
 			<AppenderRef ref="LatestFile" level="${sys:fabric.log.level:-info}"/>
