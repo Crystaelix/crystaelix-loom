@@ -28,7 +28,7 @@ night-config = "3.6.7"
 datafixerupper = "6.0.8"
 at = "1.0.1"
 jankson = "1.2.3"
-commons-compress = "1.25.0"
+commons-compress = "1.28.0"
 
 [libraries]
 # Loom compile libraries

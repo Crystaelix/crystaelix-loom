@@ -12,7 +12,8 @@ import java.util.jar.JarOutputStream;
 
 import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
 import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
-import org.apache.commons.compress.java.util.jar.Pack200;
+import org.apache.commons.compress.compressors.pack200.Pack200CompressorInputStream;
+import org.apache.commons.compress.utils.IOUtils;
 import org.slf4j.Logger;
 
 public class LegacyPatchConverter {
@@ -20,12 +21,19 @@ public class LegacyPatchConverter {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 
 		try (
-				ByteArrayInputStream in = new ByteArrayInputStream(unpack200Lzma(legacyPatches));
-				JarInputStream jarIn = new JarInputStream(in);
+				JarInputStream jarIn = new JarInputStream(
+						new Pack200CompressorInputStream(
+								new LZMACompressorInputStream(
+										new ByteArrayInputStream(legacyPatches)
+								)
+						)
+				);
 				PushbackInputStream pushbackIn = new PushbackInputStream(jarIn);
 				DataInputStream dataIn = new DataInputStream(pushbackIn);
-				LZMACompressorOutputStream lzmaOut = new LZMACompressorOutputStream(out);
-				JarOutputStream jarOut = new JarOutputStream(lzmaOut);
+
+				JarOutputStream jarOut = new JarOutputStream(
+						new LZMACompressorOutputStream(out)
+				);
 				DataOutputStream dataOut = new DataOutputStream(jarOut)
 		) {
 			for (JarEntry entry; (entry = jarIn.getNextJarEntry()) != null;) {
@@ -49,23 +57,9 @@ public class LegacyPatchConverter {
 					dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // srg class name
 				}
 
-				dataOut.write(pushbackIn.readAllBytes());
+				IOUtils.copy(pushbackIn, dataOut);
 				jarOut.closeEntry();
 			}
-		}
-
-		return out.toByteArray();
-	}
-
-	private static byte[] unpack200Lzma(byte[] bytes) throws IOException {
-		ByteArrayOutputStream out = new ByteArrayOutputStream();
-
-		try (
-				ByteArrayInputStream in = new ByteArrayInputStream(bytes);
-				LZMACompressorInputStream lzmaIn = new LZMACompressorInputStream(in);
-				JarOutputStream jarOut = new JarOutputStream(out)
-		) {
-			Pack200.newUnpacker().unpack(lzmaIn, jarOut);
 		}
 
 		return out.toByteArray();
