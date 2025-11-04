@@ -25,37 +25,13 @@
 package net.fabricmc.loom.kotlin.remapping
 
 import org.objectweb.asm.commons.Remapper
-import kotlin.metadata.ClassName
-import kotlin.metadata.ExperimentalContextReceivers
-import kotlin.metadata.KmAnnotation
-import kotlin.metadata.KmClass
-import kotlin.metadata.KmClassifier
-import kotlin.metadata.KmConstructor
-import kotlin.metadata.KmFlexibleTypeUpperBound
-import kotlin.metadata.KmFunction
-import kotlin.metadata.KmLambda
-import kotlin.metadata.KmPackage
-import kotlin.metadata.KmProperty
-import kotlin.metadata.KmType
-import kotlin.metadata.KmTypeAlias
-import kotlin.metadata.KmTypeParameter
-import kotlin.metadata.KmTypeProjection
-import kotlin.metadata.KmValueParameter
-import kotlin.metadata.isLocalClassName
-import kotlin.metadata.jvm.JvmFieldSignature
-import kotlin.metadata.jvm.JvmMethodSignature
-import kotlin.metadata.jvm.annotations
-import kotlin.metadata.jvm.fieldSignature
-import kotlin.metadata.jvm.getterSignature
-import kotlin.metadata.jvm.localDelegatedProperties
-import kotlin.metadata.jvm.setterSignature
-import kotlin.metadata.jvm.signature
-import kotlin.metadata.jvm.syntheticMethodForAnnotations
-import kotlin.metadata.jvm.syntheticMethodForDelegate
-import kotlin.metadata.jvm.toJvmInternalName
+import kotlin.metadata.*
+import kotlin.metadata.jvm.*
 
 @OptIn(ExperimentalContextReceivers::class)
-class KotlinClassRemapper(private val remapper: Remapper) {
+class KotlinClassRemapper(
+    private val remapper: Remapper,
+) {
     fun remap(clazz: KmClass): KmClass {
         clazz.name = remap(clazz.name)
         clazz.typeParameters.replaceAll(this::remap)
@@ -86,7 +62,15 @@ class KotlinClassRemapper(private val remapper: Remapper) {
 
     private fun remap(name: ClassName): ClassName {
         val local = name.isLocalClassName()
-        val remapped = remapper.map(name.toJvmInternalName()).replace('$', '.')
+
+        // Ensure that none inner classes with names containing $ are persisted.
+        // See: https://github.com/FabricMC/fabric-loom/issues/1363 fix suggested by fan87
+        val normalizedName = name.replace('$', '\n')
+        val remapped =
+            remapper
+                .map(normalizedName.toJvmInternalName())
+                .replace('$', '.')
+                .replace('\n', '$')
 
         if (local) {
             return ".$remapped"
@@ -154,13 +138,16 @@ class KotlinClassRemapper(private val remapper: Remapper) {
         return typeParameter
     }
 
-    private fun remap(typeProjection: KmTypeProjection): KmTypeProjection {
-        return KmTypeProjection(typeProjection.variance, typeProjection.type?.let { remap(it) })
-    }
+    private fun remap(typeProjection: KmTypeProjection): KmTypeProjection =
+        KmTypeProjection(
+            typeProjection.variance,
+            typeProjection.type?.let {
+                remap(it)
+            },
+        )
 
-    private fun remap(flexibleTypeUpperBound: KmFlexibleTypeUpperBound): KmFlexibleTypeUpperBound {
-        return KmFlexibleTypeUpperBound(remap(flexibleTypeUpperBound.type), flexibleTypeUpperBound.typeFlexibilityId)
-    }
+    private fun remap(flexibleTypeUpperBound: KmFlexibleTypeUpperBound): KmFlexibleTypeUpperBound =
+        KmFlexibleTypeUpperBound(remap(flexibleTypeUpperBound.type), flexibleTypeUpperBound.typeFlexibilityId)
 
     private fun remap(valueParameter: KmValueParameter): KmValueParameter {
         valueParameter.type = remap(valueParameter.type)
@@ -168,15 +155,11 @@ class KotlinClassRemapper(private val remapper: Remapper) {
         return valueParameter
     }
 
-    private fun remap(annotation: KmAnnotation): KmAnnotation {
-        return KmAnnotation(remap(annotation.className), annotation.arguments)
-    }
+    private fun remap(annotation: KmAnnotation): KmAnnotation = KmAnnotation(remap(annotation.className), annotation.arguments)
 
-    private fun remap(signature: JvmMethodSignature): JvmMethodSignature {
-        return JvmMethodSignature(signature.name, remapper.mapMethodDesc(signature.descriptor))
-    }
+    private fun remap(signature: JvmMethodSignature): JvmMethodSignature =
+        JvmMethodSignature(signature.name, remapper.mapMethodDesc(signature.descriptor))
 
-    private fun remap(signature: JvmFieldSignature): JvmFieldSignature {
-        return JvmFieldSignature(signature.name, remapper.mapDesc(signature.descriptor))
-    }
+    private fun remap(signature: JvmFieldSignature): JvmFieldSignature =
+        JvmFieldSignature(signature.name, remapper.mapDesc(signature.descriptor))
 }

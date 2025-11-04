@@ -30,7 +30,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 
-import com.google.common.base.Stopwatch;
+import dev.architectury.loom.util.Stopwatch;
 import org.gradle.api.provider.Property;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

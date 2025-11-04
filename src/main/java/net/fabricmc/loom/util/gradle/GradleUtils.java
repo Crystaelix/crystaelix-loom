@@ -32,8 +32,9 @@ import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.invocation.Gradle;
 import org.gradle.api.provider.Provider;
 
+import net.fabricmc.loom.LoomCompanionGradlePlugin;
 import net.fabricmc.loom.LoomGradleExtension;
-import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.LoomGradlePlugin;
 
 public final class GradleUtils {
 	private GradleUtils() {
@@ -60,7 +61,13 @@ public final class GradleUtils {
 	}
 
 	public static boolean isLoomProject(Project project) {
-		return project.getPluginManager().hasPlugin(Constants.PLUGIN_ID);
+		return project.getPluginManager().hasPlugin(LoomGradlePlugin.NAME);
+	}
+
+	public static boolean isLoomCompanionProject(Project project) {
+		return project.getPluginManager().hasPlugin(LoomCompanionGradlePlugin.NAME)
+				|| project.getPluginManager().hasPlugin(LoomCompanionGradlePlugin.ARCH_NAME)
+				|| project.getPluginManager().hasPlugin(LoomCompanionGradlePlugin.FABRIC_NAME);
 	}
 
 	public static Provider<Boolean> getBooleanPropertyProvider(Project project, String key) {
@@ -124,5 +131,9 @@ public final class GradleUtils {
 		final RegularFileProperty property = project.getObjects().fileProperty();
 		property.set(file);
 		return property.getAsFile().get();
+	}
+
+	public static boolean isRootProject(Project project) {
+		return project.getRootProject() == project;
 	}
 }

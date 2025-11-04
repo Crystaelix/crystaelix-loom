@@ -35,36 +35,55 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.forge.dependency.ForgeModClassesService;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
+import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.configuration.classpathgroups.ClasspathGroup;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.configuration.ide.idea.IdeaSyncTask;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 	@Nested
 	protected abstract ListProperty<EclipseRunConfig> getEclipseRunConfigs();
 
+	@ApiStatus.Internal
+	@Nested
+	@Optional
+	protected abstract Property<ForgeModClassesService.Options> getModClassesOptions();
+
 	@Inject
 	public GenEclipseRunsTask() {
 		setGroup(Constants.TaskGroup.IDE);
 		getEclipseRunConfigs().set(getProject().provider(() -> getRunConfigs(getProject())));
+		getModClassesOptions().set(ForgeModClassesService.createOptions(getProject(), getProject().provider(() -> ClasspathGroup.ClasspathType.ECLIPSE)));
 	}
 
 	@TaskAction
 	public void genRuns() throws IOException {
 		for (EclipseRunConfig runConfig : getEclipseRunConfigs().get()) {
 			runConfig.writeLaunchFile();
+
+			if (getModClassesOptions().isPresent()) {
+				try (var serviceFactory = new ScopedServiceFactory()) {
+					ForgeModClassesService modClassesService = serviceFactory.get(getModClassesOptions());
+					Path launchFile = runConfig.getLaunchFile().get().getAsFile().toPath();
+					IdeaSyncTask.setForgeModClasses(launchFile, modClassesService.getModClasses(runConfig.getName().get()));
+				}
+			}
 		}
 	}
 
@@ -81,7 +100,7 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 
 			final String name = settings.getName();
 			final File configs = new File(project.getProjectDir(), eclipseModel.getProject().getName() + "_" + name + ".launch");
-			final RunConfig configInst = RunConfig.runConfig(project, settings, SourceSetHelper::getEclipseClasspath);
+			final RunConfig configInst = RunConfig.runConfig(project, settings);
 			final String config;
 
 			try {
@@ -93,6 +112,7 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 			EclipseRunConfig eclipseRunConfig = project.getObjects().newInstance(EclipseRunConfig.class);
 			eclipseRunConfig.getLaunchContent().set(config);
 			eclipseRunConfig.getLaunchFile().set(project.file(configs));
+			eclipseRunConfig.getName().set(name);
 			runConfigs.add(eclipseRunConfig);
 
 			settings.makeRunDir();
@@ -107,6 +127,9 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 
 		@OutputFile
 		RegularFileProperty getLaunchFile();
+
+		@Input
+		Property<String> getName();
 
 		default void writeLaunchFile() throws IOException {
 			Path launchFile = getLaunchFile().get().getAsFile().toPath();

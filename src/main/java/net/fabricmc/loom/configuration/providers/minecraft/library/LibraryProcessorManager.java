@@ -34,6 +34,7 @@ import org.gradle.api.artifacts.dsl.RepositoryHandler;
 import org.jetbrains.annotations.VisibleForTesting;
 
 import net.fabricmc.loom.configuration.providers.minecraft.library.processors.ArmNativesLibraryProcessor;
+import net.fabricmc.loom.configuration.providers.minecraft.library.processors.LWJGL2ExcludeLibraryProcessor;
 import net.fabricmc.loom.configuration.providers.minecraft.library.processors.LWJGL2MavenLibraryProcessor;
 import net.fabricmc.loom.configuration.providers.minecraft.library.processors.LWJGL3UpgradeLibraryProcessor;
 import net.fabricmc.loom.configuration.providers.minecraft.library.processors.LegacyASMLibraryProcessor;

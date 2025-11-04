@@ -26,22 +26,34 @@ package net.fabricmc.loom.configuration;
 
 import static net.fabricmc.loom.util.Constants.Configurations;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.accesstransformer.AccessTransformerJarProcessor;
 import dev.architectury.loom.forge.ForgeSourcesService;
+import dev.architectury.loom.forge.dependency.DependencyProviders;
+import dev.architectury.loom.forge.dependency.ForgeLibrariesProvider;
+import dev.architectury.loom.forge.dependency.ForgeProvider;
+import dev.architectury.loom.forge.dependency.ForgeRunsProvider;
+import dev.architectury.loom.forge.dependency.ForgeUniversalProvider;
+import dev.architectury.loom.forge.dependency.ForgeUserdevProvider;
+import dev.architectury.loom.forge.dependency.PatchProvider;
+import dev.architectury.loom.forge.dependency.SrgProvider;
+import dev.architectury.loom.forge.minecraft.ForgeMinecraftProvider;
+import dev.architectury.loom.mcpconfig.McpConfigProvider;
+import org.gradle.api.Action;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
+import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.logging.Logger;
 import org.gradle.api.logging.Logging;
@@ -52,6 +64,7 @@ import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.api.tasks.testing.Test;
+import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.InterfaceInjectionExtensionAPI;
@@ -59,22 +72,11 @@ import net.fabricmc.loom.build.mixin.GroovyApInvoker;
 import net.fabricmc.loom.build.mixin.JavaApInvoker;
 import net.fabricmc.loom.build.mixin.KaptApInvoker;
 import net.fabricmc.loom.build.mixin.ScalaApInvoker;
-import net.fabricmc.loom.configuration.accesstransformer.AccessTransformerJarProcessor;
 import net.fabricmc.loom.configuration.accesswidener.AccessWidenerJarProcessor;
 import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
 import net.fabricmc.loom.configuration.mods.ModConfigurationRemapper;
 import net.fabricmc.loom.configuration.processors.MinecraftJarProcessorManager;
 import net.fabricmc.loom.configuration.processors.ModJavadocProcessor;
-import net.fabricmc.loom.configuration.providers.forge.DependencyProviders;
-import net.fabricmc.loom.configuration.providers.forge.ForgeLibrariesProvider;
-import net.fabricmc.loom.configuration.providers.forge.ForgeProvider;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunsProvider;
-import net.fabricmc.loom.configuration.providers.forge.ForgeUniversalProvider;
-import net.fabricmc.loom.configuration.providers.forge.ForgeUserdevProvider;
-import net.fabricmc.loom.configuration.providers.forge.PatchProvider;
-import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
-import net.fabricmc.loom.configuration.providers.forge.mcpconfig.McpConfigProvider;
-import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
@@ -86,6 +88,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
 import net.fabricmc.loom.extension.MixinExtension;
+import net.fabricmc.loom.task.service.ClasspathGroupService;
 import net.fabricmc.loom.util.Checksum;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.ProcessUtil;
@@ -96,6 +99,8 @@ import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 
 public abstract class CompileConfiguration implements Runnable {
+	private static final String LOCK_PROPERTY_KEY = "fabric.loom.internal.global.lock";
+
 	@Inject
 	protected abstract Project getProject();
 
@@ -126,11 +131,14 @@ public abstract class CompileConfiguration implements Runnable {
 			}
 
 			try {
-				setupMinecraft(configContext);
+				// Setting up loom across Gradle projects is not thread safe, synchronize it here to ensure that multiple projects cannot use it.
+				// There is no easy way around this, as we want to use the same global cache for downloaded or generated files.
+				synchronized (getGlobalLockObject()) {
+					setupMinecraft(configContext);
+				}
 
-				LoomDependencyManager dependencyManager = new LoomDependencyManager();
-				extension.setDependencyManager(dependencyManager);
-				dependencyManager.handleDependencies(getProject(), serviceFactory);
+				var dependencyManager = new LoomDependencyManager(getProject(), serviceFactory, extension);
+				dependencyManager.handleDependencies();
 			} catch (Exception e) {
 				ExceptionUtil.processException(e, DaemonUtils.Context.fromProject(getProject()));
 				disownLock();
@@ -194,8 +202,7 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 	}
 
-	// This is not thread safe across getProject()s synchronize it here just to be sure, might be possible to move this further down, but for now this will do.
-	private synchronized void setupMinecraft(ConfigContext configContext) throws Exception {
+	private void setupMinecraft(ConfigContext configContext) throws Exception {
 		final Project project = configContext.project();
 		final LoomGradleExtension extension = configContext.extension();
 
@@ -208,34 +215,41 @@ public abstract class CompileConfiguration implements Runnable {
 		final MinecraftProvider minecraftProvider = jarConfiguration.createMinecraftProvider(metadataProvider, configContext);
 
 		if (extension.isForgeLike() && !(minecraftProvider instanceof ForgeMinecraftProvider)) {
-			throw new UnsupportedOperationException("Using Forge with split jars is not supported!");
+			throw new UnsupportedOperationException("Using %s with split jars is not supported!".formatted(extension.getPlatform().get().displayName()));
+		}
+
+		if (extension.isForgeLike() && extension.disableObfuscation()) {
+			// TODO: Allow setting up Forge and NeoForge without obfuscation
+			throw new UnsupportedOperationException("Using %s without obfuscation is not supported!".formatted(extension.getPlatform().get().displayName()));
 		}
 
 		extension.setMinecraftProvider(minecraftProvider);
 		minecraftProvider.provide();
 
-		// Realise the dependencies without actually resolving them, this forces any lazy providers to be created, populating the layered mapping factories.
-		project.getConfigurations().getByName(Configurations.MAPPINGS).getDependencies().toArray();
+		if (!extension.disableObfuscation()) {
+			// Realise the dependencies without actually resolving them, this forces any lazy providers to be created, populating the layered mapping factories.
+			project.getConfigurations().getByName(Configurations.MAPPINGS).getDependencies().toArray();
 
-		// Created any layered mapping files.
-		LayeredMappingsFactory.afterEvaluate(configContext);
+			// Created any layered mapping files.
+			LayeredMappingsFactory.afterEvaluate(configContext);
 
-		// This needs to run after MinecraftProvider.initFiles and MinecraftLibraryProvider.provide
-		// but before MinecraftPatchedProvider.provide.
-		setupDependencyProviders(project, extension);
+			// This needs to run after MinecraftProvider.initFiles and MinecraftLibraryProvider.provide
+			// but before MinecraftPatchedProvider.provide.
+			setupDependencyProviders(project, extension);
 
-		// Resolve the mapping files from the configuration
-		final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
-		final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceFactory(), mappingsDep, minecraftProvider);
-		extension.setMappingConfiguration(mappingConfiguration);
+			// Resolve the mapping files from the configuration
+			final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);
+			final MappingConfiguration mappingConfiguration = MappingConfiguration.create(getProject(), configContext.serviceFactory(), mappingsDep, minecraftProvider);
+			extension.setMappingConfiguration(mappingConfiguration);
 
-		if (extension.isForgeLike()) {
-			ForgeLibrariesProvider.provide(mappingConfiguration, project);
-			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
+			if (extension.isForgeLike()) {
+				ForgeLibrariesProvider.provide(mappingConfiguration, project);
+				((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
+			}
+
+			mappingConfiguration.setupPost(project);
+			mappingConfiguration.applyToProject(getProject(), mappingsDep);
 		}
-
-		mappingConfiguration.setupPost(project);
-		mappingConfiguration.applyToProject(getProject(), mappingsDep);
 
 		if (extension.isForgeLike()) {
 			extension.setForgeRunsProvider(ForgeRunsProvider.create(project));
@@ -246,7 +260,7 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		// Provide the remapped mc jars
-		final IntermediaryMinecraftProvider<?> intermediaryMinecraftProvider = jarConfiguration.createIntermediaryMinecraftProvider(project);
+		@Nullable IntermediaryMinecraftProvider<?> intermediaryMinecraftProvider = extension.disableObfuscation() ? null : jarConfiguration.createIntermediaryMinecraftProvider(project);
 		NamedMinecraftProvider<?> namedMinecraftProvider = jarConfiguration.createNamedMinecraftProvider(project);
 
 		registerGameProcessors(configContext);
@@ -259,8 +273,10 @@ public abstract class CompileConfiguration implements Runnable {
 
 		final var provideContext = new AbstractMappedMinecraftProvider.ProvideContext(true, extension.refreshDeps(), configContext);
 
-		extension.setIntermediaryMinecraftProvider(intermediaryMinecraftProvider);
-		intermediaryMinecraftProvider.provide(provideContext);
+		if (intermediaryMinecraftProvider != null) {
+			extension.setIntermediaryMinecraftProvider(intermediaryMinecraftProvider);
+			intermediaryMinecraftProvider.provide(provideContext);
+		}
 
 		extension.setNamedMinecraftProvider(namedMinecraftProvider);
 		namedMinecraftProvider.provide(provideContext);
@@ -354,15 +370,22 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		getProject().getTasks().named(JavaPlugin.TEST_TASK_NAME, Test.class, test -> {
-			String classPathGroups = extension.getMods().stream()
-					.map(modSettings ->
-							SourceSetHelper.getClasspath(modSettings, getProject()).stream()
-									.map(File::getAbsolutePath)
-									.collect(Collectors.joining(File.pathSeparator))
-					)
-					.collect(Collectors.joining(File.pathSeparator+File.pathSeparator));;
+			test.getInputs().property("LoomClassPathGroups", ClasspathGroupService.create(getProject()));
+			test.doFirst(new Action<Task>() {
+				@Override
+				public void execute(Task task) {
+					try (ScopedServiceFactory serviceFactory = new ScopedServiceFactory()) {
+						var options = (ClasspathGroupService.Options) task.getInputs().getProperties().get("LoomClassPathGroups");
+						ClasspathGroupService classpathGroupService = serviceFactory.get(options);
 
-			test.systemProperty("fabric.classPathGroups", classPathGroups);
+						if (classpathGroupService.hasGroups()) {
+							test.systemProperty("fabric.classPathGroups", classpathGroupService.getClasspathGroupsPropertyValue());
+						}
+					} catch (IOException e) {
+						throw new UncheckedIOException("Failed to get classpath groups", e);
+					}
+				}
+			});
 		});
 	}
 
@@ -572,5 +595,19 @@ public abstract class CompileConfiguration implements Runnable {
 				throw new UncheckedIOException(e);
 			}
 		});
+	}
+
+	// This is a nasty piece of work, but seems to work quite nicely.
+	// We need a lock that works across classloaders, a regular synchronized method will not work here.
+	// We can abuse system properties as a shared object store that we know for sure will be on the same classloader regardless of what Gradle does to loom.
+	// This allows us to ensure that all instances of loom regardless of classloader get the same object to lock on.
+	private static Object getGlobalLockObject() {
+		if (!System.getProperties().contains(LOCK_PROPERTY_KEY)) {
+			// The .intern resolves a possible race where two difference value objects (remember not the same classloader) are set.
+			//noinspection StringOperationCanBeSimplified
+			System.getProperties().setProperty(LOCK_PROPERTY_KEY, LOCK_PROPERTY_KEY.intern());
+		}
+
+		return Objects.requireNonNull(System.getProperty(LOCK_PROPERTY_KEY));
 	}
 }

@@ -29,6 +29,8 @@ import java.util.Set;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.accesstransformer.Aw2At;
+import dev.architectury.loom.util.PropertyUtil;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
@@ -45,8 +47,6 @@ import org.gradle.jvm.tasks.Jar;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.nesting.NestableJarGenerationTask;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.PropertyUtil;
-import net.fabricmc.loom.util.aw2at.Aw2At;
 import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
 import net.fabricmc.loom.util.gradle.SyncTaskBuildService;
@@ -72,7 +72,7 @@ public abstract class RemapTaskConfiguration implements Runnable {
 
 		SyncTaskBuildService.register(getProject());
 
-		if (GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DONT_REMAP)) {
+		if (extension.dontRemapOutputs()) {
 			extension.getUnmappedModCollection().from(getTasks().getByName(JavaPlugin.JAR_TASK_NAME));
 			return;
 		}

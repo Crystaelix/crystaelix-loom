@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021-2024 FabricMC
+ * Copyright (c) 2021-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,12 +35,14 @@ import java.util.function.Supplier;
 
 import javax.inject.Inject;
 
-import com.google.common.base.Suppliers;
+import dev.architectury.loom.forge.dependency.DependencyProviders;
+import dev.architectury.loom.forge.dependency.ForgeRunsProvider;
 import org.gradle.api.Project;
 import org.gradle.api.configuration.BuildFeatures;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.ListProperty;
+import org.gradle.api.provider.Property;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.ForgeExtensionAPI;
@@ -50,8 +52,6 @@ import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.InstallerData;
 import net.fabricmc.loom.configuration.LoomDependencyManager;
 import net.fabricmc.loom.configuration.accesswidener.AccessWidenerFile;
-import net.fabricmc.loom.configuration.providers.forge.DependencyProviders;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.IntermediaryMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
@@ -63,9 +63,12 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.IntermediaryMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
+import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.Lazy;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.download.Download;
 import net.fabricmc.loom.util.download.DownloadBuilder;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 
 public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl implements LoomGradleExtension {
 	private final Project project;
@@ -89,6 +92,8 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	private final boolean configurationCacheActive;
 	private final boolean isolatedProjectsActive;
 	private final boolean isCollectingDependencyVerificationMetadata;
+	private final Property<Boolean> disableObfuscation;
+	private final Property<Boolean> dontRemap;
 
 	// +-------------------+
 	// | Architectury Loom |
@@ -109,8 +114,8 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		this.mixinApExtension = project.getObjects().newInstance(MixinExtensionImpl.class, project);
 		this.loomFiles = files;
 		this.unmappedMods = project.files();
-		this.forgeExtension = Suppliers.memoize(() -> isSrgForgeLike() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
-		this.neoForgeExtension = Suppliers.memoize(() -> isNeoForge() ? project.getObjects().newInstance(NeoForgeExtensionImpl.class, project) : null);
+		this.forgeExtension = Lazy.of(() -> isSrgForgeLike() ? project.getObjects().newInstance(ForgeExtensionImpl.class, project, this) : null);
+		this.neoForgeExtension = Lazy.of(() -> isNeoForge() ? project.getObjects().newInstance(NeoForgeExtensionImpl.class, project) : null);
 
 		// Setup the default intermediate mappings provider.
 		setIntermediateMappingsProvider(IntermediaryMappingsProvider.class, provider -> {
@@ -129,6 +134,14 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		configurationCacheActive = getBuildFeatures().getConfigurationCache().getActive().get();
 		isolatedProjectsActive = getBuildFeatures().getIsolatedProjects().getActive().get();
 		isCollectingDependencyVerificationMetadata = !project.getGradle().getStartParameter().getWriteDependencyVerifications().isEmpty();
+		disableObfuscation = project.getObjects().property(Boolean.class);
+		dontRemap = project.getObjects().property(Boolean.class);
+
+		disableObfuscation.set(project.provider(() -> GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DISABLE_OBFUSCATION)));
+		disableObfuscation.finalizeValueOnRead();
+
+		dontRemap.set(disableObfuscation.map(notObfuscated -> notObfuscated || GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DONT_REMAP)));
+		dontRemap.finalizeValueOnRead();
 
 		if (refreshDeps) {
 			project.getLogger().lifecycle("Refresh dependencies is in use, loom will be significantly slower.");
@@ -147,16 +160,6 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	@Override
 	public LoomFiles getFiles() {
 		return loomFiles;
-	}
-
-	@Override
-	public void setDependencyManager(LoomDependencyManager dependencyManager) {
-		this.dependencyManager = dependencyManager;
-	}
-
-	@Override
-	public LoomDependencyManager getDependencyManager() {
-		return Objects.requireNonNull(dependencyManager, "Cannot get LoomDependencyManager before it has been setup");
 	}
 
 	@Override
@@ -181,11 +184,19 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 
 	@Override
 	public MappingConfiguration getMappingConfiguration() {
+		if (disableObfuscation()) {
+			throw new UnsupportedOperationException("Cannot get mappings configuration in a non-obfuscated environment");
+		}
+
 		return Objects.requireNonNull(mappingConfiguration, "Cannot get MappingsProvider before it has been setup");
 	}
 
 	@Override
 	public void setMappingConfiguration(MappingConfiguration mappingConfiguration) {
+		if (disableObfuscation()) {
+			throw new UnsupportedOperationException("Cannot set mappings configuration in a non-obfuscated environment");
+		}
+
 		this.mappingConfiguration = mappingConfiguration;
 	}
 
@@ -258,11 +269,6 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	}
 
 	@Override
-	public boolean isRootProject() {
-		return project.getRootProject() == project;
-	}
-
-	@Override
 	public MixinExtension getMixin() {
 		return this.mixinApExtension;
 	}
@@ -325,6 +331,10 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 
 	@Override
 	public Collection<LayeredMappingsFactory> getLayeredMappingFactories() {
+		if (disableObfuscation()) {
+			throw new UnsupportedOperationException("Cannot get layered mapping factories in a non-obfuscated environment");
+		}
+
 		hasEvaluatedLayeredMappings = true;
 		return Collections.unmodifiableCollection(layeredMappingsDependencyMap.values());
 	}
@@ -337,8 +347,8 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		provider.getDownloader().set(this::download);
 		provider.getDownloader().disallowChanges();
 
-		provider.getIsLegacyMinecraft().set(getProject().provider(() -> getMinecraftProvider().isLegacyVersion()));
-		provider.getIsLegacyMinecraft().disallowChanges();
+		provider.getUseSplitOfficialNamespaces().set(getProject().provider(() -> getMinecraftProvider().isLegacySplitOfficialNamespaceVersion()));
+		provider.getUseSplitOfficialNamespaces().disallowChanges();
 	}
 
 	@Override
@@ -354,6 +364,16 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	@Override
 	public boolean isCollectingDependencyVerificationMetadata() {
 		return isCollectingDependencyVerificationMetadata;
+	}
+
+	@Override
+	public boolean dontRemapOutputs() {
+		return dontRemap.get();
+	}
+
+	@Override
+	public boolean disableObfuscation() {
+		return disableObfuscation.get();
 	}
 
 	@Override

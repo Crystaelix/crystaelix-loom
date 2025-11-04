@@ -42,11 +42,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Supplier;
 
-import com.google.common.base.Stopwatch;
-import com.google.common.base.Supplier;
-import dev.architectury.loom.util.MappingOption;
+import dev.architectury.loom.forge.ForgeMigratedMappingConfiguration;
+import dev.architectury.loom.forge.dependency.SrgProvider;
+import dev.architectury.loom.mappings.ForgeMappingsMerger;
+import dev.architectury.loom.mappings.MCPReader;
+import dev.architectury.loom.mappings.MappingOption;
 import dev.architectury.loom.util.McpMappingsScanner;
+import dev.architectury.loom.util.Stopwatch;
 import org.apache.tools.ant.util.StringUtils;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
@@ -59,8 +63,8 @@ import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
 import net.fabricmc.loom.configuration.DependencyInfo;
-import net.fabricmc.loom.configuration.providers.forge.ForgeMigratedMappingConfiguration;
-import net.fabricmc.loom.configuration.providers.forge.SrgProvider;
+import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsData;
+import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsLayer;
 import net.fabricmc.loom.configuration.providers.mappings.tiny.MappingsMerger;
 import net.fabricmc.loom.configuration.providers.mappings.tiny.TinyJarInfo;
 import net.fabricmc.loom.configuration.providers.mappings.unpick.UnpickMetadata;
@@ -71,8 +75,6 @@ import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
-import net.fabricmc.loom.util.srg.ForgeMappingsMerger;
-import net.fabricmc.loom.util.srg.MCPReader;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.MappingWriter;
@@ -109,6 +111,7 @@ public class MappingConfiguration {
 	private final Map<MappingOption, Supplier<Path>> mappingOptions;
 	private final Path unpickDefinitions;
 
+	private List<AnnotationsData> annotationsData = List.of();
 	@Nullable
 	private UnpickMetadata unpickMetadata;
 	private Map<String, String> signatureFixes;
@@ -477,8 +480,21 @@ public class MappingConfiguration {
 	}
 
 	private void extractExtras(FileSystem jar) throws IOException {
+		extractAnnotationsData(jar);
 		extractUnpickDefinitions(jar);
 		extractSignatureFixes(jar);
+	}
+
+	private void extractAnnotationsData(FileSystem jar) throws IOException {
+		Path annotationsPath = jar.getPath(AnnotationsLayer.ANNOTATIONS_PATH);
+
+		if (!Files.exists(annotationsPath)) {
+			return;
+		}
+
+		try (BufferedReader reader = Files.newBufferedReader(annotationsPath, StandardCharsets.UTF_8)) {
+			annotationsData = AnnotationsData.readList(reader);
+		}
 	}
 
 	private void extractUnpickDefinitions(FileSystem jar) throws IOException {
@@ -561,6 +577,10 @@ public class MappingConfiguration {
 
 	public boolean hasUnpickDefinitions() {
 		return unpickMetadata != null;
+	}
+
+	public List<AnnotationsData> getAnnotationsData() {
+		return annotationsData;
 	}
 
 	public UnpickMetadata getUnpickMetadata() {

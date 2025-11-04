@@ -37,7 +37,10 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.function.Function;
 
-import dev.architectury.loom.util.MappingOption;
+import dev.architectury.loom.forge.InnerClassRemapper;
+import dev.architectury.loom.forge.RemapObjectHolderVisitor;
+import dev.architectury.loom.forge.minecraft.ForgeMinecraftProvider;
+import dev.architectury.loom.mappings.MappingOption;
 import org.gradle.api.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +50,11 @@ import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.mods.dependency.LocalMavenHelper;
-import net.fabricmc.loom.configuration.providers.forge.minecraft.ForgeMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.mappings.IntermediaryMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.mappings.TinyMappingsService;
+import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsData;
+import net.fabricmc.loom.configuration.providers.minecraft.AnnotationsApplyVisitor;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJar;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
@@ -59,12 +63,10 @@ import net.fabricmc.loom.configuration.providers.minecraft.SignatureFixerApplyVi
 import net.fabricmc.loom.extension.LoomFiles;
 import net.fabricmc.loom.util.SidedClassVisitor;
 import net.fabricmc.loom.util.TinyRemapperHelper;
-import net.fabricmc.loom.util.srg.InnerClassRemapper;
-import net.fabricmc.loom.util.srg.RemapObjectHolderVisitor;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
-import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
+import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvider> implements MappedMinecraftProvider.ProviderImpl {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AbstractMappedMinecraftProvider.class);
@@ -180,15 +182,19 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 	}
 
 	protected String getName(MinecraftJar.Type type) {
-		final String intermediateName = extension.getIntermediateMappingsProvider().getName();
-
 		var sj = new StringJoiner("-");
 		sj.add("minecraft");
 		sj.add(type.toString());
 
-		// Include the intermediate mapping name if it's not the default intermediary
-		if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
-			sj.add(intermediateName);
+		if (!extension.disableObfuscation()) {
+			// Include the intermediate mapping name if it's not the default intermediary
+			final String intermediateName = extension.getIntermediateMappingsProvider().getName();
+
+			if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
+				sj.add(intermediateName);
+			}
+		} else {
+			sj.add("deobf");
 		}
 
 		if (getTargetNamespace() != MappingsNamespace.NAMED) {
@@ -199,6 +205,10 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 	}
 
 	protected String getVersion() {
+		if (extension.disableObfuscation()) {
+			return extension.getMinecraftProvider().minecraftVersion();
+		}
+
 		return "%s-%s".formatted(extension.getMinecraftProvider().minecraftVersion(), extension.getMappingConfiguration().mappingsIdentifier());
 	}
 
@@ -249,7 +259,15 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		}
 	}
 
-	private void remapJar(RemappedJars remappedJars, ConfigContext configContext) throws IOException {
+	protected void remapJar(RemappedJars remappedJars, ConfigContext configContext) throws IOException {
+		if (extension.disableObfuscation()) {
+			// TODO debof - can we skip this?
+			Files.createDirectories(remappedJars.outputJarPath().getParent());
+			Files.copy(remappedJars.inputJar(), remappedJars.outputJarPath(), StandardCopyOption.REPLACE_EXISTING);
+			getMavenHelper(remappedJars.type()).savePom();
+			return;
+		}
+
 		final MappingConfiguration mappingConfiguration = extension.getMappingConfiguration();
 		final String fromM = remappedJars.sourceNamespace().toString();
 		final String toM = getTargetNamespace().toString();
@@ -257,11 +275,16 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		Files.deleteIfExists(remappedJars.outputJarPath());
 
 		final Set<String> classNames = extension.isForgeLike() ? InnerClassRemapper.readClassNames(remappedJars.inputJar()) : Set.of();
+		final AnnotationsData remappedAnnotations = AnnotationsData.getRemappedAnnotations(getTargetNamespace(), mappingConfiguration, getProject(), configContext.serviceFactory(), toM);
 		final Map<String, String> remappedSignatures = SignatureFixerApplyVisitor.getRemappedSignatures(getTargetNamespace() == MappingsNamespace.INTERMEDIARY, mappingConfiguration, getProject(), configContext.serviceFactory(), toM);
 		final MinecraftVersionMeta.JavaVersion javaVersion = minecraftProvider.getVersionInfo().javaVersion();
 		final boolean fixRecords = javaVersion != null && javaVersion.majorVersion() >= 16;
 
 		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceFactory(), fromM, toM, fixRecords, (builder) -> {
+			if (remappedAnnotations != null) {
+				builder.extraPostApplyVisitor(new AnnotationsApplyVisitor(remappedAnnotations));
+			}
+
 			builder.extraPostApplyVisitor(new SignatureFixerApplyVisitor(remappedSignatures));
 			if (extension.isNeoForge()) builder.extension(new MixinExtension(inputTag -> true));
 			configureRemapper(remappedJars, builder);

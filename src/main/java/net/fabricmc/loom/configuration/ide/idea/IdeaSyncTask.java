@@ -33,7 +33,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiFunction;
 
 import javax.inject.Inject;
 import javax.xml.parsers.DocumentBuilder;
@@ -44,12 +43,14 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 
+import dev.architectury.loom.forge.dependency.ForgeModClassesService;
 import org.gradle.api.Project;
 import org.gradle.api.file.RegularFileProperty;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Nested;
+import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
 import org.jetbrains.annotations.VisibleForTesting;
@@ -61,33 +62,46 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.configuration.classpathgroups.ClasspathGroup;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.task.AbstractLoomTask;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
-import net.fabricmc.loom.util.gradle.SourceSetReference;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 public abstract class IdeaSyncTask extends AbstractLoomTask {
 	private static final Logger LOGGER = LoggerFactory.getLogger(IdeaSyncTask.class);
 
 	@Input
-	protected abstract Property<ClasspathType> getClasspathType();
+	protected abstract Property<ClasspathGroup.ClasspathType> getClasspathType();
 
 	@Nested
 	protected abstract ListProperty<IntelijRunConfig> getIdeaRunConfigs();
 
+	@Nested
+	@Optional
+	protected abstract Property<ForgeModClassesService.Options> getModClassesOptions();
+
 	@Inject
 	public IdeaSyncTask() {
 		setGroup(Constants.TaskGroup.IDE);
-		getClasspathType().convention(ClasspathType.GRADLE);
+		getClasspathType().convention(ClasspathGroup.ClasspathType.GRADLE);
 		getIdeaRunConfigs().set(getProject().provider(this::getRunConfigs));
+		getModClassesOptions().set(ForgeModClassesService.createOptions(getProject(), getClasspathType()));
 	}
 
 	@TaskAction
 	public void runTask() throws IOException {
 		for (IntelijRunConfig config : getIdeaRunConfigs().get()) {
 			config.writeLaunchFile();
+
+			if (getModClassesOptions().isPresent()) {
+				try (var serviceFactory = new ScopedServiceFactory()) {
+					ForgeModClassesService modClassesService = serviceFactory.get(getModClassesOptions());
+					Path launchFile = config.getLaunchFile().get().getAsFile().toPath();
+					setForgeModClasses(launchFile, modClassesService.getModClasses(config.getName().get()));
+				}
+			}
 		}
 	}
 
@@ -105,33 +119,24 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 				continue;
 			}
 
-			IntelijRunConfig irc = getProject().getObjects().newInstance(IntelijRunConfig.class);
-
-			BiFunction<SourceSetReference, Project, List<File>> classpathFunc = switch (getClasspathType().get()) {
-			case GRADLE -> SourceSetHelper::getGradleClasspath;
-			case IDEA -> SourceSetHelper::getIdeaClasspath;
-			case IDEA_MODULE -> SourceSetHelper::getIdeaModuleCompileOutput;
-			};
-			RunConfig config = RunConfig.runConfig(getProject(), settings, classpathFunc);
+			RunConfig config = RunConfig.runConfig(getProject(), settings);
 			String name = config.configName.replaceAll("[^a-zA-Z0-9$_]", "_");
 
 			File runConfigFile = new File(runConfigsDir, name + projectPath + ".xml");
 			String runConfigXml = config.fromDummy("idea_run_config_template.xml", true, getProject());
 			final List<String> excludedLibraryPaths = config.getExcludedLibraryPaths(getProject());
 
+			IntelijRunConfig irc = getProject().getObjects().newInstance(IntelijRunConfig.class);
 			irc.getRunConfigXml().set(runConfigXml);
 			irc.getExcludedLibraryPaths().set(excludedLibraryPaths);
 			irc.getLaunchFile().set(runConfigFile);
+			irc.getName().set(settings.getName());
 			configs.add(irc);
 
 			settings.makeRunDir();
 		}
 
 		return configs;
-	}
-
-	public enum ClasspathType {
-		GRADLE, IDEA, IDEA_MODULE;
 	}
 
 	public interface IntelijRunConfig {
@@ -143,6 +148,9 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 
 		@OutputFile
 		RegularFileProperty getLaunchFile();
+
+		@Input
+		Property<String> getName();
 
 		default void writeLaunchFile() throws IOException {
 			Path launchFile = getLaunchFile().get().getAsFile().toPath();
@@ -171,6 +179,15 @@ public abstract class IdeaSyncTask extends AbstractLoomTask {
 
 			return;
 		}
+
+		if (!inputXml.equals(outputXml)) {
+			Files.writeString(runConfig, outputXml, StandardCharsets.UTF_8);
+		}
+	}
+
+	public static void setForgeModClasses(Path runConfig, String modClasses) throws IOException {
+		final String inputXml = Files.readString(runConfig, StandardCharsets.UTF_8);
+		final String outputXml = inputXml.replace(ForgeModClassesService.VARIABLE_KEY, modClasses);
 
 		if (!inputXml.equals(outputXml)) {
 			Files.writeString(runConfig, outputXml, StandardCharsets.UTF_8);

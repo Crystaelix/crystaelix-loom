@@ -28,6 +28,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -39,7 +40,8 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.stream.Collectors;
 
-import org.apache.commons.io.FileUtils;
+import dev.architectury.loom.forge.config.ForgeRunTemplate;
+import dev.architectury.loom.forge.dependency.ForgeRunsProvider;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -49,6 +51,7 @@ import org.gradle.api.provider.SetProperty;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.InputFiles;
+import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -57,15 +60,13 @@ import org.jetbrains.annotations.ApiStatus;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
-import net.fabricmc.loom.configuration.providers.forge.ConfigValue;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunTemplate;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MappedMinecraftProvider;
 import net.fabricmc.loom.task.AbstractLoomTask;
+import net.fabricmc.loom.task.service.ClasspathGroupService;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
+import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	@Input
@@ -82,10 +83,6 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 	@Input
 	protected abstract Property<Boolean> getANSISupportedIDE();
-
-	@Input
-	@Optional
-	protected abstract Property<String> getClassPathGroups();
 
 	@Input
 	protected abstract Property<String> getLog4jConfigPaths();
@@ -109,6 +106,9 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 
 	@OutputFile
 	protected abstract RegularFileProperty getDevLauncherConfig();
+
+	@Nested
+	protected abstract Property<ClasspathGroupService.Options> getClasspathGroupOptions();
 
 	@ApiStatus.Internal
 	@Input
@@ -138,10 +138,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		getSplitSourceSets().set(getExtension().areEnvironmentSourceSetsSplit());
 		getANSISupportedIDE().set(ansiSupportedIde(getProject()));
 		getPlainConsole().set(getProject().getGradle().getStartParameter().getConsoleOutput() == ConsoleOutput.Plain);
-
-		if (!getExtension().getMods().isEmpty()) {
-			getClassPathGroups().set(buildClassPathGroups(getProject()));
-		}
+		getClasspathGroupOptions().set(ClasspathGroupService.create(getProject()));
 
 		getLog4jConfigPaths().set(getAllLog4JConfigFiles(getProject()));
 
@@ -161,10 +158,9 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		if (getExtension().isForgeLike()) {
 			getRunTemplates().addAll(getProject().provider(() -> {
 				final ForgeRunsProvider forgeRunsProvider = getExtension().getForgeRunsProvider();
-				final ConfigValue.Resolver configResolver = forgeRunsProvider.getResolver(null);
 				return forgeRunsProvider.getTemplates()
 						.stream()
-						.map(template -> template.resolve(configResolver))
+						.map(template -> template.resolve(forgeRunsProvider))
 						.toList();
 			}));
 
@@ -219,8 +215,12 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				launchConfig.property(!quilt ? "fabric.gameJarPath" : "loader.gameJarPath", getCommonGameJarPath().get());
 			}
 
-			if (getClassPathGroups().isPresent()) {
-				launchConfig.property(!quilt ? "fabric.classPathGroups" : "loader.classPathGroups", getClassPathGroups().get());
+			try (ScopedServiceFactory serviceFactory = new ScopedServiceFactory()) {
+				ClasspathGroupService classpathGroupService = serviceFactory.get(getClasspathGroupOptions());
+
+				if (classpathGroupService.hasGroups()) {
+					launchConfig.property(!quilt ? "fabric.classPathGroups" : "loader.classPathGroups", classpathGroupService.getClasspathGroupsPropertyValue());
+				}
 			}
 		}
 
@@ -354,7 +354,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			launchConfig.property("fabric.log.disableAnsi", "false");
 		}
 
-		FileUtils.writeStringToFile(getDevLauncherConfig().getAsFile().get(), launchConfig.asString(), StandardCharsets.UTF_8);
+		Files.writeString(getDevLauncherConfig().getAsFile().get().toPath(), launchConfig.asString(), StandardCharsets.UTF_8);
 	}
 
 	private static String getAllLog4JConfigFiles(Project project) {
@@ -371,19 +371,6 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		case "common" -> split.getCommonJar().getPath().toAbsolutePath().toString();
 		default -> throw new UnsupportedOperationException();
 		};
-	}
-
-	/**
-	 * See: https://github.com/FabricMC/fabric-loader/pull/585.
-	 */
-	private static String buildClassPathGroups(Project project) {
-		return LoomGradleExtension.get(project).getMods().stream()
-				.map(modSettings ->
-						SourceSetHelper.getClasspath(modSettings, project).stream()
-							.map(File::getAbsolutePath)
-							.collect(Collectors.joining(File.pathSeparator))
-				)
-				.collect(Collectors.joining(File.pathSeparator+File.pathSeparator));
 	}
 
 	private static boolean ansiSupportedIde(Project project) {

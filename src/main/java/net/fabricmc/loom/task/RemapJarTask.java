@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021-2024 FabricMC
+ * Copyright (c) 2021-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,16 +57,15 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskAction;
 import org.gradle.api.tasks.TaskProvider;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import net.fabricmc.accesswidener.AccessWidenerReader;
-import net.fabricmc.accesswidener.AccessWidenerRemapper;
-import net.fabricmc.accesswidener.AccessWidenerWriter;
+import net.fabricmc.classtweaker.api.ClassTweakerReader;
+import net.fabricmc.classtweaker.api.ClassTweakerWriter;
+import net.fabricmc.classtweaker.visitors.ClassTweakerRemapperVisitor;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.nesting.JarNester;
 import net.fabricmc.loom.build.nesting.NestableJarGenerationTask;
@@ -145,10 +144,6 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 
 	@Input
 	@ApiStatus.Internal
-	protected abstract Property<ModPlatform> getModPlatform();
-
-	@Input
-	@ApiStatus.Internal
 	public abstract Property<Boolean> getUseMixinAP();
 	@Nested
 	public abstract Property<TinyRemapperService.Options> getTinyRemapperServiceOptions();
@@ -180,13 +175,13 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 		getTinyRemapperServiceOptions().set(TinyRemapperService.createOptions(this));
 		getMixinRefmapServiceOptions().set(MixinRefmapService.createOptions(this));
 
-		getModPlatform().value(LoomGradleExtension.get(getProject()).getPlatform()).finalizeValue();
-
 		getInjectedAccessWidenerPath().convention(LoomGradleExtension.get(getProject()).getAccessWidenerPath());
 	}
 
-	@TaskAction
-	public void run() {
+	@Override
+	protected void copy() {
+		super.copy();
+
 		submitWork(RemapAction.class, params -> {
 			if (getAddNestedDependencies().get()) {
 				params.getNestedJars().from(getNestedJars());
@@ -210,8 +205,6 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 				throw new RuntimeException("Forge must have useLegacyMixinAp enabled");
 			}
 
-			params.getPlatform().set(getModPlatform());
-
 			if (getInjectAccessWidener().get() && getInjectedAccessWidenerPath().isPresent()) {
 				params.getInjectAccessWidener().set(getInjectedAccessWidenerPath());
 			}
@@ -227,8 +220,6 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 		ConfigurableFileCollection getNestedJars();
 
 		ConfigurableFileCollection getRemapClasspath();
-
-		Property<ModPlatform> getPlatform();
 
 		RegularFileProperty getInjectAccessWidener();
 		Property<Boolean> getReadMixinConfigsFromManifest();
@@ -246,14 +237,16 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 
 		private @Nullable TinyRemapperService tinyRemapperService;
 		private @Nullable TinyRemapper tinyRemapper;
+		private Path inputFile;
 
 		public RemapAction() {
 		}
 
 		@Override
-		public void execute() {
+		protected void execute(Path inputFile) throws IOException {
 			try (var serviceFactory = new ScopedServiceFactory()) {
 				LOGGER.info("Remapping {} to {}", inputFile, outputFile);
+				this.inputFile = inputFile;
 
 				this.tinyRemapperService = getParameters().getTinyRemapperServiceOptions().isPresent()
 						? serviceFactory.get(getParameters().getTinyRemapperServiceOptions().get())
@@ -277,6 +270,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 					remapAccessWidener();
 				}
 
+				modifyJarManifest(); // Arch: must be executed before refmaps are added for the MixinConfigs attr
 				addRefmaps(serviceFactory);
 				addNestedJars();
 
@@ -291,10 +285,6 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 					convertQmj5();
 				}
 
-				if (!getParameters().getPlatform().get().isForgeLike()) {
-					modifyJarManifest();
-				}
-
 				rewriteJar();
 
 				if (getParameters().getOptimizeFmj().get()) {
@@ -306,20 +296,10 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 				}
 
 				LOGGER.debug("Finished remapping {}", inputFile);
-			} catch (Exception e) {
-				try {
-					Files.deleteIfExists(outputFile);
-				} catch (IOException ex) {
-					LOGGER.error("Failed to delete output file", ex);
-				}
-
-				throw ExceptionUtil.createDescriptiveWrapper(RuntimeException::new, "Failed to remap", e);
 			}
 		}
 
 		private void prepare() {
-			final Path inputFile = getParameters().getInputFile().getAsFile().get().toPath();
-
 			if (tinyRemapperService != null) {
 				tinyRemapperService.getTinyRemapperForInputs().readInputsAsync(tinyRemapperService.getOrCreateTag(inputFile), inputFile);
 			}
@@ -392,19 +372,19 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 		private byte[] remapAccessWidener(byte[] input) {
 			Objects.requireNonNull(tinyRemapper, "tinyRemapper");
 
-			int version = AccessWidenerReader.readVersion(input);
+			int version = ClassTweakerReader.readVersion(input);
 
-			AccessWidenerWriter writer = new AccessWidenerWriter(version);
-			AccessWidenerRemapper remapper = new AccessWidenerRemapper(
+			ClassTweakerWriter writer = ClassTweakerWriter.create(version);
+			ClassTweakerRemapperVisitor remapper = new ClassTweakerRemapperVisitor(
 					writer,
 					tinyRemapper.getEnvironment().getRemapper(),
 					getParameters().getSourceNamespace().get(),
 					getParameters().getTargetNamespace().get()
 			);
-			AccessWidenerReader reader = new AccessWidenerReader(remapper);
-			reader.read(input);
+			ClassTweakerReader reader = ClassTweakerReader.create(remapper);
+			reader.read(input, null); // TODO pass mod id
 
-			return writer.write();
+			return writer.getOutput();
 		}
 
 		private void addNestedJars() {

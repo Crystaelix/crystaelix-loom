@@ -28,13 +28,12 @@ import javax.inject.Inject;
 
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
-import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class RunGameTask extends AbstractRunTask {
 	@Inject
 	public RunGameTask(RunConfigSettings settings) {
 		super(proj -> {
-			return RunConfig.runConfig(proj, settings, SourceSetHelper::getGradleClasspath);
+			return RunConfig.runConfig(proj, settings);
 		});
 
 		// Defaults to empty, forwards stdin to mc.

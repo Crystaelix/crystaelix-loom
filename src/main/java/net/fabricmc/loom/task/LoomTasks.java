@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2016-2022 FabricMC
+ * Copyright (c) 2016-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,7 +28,6 @@ import java.io.File;
 
 import javax.inject.Inject;
 
-import com.google.common.base.Preconditions;
 import org.gradle.api.Project;
 import org.gradle.api.Task;
 import org.gradle.api.file.FileCollection;
@@ -45,10 +44,12 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.task.launch.GenerateDLIConfigTask;
 import net.fabricmc.loom.task.launch.GenerateLog4jConfigTask;
 import net.fabricmc.loom.task.launch.GenerateRemapClasspathTask;
+import net.fabricmc.loom.util.Check;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.Platform;
 import net.fabricmc.loom.util.gradle.GradleUtils;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 
 public abstract class LoomTasks implements Runnable {
 	@Inject
@@ -59,8 +60,28 @@ public abstract class LoomTasks implements Runnable {
 
 	@Override
 	public void run() {
-		getTasks().register("migrateMappings", MigrateMappingsTask.class, t -> {
-			t.setDescription("Migrates mappings to a new version.");
+		SourceSetHelper.getSourceSets(getProject()).all(sourceSet -> {
+			if (SourceSetHelper.isMainSourceSet(sourceSet)) {
+				getTasks().register("migrateMappings", MigrateMappingsTask.class, t -> {
+					t.setDescription("Migrates source code mappings to a new version.");
+				});
+
+				return;
+			}
+
+			if (!SourceSetHelper.getFirstSrcDir(sourceSet).exists()) {
+				return;
+			}
+
+			getTasks().register(sourceSet.getTaskName("migrate", "mappings"), MigrateMappingsTask.class, t -> {
+				t.setDescription("Migrates source code mappings to a new version.");
+				t.getInputDir().set(SourceSetHelper.getFirstSrcDir(sourceSet));
+				t.getOutputDir().convention(getProject().getLayout().getProjectDirectory().dir(sourceSet.getTaskName("remapped", "src")));
+			});
+		});
+
+		getTasks().register("migrateClassTweakerMappings", MigrateClassTweakerMappingsTask.class, t -> {
+			t.setDescription("Migrates access widener and class tweaker mappings to a new version.");
 		});
 
 		var generateLog4jConfig = getTasks().register("generateLog4jConfig", GenerateLog4jConfigTask.class, t -> {
@@ -141,7 +162,7 @@ public abstract class LoomTasks implements Runnable {
 		LoomGradleExtension extension = LoomGradleExtension.get(getProject());
 		final boolean renderDocSupported = RenderDocRunTask.isSupported(Platform.CURRENT);
 
-		Preconditions.checkArgument(extension.getRunConfigs().size() == 0, "Run configurations must not be registered before loom");
+		Check.require(extension.getRunConfigs().isEmpty(), "Run configurations must not be registered before loom");
 
 		extension.getRunConfigs().whenObjectAdded(config -> {
 			var runTask = getTasks().register(getRunConfigTaskName(config), RunGameTask.class, config);

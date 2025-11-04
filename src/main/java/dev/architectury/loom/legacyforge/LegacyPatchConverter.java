@@ -13,7 +13,6 @@ import java.util.jar.JarOutputStream;
 import org.apache.commons.compress.compressors.lzma.LZMACompressorInputStream;
 import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
 import org.apache.commons.compress.java.util.jar.Pack200;
-import org.apache.commons.io.IOUtils;
 import org.slf4j.Logger;
 
 public class LegacyPatchConverter {
@@ -50,7 +49,7 @@ public class LegacyPatchConverter {
 					dataOut.writeUTF(dataIn.readUTF().replace('.', '/')); // srg class name
 				}
 
-				IOUtils.copy(pushbackIn, dataOut);
+				dataOut.write(pushbackIn.readAllBytes());
 				jarOut.closeEntry();
 			}
 		}

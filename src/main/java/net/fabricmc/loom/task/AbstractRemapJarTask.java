@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2021 FabricMC
+ * Copyright (c) 2021-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,16 +27,18 @@ package net.fabricmc.loom.task;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
 import javax.inject.Inject;
 
-import com.google.common.base.Preconditions;
 import org.gradle.api.Action;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.RegularFileProperty;
@@ -57,19 +59,30 @@ import org.gradle.workers.WorkParameters;
 import org.gradle.workers.WorkQueue;
 import org.gradle.workers.WorkerExecutor;
 import org.jetbrains.annotations.ApiStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.task.service.ClientEntriesService;
 import net.fabricmc.loom.task.service.JarManifestService;
+import net.fabricmc.loom.util.Check;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.ExceptionUtil;
+import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.ZipReprocessorUtil;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 public abstract class AbstractRemapJarTask extends Jar {
+	/**
+	 * The main input jar to remap.
+	 * Other contents can be added to this task, but this jar must always be present.
+	 *
+	 * <p>The input file's manifest will be copied into the remapped jar.
+	 */
 	@InputFile
 	public abstract RegularFileProperty getInputFile();
 
@@ -112,10 +125,15 @@ public abstract class AbstractRemapJarTask extends Jar {
 	@Optional
 	protected abstract Property<ClientEntriesService.Options> getClientEntriesServiceOptions();
 
+	@Input
+	@ApiStatus.Internal
+	protected abstract Property<ModPlatform> getModPlatform();
+
 	private final Provider<JarManifestService> jarManifestServiceProvider;
 
 	@Inject
 	public AbstractRemapJarTask() {
+		from(getProject().zipTree(getInputFile()));
 		getSourceNamespace().convention(MappingsNamespace.NAMED.toString()).finalizeValueOnRead();
 		getTargetNamespace().convention(getProject().provider(() -> IntermediaryNamespaces.runtimeIntermediary(getProject()))).finalizeValueOnRead();
 		getIncludesClientOnlyClasses().convention(false).finalizeValueOnRead();
@@ -132,11 +150,8 @@ public abstract class AbstractRemapJarTask extends Jar {
 
 		jarManifestServiceProvider = JarManifestService.get(getProject());
 		usesService(jarManifestServiceProvider);
-	}
 
-	@Override
-	protected void copy() {
-		// Skip the default copy behaviour of AbstractCopyTask.
+		getModPlatform().value(LoomGradleExtension.get(getProject()).getPlatform()).finalizeValue();
 	}
 
 	public final <P extends AbstractRemapParams> void submitWork(Class<? extends AbstractRemapAction<P>> workAction, Action<P> action) {
@@ -144,7 +159,7 @@ public abstract class AbstractRemapJarTask extends Jar {
 
 		workQueue.submit(workAction, params -> {
 			params.getInputFile().set(getInputFile());
-			params.getOutputFile().set(getArchiveFile());
+			params.getArchiveFile().set(getArchiveFile());
 
 			params.getSourceNamespace().set(getSourceNamespace());
 			params.getTargetNamespace().set(getTargetNamespace());
@@ -154,6 +169,8 @@ public abstract class AbstractRemapJarTask extends Jar {
 
 			params.getJarManifestService().set(jarManifestServiceProvider);
 			params.getEntryCompression().set(getEntryCompression());
+
+			params.getPlatform().set(getModPlatform());
 
 			if (getIncludesClientOnlyClasses().get()) {
 				final List<String> clientOnlyEntries;
@@ -183,7 +200,7 @@ public abstract class AbstractRemapJarTask extends Jar {
 
 	public interface AbstractRemapParams extends WorkParameters {
 		RegularFileProperty getInputFile();
-		RegularFileProperty getOutputFile();
+		RegularFileProperty getArchiveFile();
 
 		Property<String> getSourceNamespace();
 		Property<String> getTargetNamespace();
@@ -208,6 +225,8 @@ public abstract class AbstractRemapJarTask extends Jar {
 		MapProperty<String, String> getManifestAttributes();
 
 		ListProperty<String> getClientOnlyEntries();
+
+		Property<ModPlatform> getPlatform();
 	}
 
 	protected void applyClientOnlyManifestAttributes(AbstractRemapParams params, List<String> entries) {
@@ -218,28 +237,58 @@ public abstract class AbstractRemapJarTask extends Jar {
 	}
 
 	public abstract static class AbstractRemapAction<T extends AbstractRemapParams> implements WorkAction<T> {
-		protected final Path inputFile;
+		private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRemapAction.class);
 		protected final Path outputFile;
 
 		@Inject
 		public AbstractRemapAction() {
-			inputFile = getParameters().getInputFile().getAsFile().get().toPath();
-			outputFile = getParameters().getOutputFile().getAsFile().get().toPath();
+			outputFile = getParameters().getArchiveFile().getAsFile().get().toPath();
 		}
+
+		@Override
+		public final void execute() {
+			try {
+				Path tempInput = Files.createTempFile("loom-remapJar-", "-input.jar");
+				Files.copy(outputFile, tempInput, StandardCopyOption.REPLACE_EXISTING);
+				execute(tempInput);
+				Files.delete(tempInput);
+			} catch (Exception e) {
+				try {
+					Files.deleteIfExists(outputFile);
+				} catch (IOException ex) {
+					LOGGER.error("Failed to delete output file", ex);
+				}
+
+				throw ExceptionUtil.createDescriptiveWrapper(RuntimeException::new, "Failed to remap " + outputFile.toAbsolutePath(), e);
+			}
+		}
+
+		// Note: the inputFile parameter is the remapping input file.
+		// The main input jar is available in the parameters, but should not be used
+		// for remapping as it might be missing some files added manually to this task.
+		protected abstract void execute(Path inputFile) throws IOException;
 
 		protected void modifyJarManifest() throws IOException {
 			int count = ZipUtils.transform(outputFile, Map.of(Constants.Manifest.PATH, bytes -> {
 				var manifest = new Manifest(new ByteArrayInputStream(bytes));
+				byte[] sourceManifestBytes = ZipUtils.unpackNullable(getParameters().getInputFile().get().getAsFile().toPath(), Constants.Manifest.PATH);
 
-				getParameters().getJarManifestService().get().apply(manifest, getParameters().getManifestAttributes().get());
-				manifest.getMainAttributes().putValue(Constants.Manifest.MAPPING_NAMESPACE, getParameters().getTargetNamespace().get());
+				if (sourceManifestBytes != null) {
+					var sourceManifest = new Manifest(new ByteArrayInputStream(sourceManifestBytes));
+					mergeManifests(manifest, sourceManifest);
+				}
+
+				if (!getParameters().getPlatform().get().isForgeLike()) {
+					getParameters().getJarManifestService().get().apply(manifest, getParameters().getManifestAttributes().get());
+					manifest.getMainAttributes().putValue(Constants.Manifest.MAPPING_NAMESPACE, getParameters().getTargetNamespace().get());
+				}
 
 				ByteArrayOutputStream out = new ByteArrayOutputStream();
 				manifest.write(out);
 				return out.toByteArray();
 			}));
 
-			Preconditions.checkState(count > 0, "Did not transform any jar manifest");
+			Check.require(count > 0, "Did not transform any jar manifest");
 		}
 
 		protected void rewriteJar() throws IOException {
@@ -251,6 +300,24 @@ public abstract class AbstractRemapJarTask extends Jar {
 				ZipReprocessorUtil.reprocessZip(outputFile, isReproducibleFileOrder, isPreserveFileTimestamps, compression);
 			}
 		}
+
+		private static void mergeManifests(Manifest target, Manifest source) {
+			mergeAttributes(target.getMainAttributes(), source.getMainAttributes());
+
+			source.getEntries().forEach((name, sourceAttributes) -> {
+				final Attributes targetAttributes = target.getAttributes(name);
+
+				if (targetAttributes != null) {
+					mergeAttributes(targetAttributes, sourceAttributes);
+				} else {
+					target.getEntries().put(name, sourceAttributes);
+				}
+			});
+		}
+
+		private static void mergeAttributes(Attributes target, Attributes source) {
+			source.forEach(target::putIfAbsent);
+		}
 	}
 
 	@Deprecated
@@ -260,7 +327,7 @@ public abstract class AbstractRemapJarTask extends Jar {
 	}
 
 	private SourceSet getClientSourceSet() {
-		Preconditions.checkArgument(LoomGradleExtension.get(getProject()).areEnvironmentSourceSetsSplit(), "Cannot get client sourceset as project is not split");
+		Check.require(LoomGradleExtension.get(getProject()).areEnvironmentSourceSetsSplit(), "Cannot get client sourceset as project is not split");
 		return SourceSetHelper.getSourceSetByName(getClientOnlySourceSetName().get(), getProject());
 	}
 }

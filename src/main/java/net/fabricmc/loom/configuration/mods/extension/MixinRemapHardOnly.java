@@ -11,7 +11,7 @@ import net.fabricmc.tinyremapper.InputTag;
 import net.fabricmc.tinyremapper.TinyRemapper;
 import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
-class MixinRemapHardOnly implements ModProcessorExtension {
+final class MixinRemapHardOnly implements ModProcessorExtension {
 	static final MixinRemapHardOnly INSTANCE = new MixinRemapHardOnly();
 
 	private MixinRemapHardOnly() {

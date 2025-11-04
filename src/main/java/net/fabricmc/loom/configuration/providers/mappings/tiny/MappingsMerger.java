@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022 FabricMC
+ * Copyright (c) 2022-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -29,11 +29,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
 
-import com.google.common.base.Stopwatch;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,16 +49,16 @@ public final class MappingsMerger {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MappingsMerger.class);
 
 	public static void mergeAndSaveMappings(Path from, Path out, MinecraftProvider minecraftProvider, IntermediateMappingsService intermediateMappingsService) throws IOException {
-		Stopwatch stopwatch = Stopwatch.createStarted();
+		long start = System.currentTimeMillis();
 		LOGGER.info(":merging mappings");
 
-		if (minecraftProvider.isLegacyVersion()) {
-			legacyMergeAndSaveMappings(from, out, intermediateMappingsService);
+		if (minecraftProvider.isLegacySplitOfficialNamespaceVersion()) {
+			legacyMergedMergeAndSaveMappings(from, out, intermediateMappingsService);
 		} else {
 			mergeAndSaveMappings(from, out, intermediateMappingsService);
 		}
 
-		LOGGER.info(":merged mappings in " + stopwatch.stop());
+		LOGGER.info(":merged mappings in {}ms", System.currentTimeMillis() - start);
 	}
 
 	@VisibleForTesting
@@ -85,7 +83,7 @@ public final class MappingsMerger {
 	}
 
 	@VisibleForTesting
-	public static void legacyMergeAndSaveMappings(Path from, Path out, IntermediateMappingsService intermediateMappingsService) throws IOException {
+	public static void legacyMergedMergeAndSaveMappings(Path from, Path out, IntermediateMappingsService intermediateMappingsService) throws IOException {
 		MemoryMappingTree intermediaryTree = new MemoryMappingTree();
 		intermediateMappingsService.getMemoryMappingTree().accept(intermediaryTree);
 
@@ -111,32 +109,11 @@ public final class MappingsMerger {
 	 * Currently, Yarn does not export mappings for these inner classes.
 	 */
 	private static void inheritMappedNamesOfEnclosingClasses(MemoryMappingTree tree) {
-		int intermediaryIdx = tree.getNamespaceId("intermediary");
-		int namedIdx = tree.getNamespaceId("named");
+		assert tree.getNamespaceId("intermediary") > MappingTree.SRC_NAMESPACE_ID;
 
-		// The tree does not have an index by intermediary names by default
+		// Create an index by intermediary names for faster lookups during the propagation
 		tree.setIndexByDstNames(true);
 
-		for (MappingTree.ClassMapping classEntry : tree.getClasses()) {
-			String intermediaryName = classEntry.getDstName(intermediaryIdx);
-			String namedName = classEntry.getDstName(namedIdx);
-
-			if (intermediaryName.equals(namedName) && intermediaryName.contains("$")) {
-				String[] path = intermediaryName.split(Pattern.quote("$"));
-				int parts = path.length;
-
-				for (int i = parts - 2; i >= 0; i--) {
-					String currentPath = String.join("$", Arrays.copyOfRange(path, 0, i + 1));
-					String namedParentClass = tree.mapClassName(currentPath, intermediaryIdx, namedIdx);
-
-					if (!namedParentClass.equals(currentPath)) {
-						classEntry.setDstName(namedParentClass
-										+ "$" + String.join("$", Arrays.copyOfRange(path, i + 1, path.length)),
-								namedIdx);
-						break;
-					}
-				}
-			}
-		}
+		tree.propagateOuterClassNames("intermediary", List.of("named"), false);
 	}
 }

@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2016-2022 FabricMC
+ * Copyright (c) 2016-2025 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -422,6 +422,13 @@ public abstract class GenerateSourcesTask extends AbstractLoomTask {
 			sj.add(unpick.getUnpickCacheKey());
 		}
 
+		SourceMappingsService mappingsService = serviceFactory.get(getMappings());
+		String mappingsHash = mappingsService.getProcessorHash();
+
+		if (mappingsHash != null) {
+			sj.add(mappingsHash);
+		}
+
 		getLogger().info("Decompile cache data: {}", sj);
 
 		return Checksum.of(sj.toString()).sha256().hex();
@@ -734,6 +741,8 @@ public abstract class GenerateSourcesTask extends AbstractLoomTask {
 
 		try (BufferedReader reader = Files.newBufferedReader(linemapFile, StandardCharsets.UTF_8)) {
 			return ClassLineNumbers.readMappings(reader);
+		} catch (Exception e) {
+			throw new IOException("Failed to read line number map: " + linemapFile, e);
 		}
 	}
 

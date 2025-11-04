@@ -6,6 +6,7 @@ import java.io.PrintStream;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -16,9 +17,10 @@ import java.util.function.BiConsumer;
 import java.util.function.Predicate;
 
 import dev.architectury.loom.forge.tool.ForgeToolExecutor;
+import dev.architectury.loom.util.DependencyDownloader;
 import dev.architectury.loom.util.NullOutputStream;
 import dev.architectury.loom.util.TempFiles;
-import org.apache.commons.io.file.PathUtils;
+import dev.architectury.loom.util.ThreadingUtils;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.logging.Logger;
@@ -37,11 +39,9 @@ import net.fabricmc.loom.task.GenerateSourcesTask;
 import net.fabricmc.loom.task.service.MappingsService;
 import net.fabricmc.loom.task.service.SourceRemapperService;
 import net.fabricmc.loom.util.Constants;
-import net.fabricmc.loom.util.DependencyDownloader;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.Pair;
-import net.fabricmc.loom.util.ThreadingUtils;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.service.Service;
 import net.fabricmc.loom.util.service.ServiceFactory;
@@ -90,7 +90,21 @@ public final class ForgeSourcesService extends Service<ForgeSourcesService.Optio
 						Files.deleteIfExists(legacySources);
 
 						try (FileSystemUtil.Delegate sourceFs = FileSystemUtil.getJarFileSystem(legacySources, true)) {
-							PathUtils.copyDirectory(fs.getPath("src/main/java"), sourceFs.getPath("/"));
+							Path srcDir = fs.getPath("src/main/java");
+							Path dstDir = sourceFs.getPath("/");
+							Files.walk(fs.getPath("src/main/java")).forEach(srcPath -> {
+								try {
+									Path dstPath = dstDir.resolve(srcDir.relativize(srcPath));
+
+									if (Files.isDirectory(srcPath)) {
+										Files.createDirectories(dstPath);
+									} else {
+										Files.copy(srcPath, dstPath, StandardCopyOption.REPLACE_EXISTING);
+									}
+								} catch (IOException e) {
+									throw new UncheckedIOException(e);
+								}
+							});
 						}
 
 						options.getForgeSourceJars().from(legacySources);

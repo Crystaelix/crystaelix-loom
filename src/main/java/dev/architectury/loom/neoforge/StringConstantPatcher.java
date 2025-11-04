@@ -6,9 +6,9 @@ import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
 
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.mappingio.tree.MappingTreeView;
 
 /**
@@ -24,7 +24,7 @@ public final class StringConstantPatcher extends ClassVisitor {
 	private static final RemapKey MINECRAFT_KEY = new RemapKey("net/minecraft/client/Minecraft.class", "net/minecraft/class_310");
 
 	private StringConstantPatcher(ClassVisitor next, Map<String, String> constantChanges) {
-		super(Opcodes.ASM9, next);
+		super(Constants.ASM_VERSION, next);
 		this.constantChanges = constantChanges;
 	}
 
@@ -105,7 +105,7 @@ public final class StringConstantPatcher extends ClassVisitor {
 
 	private final class MethodPatcher extends MethodVisitor {
 		MethodPatcher(MethodVisitor next) {
-			super(Opcodes.ASM9, next);
+			super(Constants.ASM_VERSION, next);
 		}
 
 		@Override

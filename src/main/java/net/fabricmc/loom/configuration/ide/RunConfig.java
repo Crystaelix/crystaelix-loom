@@ -24,7 +24,6 @@
 
 package net.fabricmc.loom.configuration.ide;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -39,7 +38,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -61,6 +59,7 @@ import net.fabricmc.loom.configuration.ide.idea.IdeaUtils;
 import net.fabricmc.loom.configuration.providers.BundleMetadata;
 import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryContext;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public class RunConfig {
@@ -78,6 +77,7 @@ public class RunConfig {
 	public Map<String, Object> environmentVariables;
 	public String projectName;
 	public String folderName;
+	public String name;
 
 	// Turns camelCase/PascalCase into Capital Case
 	// caseConversionExample -> Case Conversion Example
@@ -90,10 +90,6 @@ public class RunConfig {
 	}
 
 	public static RunConfig runConfig(Project project, RunConfigSettings settings) {
-		return runConfig(project, settings, null);
-	}
-
-	public static RunConfig runConfig(Project project, RunConfigSettings settings, BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
 		settings.evaluateNow();
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		LibraryContext context = new LibraryContext(extension.getMinecraftProvider().getVersionInfo(), JavaVersion.current());
@@ -140,8 +136,9 @@ public class RunConfig {
 		boolean appendProjectPath = settings.getAppendProjectPathToConfigName().get();
 		RunConfig runConfig = new RunConfig();
 		runConfig.configName = configName;
+		runConfig.name = name;
 
-		if (appendProjectPath && !extension.isRootProject()) {
+		if (appendProjectPath && !GradleUtils.isRootProject(project)) {
 			runConfig.configName += " (" + project.getPath() + ")";
 		}
 
@@ -160,7 +157,7 @@ public class RunConfig {
 		runConfig.vmArgs.addAll(settings.getVmArgs());
 		runConfig.vmArgs.add("-Dfabric.dli.main=" + mainClass);
 		runConfig.environmentVariables = new HashMap<>();
-		runConfig.environmentVariables.putAll(settings.getEnvironmentVariablesWithForgeSourceRoots(classpathFunc));
+		runConfig.environmentVariables.putAll(settings.getEnvironmentVariables());
 		runConfig.projectName = project.getName();
 		runConfig.folderName = settings.getIdeConfigFolder().getOrNull();
 

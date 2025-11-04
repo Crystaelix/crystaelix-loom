@@ -9,10 +9,10 @@ import java.util.stream.Stream;
 import com.mojang.serialization.Codec;
 import com.mojang.serialization.codecs.RecordCodecBuilder;
 import dev.architectury.loom.forge.ForgeVersion;
-import dev.architectury.loom.forge.UserdevConfig;
+import dev.architectury.loom.forge.config.ConfigValue;
+import dev.architectury.loom.forge.config.ForgeRunTemplate;
+import dev.architectury.loom.forge.config.UserdevConfig;
 
-import net.fabricmc.loom.configuration.providers.forge.ConfigValue;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunTemplate;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.Platform;

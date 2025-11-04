@@ -5,10 +5,10 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-import com.google.common.collect.ImmutableSet;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
@@ -59,7 +59,7 @@ public class McModInfo implements JsonBackedModMetadataFile {
 	public Set<String> getIds() {
 		if (json.has("modList")) return Set.of();
 
-		final ImmutableSet.Builder<String> modIds = ImmutableSet.builder();
+		final List<String> modIds = new ArrayList<>();
 
 		for (final JsonElement mod : json.getAsJsonArray("modList")) {
 			if (mod.isJsonObject()) {
@@ -71,7 +71,7 @@ public class McModInfo implements JsonBackedModMetadataFile {
 			}
 		}
 
-		return modIds.build();
+		return Set.copyOf(modIds);
 	}
 
 	@Override

@@ -32,12 +32,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import javax.inject.Inject;
 
-import dev.architectury.loom.util.ForgeSourceRootHelper;
+import dev.architectury.loom.forge.config.ForgeRunTemplate;
+import dev.architectury.loom.forge.dependency.ForgeRunsProvider;
 import org.gradle.api.Action;
 import org.gradle.api.Named;
 import org.gradle.api.NamedDomainObjectContainer;
@@ -48,14 +48,12 @@ import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.ModSettings;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunTemplate;
-import net.fabricmc.loom.configuration.providers.forge.ForgeRunsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.Platform;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.gradle.SourceSetHelper;
-import net.fabricmc.loom.util.gradle.SourceSetReference;
 
 public abstract class RunConfigSettings implements Named {
 	/**
@@ -153,7 +151,7 @@ public abstract class RunConfigSettings implements Named {
 		this.project = project;
 		this.appendProjectPathToConfigName = project.getObjects().property(Boolean.class).convention(true);
 		this.extension = LoomGradleExtension.get(project);
-		this.ideConfigGenerated = extension.isRootProject();
+		this.ideConfigGenerated = GradleUtils.isRootProject(project);
 		this.mainClass = project.getObjects().property(String.class).convention(project.provider(() -> {
 			Objects.requireNonNull(environment, "Run config " + name + " must specify environment");
 			Objects.requireNonNull(defaultMainClass, "Run config " + name + " must specify default main class");
@@ -344,16 +342,6 @@ public abstract class RunConfigSettings implements Named {
 		return environmentVariables;
 	}
 
-	public Map<String, Object> getEnvironmentVariablesWithForgeSourceRoots(BiFunction<SourceSetReference, Project, List<File>> classpathFunc) {
-		if (classpathFunc == null) {
-			return environmentVariables;
-		}
-
-		Map<String, Object> map = new HashMap<>(environmentVariables);
-		map.computeIfAbsent("MOD_CLASSES", $ -> ForgeSourceRootHelper.getForgeSourceRoots(project, this, classpathFunc));
-		return map;
-	}
-
 	public void environmentVariable(String name, Object value) {
 		environmentVariables.put(name, value);
 	}
@@ -458,7 +446,7 @@ public abstract class RunConfigSettings implements Named {
 			ForgeRunTemplate template = runsProvider.getTemplates().findByName(templateName);
 
 			if (template != null) {
-				template.applyTo(this, runsProvider.getResolver(this));
+				template.applyTo(this, runsProvider);
 			} else {
 				project.getLogger().warn("Could not find Forge run template with name '{}'", templateName);
 			}
