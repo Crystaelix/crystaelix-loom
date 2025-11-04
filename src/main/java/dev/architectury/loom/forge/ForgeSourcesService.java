@@ -74,7 +74,7 @@ public final class ForgeSourcesService extends Service<ForgeSourcesService.Optio
 
 			if (extension.getForgeUserdevProvider().isFG3()) {
 				final String sourceDependency = extension.getForgeUserdevProvider().getConfig().sources();
-				options.getForgeSourceJars().from(DependencyDownloader.download(project, sourceDependency));
+				options.getForgeSourceJars().from(DependencyDownloader.download(project, sourceDependency, false, false));
 			} else {
 				Path userdevJar = extension.getForgeUserdevProvider().getUserdevJar().toPath();
 				Path workingDir = extension.getForgeProvider().getGlobalCache().toPath();
