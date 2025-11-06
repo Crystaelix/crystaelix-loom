@@ -89,6 +89,19 @@ public abstract class LoomConfigurations implements Runnable {
 			minecraftRuntime.extendsFrom(minecraftServerRuntime.get());
 		});
 
+		// Set up the Minecraft source generation configurations.
+		var minecraftClientSourceGen = registerNonTransitive(Constants.Configurations.MINECRAFT_CLIENT_SOURCE_GEN_LIBRARIES, Role.RESOLVABLE);
+		var minecraftServerSourceGen = registerNonTransitive(Constants.Configurations.MINECRAFT_SERVER_SOURCE_GEN_LIBRARIES, Role.RESOLVABLE);
+
+		// Source generation extends from compile
+		minecraftClientSourceGen.configure(configuration -> configuration.extendsFrom(minecraftClientCompile.get()));
+		minecraftServerSourceGen.configure(configuration -> configuration.extendsFrom(minecraftServerCompile.get()));
+
+		registerNonTransitive(Constants.Configurations.MINECRAFT_SOURCE_GEN_LIBRARIES, Role.RESOLVABLE).configure(minecraftCompileOnly -> {
+			minecraftCompileOnly.extendsFrom(minecraftClientSourceGen.get());
+			minecraftCompileOnly.extendsFrom(minecraftServerSourceGen.get());
+		});
+
 		registerNonTransitive(Constants.Configurations.MINECRAFT_NATIVES, Role.RESOLVABLE);
 		registerNonTransitive(Constants.Configurations.LOADER_DEPENDENCIES, Role.RESOLVABLE);
 

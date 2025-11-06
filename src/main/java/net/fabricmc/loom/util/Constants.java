@@ -56,12 +56,14 @@ public class Constants {
 
 		public static final String MINECRAFT_COMPILE_LIBRARIES = "minecraftLibraries";
 		public static final String MINECRAFT_RUNTIME_LIBRARIES = "minecraftRuntimeLibraries";
+		public static final String MINECRAFT_SOURCE_GEN_LIBRARIES = "minecraftSourceGenLibraries";
 
 		/**
 		 * These configurations contain the minecraft client libraries.
 		 */
 		public static final String MINECRAFT_CLIENT_COMPILE_LIBRARIES = "minecraftClientLibraries";
 		public static final String MINECRAFT_CLIENT_RUNTIME_LIBRARIES = "minecraftClientRuntimeLibraries";
+		public static final String MINECRAFT_CLIENT_SOURCE_GEN_LIBRARIES = "minecraftClientSourceGenLibraries";
 
 		/**
 		 * The server specific configurations will be empty when using a legacy (pre 21w38a server jar)
@@ -69,6 +71,7 @@ public class Constants {
 		 */
 		public static final String MINECRAFT_SERVER_COMPILE_LIBRARIES = "minecraftServerLibraries";
 		public static final String MINECRAFT_SERVER_RUNTIME_LIBRARIES = "minecraftServerRuntimeLibraries";
+		public static final String MINECRAFT_SERVER_SOURCE_GEN_LIBRARIES = "minecraftServerSourceGenLibraries";
 		/**
 		 * Before Minecraft 1.19-pre1 this contains libraries that need to be extracted otherwise this goes on the runtime classpath.
 		 */

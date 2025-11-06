@@ -126,7 +126,7 @@ public final class ForgeSourcesService extends Service<ForgeSourcesService.Optio
 				sro.getJavaCompileRelease().set(SourceRemapperService.getJavaCompileRelease(project));
 				sro.getClasspath().from(DependencyDownloader.download(project, LoomVersions.JETBRAINS_ANNOTATIONS.mavenNotation()));
 				sro.getClasspath().from(extension.getMinecraftJars(sourceNamespace));
-				sro.getClasspath().from(project.getConfigurations().getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES));
+				sro.getClasspath().from(project.getConfigurations().getByName(Constants.Configurations.MINECRAFT_SOURCE_GEN_LIBRARIES));
 
 				TinyRemapperHelper.JSR_TO_JETBRAINS.forEach((from, to) -> {
 					Pair<String, String> mapping = new Pair<>(from, to);

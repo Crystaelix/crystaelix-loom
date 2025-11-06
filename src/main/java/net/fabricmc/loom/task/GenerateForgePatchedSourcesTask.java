@@ -175,7 +175,7 @@ public abstract class GenerateForgePatchedSourcesTask extends AbstractLoomTask {
 					getProject().provider(() -> "named")
 			));
 			sro.getJavaCompileRelease().set(SourceRemapperService.getJavaCompileRelease(getProject()));
-			sro.getClasspath().from(getProject().getConfigurations().getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES));
+			sro.getClasspath().from(getProject().getConfigurations().getByName(Constants.Configurations.MINECRAFT_SOURCE_GEN_LIBRARIES));
 		}));
 	}
 

@@ -24,6 +24,7 @@ public class LWJGL2ExcludeLibraryProcessor extends LibraryProcessor {
 	public Predicate<Library> apply(Consumer<Library> dependencyConsumer) {
 		return library -> {
 			if (library.is(LWJGL_2_GROUP)) {
+				dependencyConsumer.accept(library.withTarget(Library.Target.SOURCE_GEN));
 				return false;
 			}
 

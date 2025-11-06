@@ -43,7 +43,11 @@ public record Library(String group, String name, String version, @Nullable Strin
 		/**
 		 * A mod library that needs remapping.
 		 */
-		LOCAL_MOD
+		LOCAL_MOD,
+		/**
+		 * A compile only library for source generation.
+		 */
+		SOURCE_GEN
 	}
 
 	public static Library fromMaven(String name, Target target) {
