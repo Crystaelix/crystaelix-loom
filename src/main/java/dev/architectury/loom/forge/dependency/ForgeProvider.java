@@ -97,6 +97,7 @@ public class ForgeProvider extends DependencyProvider {
 		case NEOFORGE -> Constants.Configurations.NEOFORGE;
 		case LEGACYFORGE -> Constants.Configurations.LEGACYFORGE;
 		case CLEANROOM -> Constants.Configurations.CLEANROOM;
+		case VINTAGEFORGE -> Constants.Configurations.VINTAGEFORGE;
 		default -> throw new GradleException("Forge provider can only be used on Forge-like platforms!");
 		};
 	}

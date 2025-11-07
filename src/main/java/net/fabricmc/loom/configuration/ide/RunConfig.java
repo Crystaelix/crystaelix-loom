@@ -94,7 +94,7 @@ public class RunConfig {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		LibraryContext context = new LibraryContext(extension.getMinecraftProvider().getVersionInfo(), JavaVersion.current());
 
-		if (settings.getEnvironment().equals("client") && (context.usesLWJGL3() || extension.isCleanroom())) {
+		if (settings.getEnvironment().equals("client") && (context.usesLWJGL3() || (extension.isCleanroom() || extension.isVintageForge()))) {
 			settings.startFirstThread();
 		}
 

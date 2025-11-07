@@ -72,7 +72,7 @@ public class MinecraftLibraryProvider {
 			enabledProcessors.add(RuntimeLog4jLibraryProcessor.class.getSimpleName());
 		}
 
-		if (extension.isCleanroom()) {
+		if (extension.isCleanroom() || extension.isVintageForge()) {
 			enabledProcessors.add(LWJGL2ExcludeLibraryProcessor.class.getSimpleName());
 		}
 

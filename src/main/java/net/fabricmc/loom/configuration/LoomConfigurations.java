@@ -189,6 +189,7 @@ public abstract class LoomConfigurations implements Runnable {
 			case NEOFORGE -> registerNonTransitive(Constants.Configurations.NEOFORGE, Role.RESOLVABLE);
 			case LEGACYFORGE -> registerNonTransitive(Constants.Configurations.LEGACYFORGE, Role.RESOLVABLE);
 			case CLEANROOM -> registerNonTransitive(Constants.Configurations.CLEANROOM, Role.RESOLVABLE);
+			case VINTAGEFORGE -> registerNonTransitive(Constants.Configurations.VINTAGEFORGE, Role.RESOLVABLE);
 			}
 
 			registerNonTransitive(Constants.Configurations.FORGE_USERDEV, Role.RESOLVABLE);

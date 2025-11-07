@@ -1,5 +1,5 @@
 plugins {
-	id 'com.crystaelix.loom'
+	id 'xyz.vintageforge.loom'
 }
 
 base {

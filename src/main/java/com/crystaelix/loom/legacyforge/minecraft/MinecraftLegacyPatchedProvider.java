@@ -64,7 +64,7 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 
 	@Override
 	protected void initPatchedFiles() {
-		String loader = getExtension().isCleanroom() ? "cleanroom" : "forge";
+		String loader = getExtension().isCleanroom() ? "cleanroom" : getExtension().isVintageForge() ? "vintageforge" : "forge";
 		String forgeVersion = getExtension().getForgeProvider().getVersion().getCombined();
 		Path forgeWorkingDir = ForgeProvider.getForgeCache(project);
 		// Note: strings used instead of platform id since FML requires one of these exact strings

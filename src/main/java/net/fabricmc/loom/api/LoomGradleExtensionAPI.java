@@ -323,6 +323,10 @@ public interface LoomGradleExtensionAPI {
 		return getPlatform().get() == ModPlatform.CLEANROOM;
 	}
 
+	default boolean isVintageForge() {
+		return getPlatform().get() == ModPlatform.VINTAGEFORGE;
+	}
+
 	default boolean isFabricLike() {
 		return getPlatform().get().isFabricLike();
 	}
@@ -405,4 +409,24 @@ public interface LoomGradleExtensionAPI {
 	default void cleanroom(Action<ForgeExtensionAPI> action) {
 		forge(action);
 	}
+
+	/**
+	 * Gets the Forge extension used to configure VintageForge details. Alias of {@link #getForge()}.
+	 *
+	 * @return the Forge extension
+	 * @throws UnsupportedOperationException if running on another platform
+	 * @see #getForge()
+	 * @see #isVintageForge()
+	 */
+	default ForgeExtensionAPI getVintageForge() {
+		return getForge();
+	}
+
+	/**
+	 * Alias of {@link #forge(Action)}.
+	 */
+	default void vintageForge(Action<ForgeExtensionAPI> action) {
+		forge(action);
+	}
+
 }

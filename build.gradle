@@ -16,13 +16,13 @@ tasks.withType(JavaCompile).configureEach {
 	it.options.encoding = "UTF-8"
 }
 
-tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
-	kotlinOptions {
-		jvmTarget = "21"
+kotlin {
+	compilerOptions {
+		jvmTarget = JvmTarget.JVM_21
 	}
 }
 
-group = "com.crystaelix"
+group = "xyz.vintageforge"
 def baseVersion = '1.13'
 
 def ENV = System.getenv()
@@ -275,11 +275,11 @@ codenarc {
 gradlePlugin {
 	plugins {
 		fabricLoom {
-			id = 'com.crystaelix.loom'
+			id = 'xyz.vintageforge.loom'
 			implementationClass = 'net.fabricmc.loom.LoomGradlePlugin'
 		}
 		fabricLoomCompanion {
-			id = 'com.crystaelix.loom-companion'
+			id = 'xyz.vintageforge.loom-companion'
 			implementationClass = 'net.fabricmc.loom.LoomCompanionGradlePlugin'
 		}
 	}
@@ -321,6 +321,7 @@ tasks.withType(Test).configureEach {
 
 import org.gradle.api.tasks.testing.logging.TestLogEvent
 import org.gradle.util.GradleVersion
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.w3c.dom.Document
 import org.w3c.dom.Element
 import org.w3c.dom.Node
@@ -362,12 +363,14 @@ publishing {
 		}
 	}
 
+
 	repositories {
-		if (project.hasProperty("CrystaelixMavenUsername") && project.hasProperty("CrystaelixMavenPassword")) {
-			maven {
-				name = "CrystaelixMaven"
-				url = "https://maven.crystaelix.com/releases/"
-				credentials(PasswordCredentials)
+		maven {
+			url = "https://repo.rafi67000.xyz/vintageforge"
+			name = "VintageForge"
+			credentials(org.gradle.api.credentials.PasswordCredentials)
+			authentication {
+				basic(BasicAuthentication)
 			}
 		}
 	}

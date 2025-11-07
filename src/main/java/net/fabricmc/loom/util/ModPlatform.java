@@ -42,13 +42,14 @@ public enum ModPlatform {
 	QUILT("Quilt", false),
 	NEOFORGE("NeoForge", false),
 	LEGACYFORGE("LegacyForge", true),
-	CLEANROOM("Cleanroom", true);
+	CLEANROOM("Cleanroom", true),
+	VINTAGEFORGE("VintageForge", true);
 
 	public static final ModPlatform[] FABRIC_LIKE = {FABRIC, QUILT};
-	public static final ModPlatform[] FORGE_LIKE = {FORGE, NEOFORGE, LEGACYFORGE, CLEANROOM};
+	public static final ModPlatform[] FORGE_LIKE = {FORGE, NEOFORGE, LEGACYFORGE, CLEANROOM, VINTAGEFORGE};
 	public static final ModPlatform[] MODERN_FORGE_LIKE = {FORGE, NEOFORGE};
-	public static final ModPlatform[] SRG_FORGE_LIKE = {FORGE, LEGACYFORGE, CLEANROOM};
-	public static final ModPlatform[] LEGACY_FORGE_LIKE = {LEGACYFORGE, CLEANROOM};
+	public static final ModPlatform[] SRG_FORGE_LIKE = {FORGE, LEGACYFORGE, CLEANROOM, VINTAGEFORGE};
+	public static final ModPlatform[] LEGACY_FORGE_LIKE = {LEGACYFORGE, CLEANROOM, VINTAGEFORGE};
 
 	private final String displayName;
 	final boolean experimental;

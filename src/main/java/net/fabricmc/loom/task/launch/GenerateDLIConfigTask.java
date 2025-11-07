@@ -311,7 +311,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 						.argument("--userProperties")
 						.argument("{}");
 
-				String srgPath = platform != ModPlatform.CLEANROOM
+				String srgPath = !(platform == ModPlatform.CLEANROOM || platform == ModPlatform.VINTAGEFORGE)
 						? legacyForgeInputs.srgToNamedSrg()
 						: legacyForgeInputs.srgToNamedTSrg();
 

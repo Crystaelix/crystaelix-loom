@@ -102,7 +102,7 @@ public class MappingConfiguration {
 	public Path tinyMappingsWithSrg;
 	public final Map<String, Path> mixinTinyMappings; // The mixin mappings have other names in intermediary.
 	public final Path srgToNamedSrg; // FORGE: srg to named in srg file format
-	public final Path srgToNamedTsrg; // CLEANROOM: srg to named in tsrg file format
+	public final Path srgToNamedTsrg; // CLEANROOM & VINTAGEFORGE: srg to named in tsrg file format
 	public final Path officialToSrgSrg; // CCL: official to srg in srg file format
 	public final Path notchSrgSrg; // CCL: copy of above
 	public final Path joinedSrg; // CCL: copy of above
@@ -314,7 +314,7 @@ public class MappingConfiguration {
 					}
 				}
 
-				if (extension.isCleanroom() && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {
+				if ((extension.isCleanroom() || extension.isVintageForge()) && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {
 					try (MappingWriter writer = MappingWriter.create(srgToNamedTsrg, MappingFormat.TSRG_FILE)) {
 						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "named"), "srg");
 						mappingTree.accept(visitor);

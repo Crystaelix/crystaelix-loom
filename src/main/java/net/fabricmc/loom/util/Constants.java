@@ -28,7 +28,7 @@ import org.jetbrains.annotations.ApiStatus;
 import org.objectweb.asm.Opcodes;
 
 public class Constants {
-	public static final String PLUGIN_ID = "com.crystaelix.loom";
+	public static final String PLUGIN_ID = "xyz.vintageforge.loom";
 	public static final boolean PLUGIN_BETA = false;
 	public static final boolean PLUGIN_DEPRECATED = false;
 	public static final String LIBRARIES_BASE = "https://libraries.minecraft.net/";
@@ -86,6 +86,7 @@ public class Constants {
 		public static final String NEOFORGE = "neoForge";
 		public static final String LEGACYFORGE = "legacyForge";
 		public static final String CLEANROOM = "cleanroom";
+		public static final String VINTAGEFORGE = "vintageForge";
 		public static final String FORGE_USERDEV = "forgeUserdev";
 		public static final String FORGE_INSTALLER = "forgeInstaller";
 		public static final String FORGE_UNIVERSAL = "forgeUniversal";

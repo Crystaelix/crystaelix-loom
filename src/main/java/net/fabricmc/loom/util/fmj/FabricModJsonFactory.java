@@ -195,7 +195,7 @@ public final class FabricModJsonFactory {
 		case FORGE -> ZipUtils.contains(input, ModsToml.FILE_PATH);
 		case NEOFORGE -> ZipUtils.contains(input, ModsToml.NEOFORGE_FILE_PATH) || ZipUtils.contains(input, ModsToml.FILE_PATH);
 		case QUILT -> ZipUtils.contains(input, QuiltModJson.FILE_NAME) || ZipUtils.contains(input, FABRIC_MOD_JSON);
-		case LEGACYFORGE, CLEANROOM -> ZipUtils.contains(input, McModInfo.FILE_PATH);
+		case LEGACYFORGE, CLEANROOM, VINTAGEFORGE -> ZipUtils.contains(input, McModInfo.FILE_PATH);
 		};
 	}
 
@@ -219,7 +219,7 @@ public final class FabricModJsonFactory {
 		case FORGE -> Files.exists(fs.getPath(ModsToml.FILE_PATH));
 		case NEOFORGE -> Files.exists(fs.getPath(ModsToml.NEOFORGE_FILE_PATH)) || Files.exists(fs.getPath(ModsToml.FILE_PATH));
 		case QUILT -> Files.exists(fs.getPath(QuiltModJson.FILE_NAME)) || Files.exists(fs.getPath(FABRIC_MOD_JSON));
-		case LEGACYFORGE, CLEANROOM -> Files.exists(fs.getPath(McModInfo.FILE_PATH));
+		case LEGACYFORGE, CLEANROOM, VINTAGEFORGE -> Files.exists(fs.getPath(McModInfo.FILE_PATH));
 		};
 	}
 }

@@ -1,11 +1,11 @@
 pluginManagement {
 	plugins {
-		id 'com.crystaelix.loom'
+		id 'xyz.vintageforge.loom'
 	}
 }
 
 plugins {
-	id 'com.crystaelix.loom'
+	id 'xyz.vintageforge.loom'
 }
 
 dependencyResolutionManagement {

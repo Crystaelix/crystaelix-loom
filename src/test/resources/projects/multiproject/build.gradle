@@ -1,13 +1,13 @@
 plugins {
 	id "java"
 	id "java-library"
-	id 'com.crystaelix.loom' apply false
+	id 'xyz.vintageforge.loom' apply false
 }
 
 allprojects {
 	if (it.path == ":javalib") return;
 
-	apply plugin: "com.crystaelix.loom"
+	apply plugin: "xyz.vintageforge.loom"
 
 	version = "1.0.0"
 

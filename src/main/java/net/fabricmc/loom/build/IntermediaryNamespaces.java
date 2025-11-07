@@ -59,7 +59,7 @@ public final class IntermediaryNamespaces {
 	public static MappingsNamespace intermediaryNamespace(ModPlatform platform) {
 		return switch (platform) {
 		case FABRIC, QUILT -> MappingsNamespace.INTERMEDIARY;
-		case FORGE, LEGACYFORGE, CLEANROOM -> MappingsNamespace.SRG;
+		case FORGE, LEGACYFORGE, CLEANROOM, VINTAGEFORGE -> MappingsNamespace.SRG;
 		case NEOFORGE -> MappingsNamespace.MOJANG;
 		};
 	}
