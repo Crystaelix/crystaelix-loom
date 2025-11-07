@@ -125,6 +125,24 @@ public class ForgeLibrariesProvider {
 				}
 			}
 
+			if (lib.startsWith("top.outlands:foundation:")) {
+				// Force older version of Foundation to workaround Cleanroom classloading issue
+				if (extension.isCleanroom()) {
+					String version = lib.substring(lib.lastIndexOf(":") + 1);
+					// Used for the file extension, for example @jar
+					int atIndex = version.indexOf('@');
+
+					if (atIndex >= 0) {
+						// Strip the file extension away
+						version = version.substring(0, atIndex);
+					}
+
+					if (Version.parse(version).compareTo(Version.parse("0.17.0")) >= 0) {
+						dep = "top.outlands:foundation:0.16.3";
+					}
+				}
+			}
+
 			if (dep == null) {
 				dep = lib;
 			}
