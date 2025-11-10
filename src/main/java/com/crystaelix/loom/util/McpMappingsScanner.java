@@ -10,8 +10,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import net.fabricmc.loom.util.FileSystemUtil;
-
 public class McpMappingsScanner {
 	public static final Set<String> INTERESTING_FILENAMES = new HashSet<>(Arrays.asList(
 			"joined.srg", "joined.csrg", "joined.tsrg",
@@ -22,8 +20,8 @@ public class McpMappingsScanner {
 
 	private final Map<String, Path> interestingFiles = new HashMap<>();
 
-	public McpMappingsScanner(FileSystemUtil.Delegate fs) throws IOException {
-		Files.walk(fs.getPath("/")).forEach(path -> {
+	public McpMappingsScanner(Path rootPath) throws IOException {
+		Files.walk(rootPath).forEach(path -> {
 			String filename = String.valueOf(path.getFileName());
 
 			if (INTERESTING_FILENAMES.contains(filename)) {

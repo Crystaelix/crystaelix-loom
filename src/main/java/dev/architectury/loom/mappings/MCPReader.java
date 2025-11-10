@@ -195,7 +195,7 @@ public class MCPReader {
 		}
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcpJar)) {
-			McpMappingsScanner scan = new McpMappingsScanner(fs);
+			McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
 			Optional<Path> fields = scan.get("fields.csv");
 			Optional<Path> methods = scan.get("methods.csv");
 			Optional<Path> params = scan.get("params.csv");

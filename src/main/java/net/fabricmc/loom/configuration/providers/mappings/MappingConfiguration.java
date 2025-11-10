@@ -44,6 +44,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import com.crystaelix.loom.mappings.MCPWriter;
 import com.crystaelix.loom.util.McpMappingsScanner;
 import dev.architectury.loom.forge.ForgeMigratedMappingConfiguration;
 import dev.architectury.loom.forge.dependency.SrgProvider;
@@ -222,14 +223,6 @@ public class MappingConfiguration {
 			}
 		}
 
-		if (extension.isLegacyForgeLike() && isMCP(inputJar) && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || minecraftProvider.refreshDeps())) {
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(inputJar)) {
-				McpMappingsScanner scan = new McpMappingsScanner(fs);
-				Files.copy(scan.get("fields.csv").get(), fieldsCsv, StandardCopyOption.REPLACE_EXISTING);
-				Files.copy(scan.get("methods.csv").get(), methodsCsv, StandardCopyOption.REPLACE_EXISTING);
-			}
-		}
-
 		if (Files.notExists(tinyMappingsJar) || minecraftProvider.refreshDeps()) {
 			Files.deleteIfExists(tinyMappingsJar);
 			ZipUtils.add(tinyMappingsJar, "mappings/mappings.tiny", Files.readAllBytes(tinyMappings));
@@ -305,13 +298,17 @@ public class MappingConfiguration {
 					}
 				}
 
-				if (extension.isLegacyForgeLike() && (Files.notExists(officialToSrgSrg) || extension.refreshDeps())) {
+				if (extension.isLegacyForgeLike() && (Files.notExists(officialToSrgSrg) || Files.notExists(notchSrgSrg) || Files.notExists(joinedSrg) || extension.refreshDeps())) {
 					try (MappingWriter writer = MappingWriter.create(officialToSrgSrg, MappingFormat.SRG_FILE)) {
 						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "srg"), "official");
 						mappingTree.accept(visitor);
 						Files.copy(officialToSrgSrg, notchSrgSrg, StandardCopyOption.REPLACE_EXISTING);
 						Files.copy(officialToSrgSrg, joinedSrg, StandardCopyOption.REPLACE_EXISTING);
 					}
+				}
+
+				if (extension.isLegacyForgeLike() && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || extension.refreshDeps())) {
+					new MCPWriter(mappingsWorkingDir).write(mappingTree);
 				}
 
 				if (extension.isCleanroom() && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {
@@ -455,7 +452,7 @@ public class MappingConfiguration {
 
 	private boolean isMCP(Path path) throws IOException {
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(path)) {
-			McpMappingsScanner scan = new McpMappingsScanner(fs);
+			McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
 			return scan.get("fields.csv").isPresent() && scan.get("methods.csv").isPresent();
 		}
 	}

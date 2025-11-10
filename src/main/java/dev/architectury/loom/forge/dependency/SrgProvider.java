@@ -80,7 +80,7 @@ public class SrgProvider extends DependencyProvider {
 			Path srgZip = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve srg")).toPath();
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(srgZip)) {
-				McpMappingsScanner scan = new McpMappingsScanner(fs);
+				McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
 				Optional<Path> srgPath = scan.get("joined.tsrg");
 
 				if (srgPath.isPresent()) {

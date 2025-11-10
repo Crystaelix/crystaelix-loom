@@ -106,7 +106,7 @@ public class McpConfigProvider extends DependencyProvider {
 			);
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcp)) {
-				McpMappingsScanner scan = new McpMappingsScanner(fs);
+				McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
 				Optional<Path> srgPath = scan.get("joined.tsrg");
 				srgPath = scan.get("joined.srg");
 
