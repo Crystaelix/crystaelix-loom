@@ -44,12 +44,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import com.crystaelix.loom.mappings.MCPReader;
 import com.crystaelix.loom.mappings.MCPWriter;
 import com.crystaelix.loom.util.McpMappingsScanner;
 import dev.architectury.loom.forge.ForgeMigratedMappingConfiguration;
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.mappings.ForgeMappingsMerger;
-import dev.architectury.loom.mappings.MCPReader;
 import dev.architectury.loom.mappings.MappingOption;
 import dev.architectury.loom.util.Stopwatch;
 import org.apache.tools.ant.util.StringUtils;
@@ -83,7 +83,6 @@ import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter;
-import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.stitch.Command;
 import net.fabricmc.stitch.commands.CommandProposeFieldNames;
@@ -427,7 +426,6 @@ public class MappingConfiguration {
 	private void readAndMergeMCP(Project project, ServiceFactory serviceFactory, MinecraftProvider minecraftProvider, Path mcpJar) throws Exception {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		IntermediateMappingsService intermediateMappingsService = serviceFactory.get(IntermediateMappingsService.createOptions(project, minecraftProvider));
-		Path intermediaryTinyPath = intermediateMappingsService.getIntermediaryTiny();
 		SrgProvider provider = extension.getSrgProvider();
 
 		if (provider == null) {
@@ -442,8 +440,8 @@ public class MappingConfiguration {
 			provider.provide(DependencyInfo.create(project, configuration.getDependencies().iterator().next(), configuration));
 		}
 
-		Path srgPath = getRawSrgFile(project);
-		MappingTree tree = new MCPReader(intermediaryTinyPath, srgPath).read(mcpJar);
+		MemoryMappingTree tree = new MemoryMappingTree();
+		MCPReader.read(getRawSrgFile(project), mcpJar, intermediateMappingsService::getMemoryMappingTree).accept(tree);
 
 		try (MappingWriter writer = MappingWriter.create(tinyMappings, MappingFormat.TINY_2_FILE)) {
 			tree.accept(writer);

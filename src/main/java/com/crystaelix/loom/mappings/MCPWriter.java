@@ -4,7 +4,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Objects;
+import java.util.Set;
 
 import com.opencsv.CSVWriter;
 
@@ -24,6 +26,8 @@ public class MCPWriter {
 		int srgIndex = mappings.getNamespaceId("srg");
 		int namedIndex = mappings.getNamespaceId("named");
 
+		Set<String> written = new HashSet<>();
+
 		try (
 				CSVWriter fieldsWriter = new CSVWriter(Files.newBufferedWriter(fields, StandardCharsets.UTF_8));
 				CSVWriter methodsWriter = new CSVWriter(Files.newBufferedWriter(methods, StandardCharsets.UTF_8));
@@ -36,8 +40,9 @@ public class MCPWriter {
 					String srgName = fieldDef.getName(srgIndex);
 					String name = fieldDef.getName(namedIndex);
 
-					if (!Objects.equals(srgName, name)) {
+					if (!Objects.equals(srgName, name) && !written.contains(srgName)) {
 						fieldsWriter.writeNext(new String[] {srgName, name, "2", fieldDef.getComment()}, false);
+						written.add(srgName);
 					}
 				}
 
@@ -45,8 +50,9 @@ public class MCPWriter {
 					String srgName = methodDef.getName(srgIndex);
 					String name = methodDef.getName(namedIndex);
 
-					if (!Objects.equals(srgName, name)) {
+					if (!Objects.equals(srgName, name) && !written.contains(srgName)) {
 						methodsWriter.writeNext(new String[] {srgName, name, "2", methodDef.getComment()}, false);
+						written.add(srgName);
 					}
 				}
 			}

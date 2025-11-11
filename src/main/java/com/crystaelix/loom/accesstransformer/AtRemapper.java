@@ -22,7 +22,7 @@
  * SOFTWARE.
  */
 
-package dev.architectury.loom.accesstransformer;
+package com.crystaelix.loom.accesstransformer;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;

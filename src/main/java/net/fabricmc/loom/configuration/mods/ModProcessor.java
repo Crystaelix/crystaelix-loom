@@ -42,8 +42,8 @@ import java.util.jar.Manifest;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.crystaelix.loom.accesstransformer.AtRemapper;
 import com.google.gson.JsonObject;
-import dev.architectury.loom.accesstransformer.AtRemapper;
 import dev.architectury.loom.forge.CoreModClassRemapper;
 import dev.architectury.loom.mappings.MappingOption;
 import dev.architectury.loom.util.LoggerFilter;

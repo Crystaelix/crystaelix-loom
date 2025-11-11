@@ -12,10 +12,11 @@ import java.util.Set;
 
 public class McpMappingsScanner {
 	public static final Set<String> INTERESTING_FILENAMES = new HashSet<>(Arrays.asList(
-			"joined.srg", "joined.csrg", "joined.tsrg",
+			"joined.srg", "joined.csrg", "joined.tsrg", "packaged.srg",
 			"client.srg", "server.srg",
 			"fields.csv", "methods.csv", "params.csv", "packages.csv",
-			"config.json"
+			"config.json",
+			"joined.exc", "packaged.exc"
 	));
 
 	private final Map<String, Path> interestingFiles = new HashMap<>();
@@ -25,7 +26,9 @@ public class McpMappingsScanner {
 			String filename = String.valueOf(path.getFileName());
 
 			if (INTERESTING_FILENAMES.contains(filename)) {
-				interestingFiles.put(filename.intern(), path);
+				if (!interestingFiles.containsKey(filename) || path.getParent() != null && path.getParent().endsWith("conf")) {
+					interestingFiles.put(filename.intern(), path);
+				}
 			}
 		});
 	}

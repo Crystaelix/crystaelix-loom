@@ -90,6 +90,10 @@ public class SrgProvider extends DependencyProvider {
 					srgPath = scan.get("joined.srg");
 
 					if (srgPath.isEmpty()) {
+						srgPath = scan.get("packaged.srg");
+					}
+
+					if (srgPath.isEmpty()) {
 						srgPath = scan.get(getExtension().getMinecraftProvider().provideServer() ? "server.srg" : "client.srg");
 					}
 

@@ -1,0 +1,213 @@
+package com.crystaelix.loom.mappings;
+
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import com.crystaelix.loom.util.McpMappingsScanner;
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvValidationException;
+import org.jetbrains.annotations.Nullable;
+
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
+import net.fabricmc.loom.util.FileSystemUtil;
+import net.fabricmc.mappingio.MappingVisitor;
+import net.fabricmc.mappingio.adapter.ForwardingMappingVisitor;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
+import net.fabricmc.mappingio.format.srg.TsrgFileReader;
+import net.fabricmc.mappingio.tree.MappingTree;
+import net.fabricmc.mappingio.tree.MemoryMappingTree;
+
+public class MCPReader {
+	public static MappingTree read(Path srgPath, Path mcpPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
+		MemoryMappingTree mcpTree = new MemoryMappingTree();
+		TsrgFileReader.read(Files.newBufferedReader(srgPath), new ForwardingMappingVisitor(mcpTree) {
+			@Override
+			public void visitNamespaces(String srcNamespace, List<String> dstNamespaces) throws IOException {
+				List<String> newDstNamespaces = new ArrayList<>(dstNamespaces);
+				newDstNamespaces.set(0, MappingsNamespace.SRG.toString());
+				super.visitNamespaces(MappingsNamespace.OFFICIAL.toString(), newDstNamespaces);
+			}
+		});
+
+		Map<String, String> memberMappings = new HashMap<>();
+		Map<String, String> comments = new HashMap<>();
+		Map<String, Map<Integer, String>> paramMappings = new HashMap<>();
+		readMcp(mcpPath, memberMappings, comments, paramMappings);
+		mergeMcp(mcpTree, memberMappings, comments, paramMappings);
+
+		if (intermediarySupplier == null) {
+			return mcpTree;
+		}
+
+		MemoryMappingTree mappingTree = new MemoryMappingTree();
+		intermediarySupplier.get().accept(mappingTree);
+		MappingVisitor officialSwitch = new MappingSourceNsSwitch(mappingTree, MappingsNamespace.OFFICIAL.toString(), false);
+		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
+		mcpTree.accept(mappingTree);
+		return mappingTree;
+	}
+
+	private static void readMcp(Path mcpPath, Map<String, String> memberMappings, Map<String, String> comments, Map<String, Map<Integer, String>> paramMappings) throws IOException {
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcpPath)) {
+			McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
+			Optional<Path> fields = scan.get("fields.csv");
+			Optional<Path> methods = scan.get("methods.csv");
+			Optional<Path> params = scan.get("params.csv");
+			Pattern paramsPattern = Pattern.compile("p_(\\d+)_(\\d+)_?");
+
+			if (fields.isPresent()) {
+				try (CSVReader reader = new CSVReader(Files.newBufferedReader(fields.get(), StandardCharsets.UTF_8))) {
+					reader.readNext();
+					String[] line;
+
+					while ((line = reader.readNext()) != null) {
+						memberMappings.put(line[0], line[1]);
+
+						if (!line[3].isBlank()) {
+							comments.put(line[0], line[3]);
+						}
+					}
+				} catch (CsvValidationException e) {
+					throw new IOException(e);
+				}
+			}
+
+			if (methods.isPresent()) {
+				try (CSVReader reader = new CSVReader(Files.newBufferedReader(methods.get(), StandardCharsets.UTF_8))) {
+					reader.readNext();
+					String[] line;
+
+					while ((line = reader.readNext()) != null) {
+						memberMappings.put(line[0], line[1]);
+
+						if (!line[3].isBlank()) {
+							comments.put(line[0], line[3]);
+						}
+					}
+				} catch (CsvValidationException e) {
+					throw new IOException(e);
+				}
+			}
+
+			if (params.isPresent()) {
+				try (CSVReader reader = new CSVReader(Files.newBufferedReader(params.get(), StandardCharsets.UTF_8))) {
+					reader.readNext();
+					String[] line;
+
+					while ((line = reader.readNext()) != null) {
+						Matcher param = paramsPattern.matcher(line[0]);
+
+						if (param.matches()) {
+							int lvIndex = Integer.parseInt(param.group(2));
+							paramMappings.computeIfAbsent("func_" + param.group(1), s -> new HashMap<>()).put(lvIndex, line[1]);
+						}
+					}
+				} catch (CsvValidationException e) {
+					throw new IOException(e);
+				}
+			}
+		}
+	}
+
+	private static void mergeMcp(MemoryMappingTree mappingTree, Map<String, String> memberMappings, Map<String, String> comments, Map<String, Map<Integer, String>> paramMappings) {
+		mappingTree.setDstNamespaces(List.of(MappingsNamespace.SRG.toString(), MappingsNamespace.NAMED.toString()));
+		Pattern methodPattern = Pattern.compile("(func_\\d*)_.*");
+
+		for (MappingTree.ClassMapping classDef : mappingTree.getClasses()) {
+			classDef.setDstName(classDef.getName(0), 1);
+
+			for (MappingTree.FieldMapping fieldDef : classDef.getFields()) {
+				String srgName = fieldDef.getDstName(0);
+				fieldDef.setDstName(memberMappings.getOrDefault(srgName, srgName), 1);
+
+				if (comments.containsKey(srgName)) {
+					fieldDef.setComment(comments.get(srgName));
+				}
+			}
+
+			for (MappingTree.MethodMapping methodDef : classDef.getMethods()) {
+				String srgName = methodDef.getDstName(0);
+				Matcher matcher = methodPattern.matcher(srgName);
+				methodDef.setDstName(memberMappings.getOrDefault(srgName, srgName), 1);
+
+				if (comments.containsKey(srgName)) {
+					methodDef.setComment(comments.get(srgName));
+				}
+
+				if (matcher.matches() && paramMappings.containsKey(matcher.group(1))) {
+					for (Map.Entry<Integer, String> entry : paramMappings.get(matcher.group(1)).entrySet()) {
+						methodDef.addArg(new BasicMethodArg(methodDef, entry.getKey(), entry.getValue()));
+					}
+				}
+			}
+		}
+	}
+
+	// Used for MethodMapping.addArg
+	private record BasicMethodArg(MappingTree.MethodMapping parent, int lvIndex, String name) implements MappingTree.MethodArgMapping {
+		@Override
+		public MappingTree.MethodMapping getMethod() {
+			return parent;
+		}
+
+		@Override
+		public MappingTree getTree() {
+			return parent.getTree();
+		}
+
+		@Override
+		public int getArgPosition() {
+			return -1;
+		}
+
+		@Override
+		public int getLvIndex() {
+			return lvIndex;
+		}
+
+		@Override
+		public String getSrcName() {
+			return null;
+		}
+
+		@Override
+		public @Nullable String getDstName(int namespace) {
+			return namespace == 1 ? name : null;
+		}
+
+		@Override
+		public @Nullable String getComment() {
+			return null;
+		}
+
+		@Override
+		public void setArgPosition(int position) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setLvIndex(int index) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setDstName(String name, int namespace) {
+			throw new UnsupportedOperationException();
+		}
+
+		@Override
+		public void setComment(String comment) {
+			throw new UnsupportedOperationException();
+		}
+	}
+}

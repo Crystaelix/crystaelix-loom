@@ -25,7 +25,6 @@
 package dev.architectury.loom.mcpconfig;
 
 import java.io.Reader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -38,8 +37,6 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import dev.architectury.loom.forge.config.ConfigValue;
 import dev.architectury.loom.forge.dependency.DependencyProvider;
-import org.cadixdev.lorenz.io.srg.SrgReader;
-import org.cadixdev.lorenz.io.srg.tsrg.TSrgWriter;
 import org.gradle.api.Project;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -47,6 +44,10 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.mappingio.MappingReader;
+import net.fabricmc.mappingio.MappingWriter;
+import net.fabricmc.mappingio.format.MappingFormat;
+import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class McpConfigProvider extends DependencyProvider {
 	private Path mcp;
@@ -107,18 +108,21 @@ public class McpConfigProvider extends DependencyProvider {
 
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcp)) {
 				McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
-				Optional<Path> srgPath = scan.get("joined.tsrg");
-				srgPath = scan.get("joined.srg");
+				Optional<Path> srgPath = scan.get("joined.srg");
+
+				if (srgPath.isEmpty()) {
+					srgPath = scan.get("packaged.srg");
+				}
 
 				if (srgPath.isEmpty()) {
 					srgPath = scan.get(getExtension().getMinecraftProvider().provideServer() ? "server.srg" : "client.srg");
 				}
 
-				try (
-						SrgReader reader = new SrgReader(Files.newBufferedReader(srgPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), StandardCharsets.UTF_8));
-						TSrgWriter writer = new TSrgWriter(Files.newBufferedWriter(unpacked.resolve("srg.tsrg")))
-				) {
-					writer.write(reader.read());
+				MemoryMappingTree tree = new MemoryMappingTree();
+				MappingReader.read(srgPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), tree);
+
+				try (MappingWriter writer = MappingWriter.create(unpacked.resolve("srg.tsrg"), MappingFormat.TSRG_FILE)) {
+					tree.accept(writer);
 				}
 			}
 

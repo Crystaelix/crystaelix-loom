@@ -60,8 +60,6 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
  * Merges a Tiny file with a new namespace.
  */
 public final class ForgeMappingsMerger {
-	private static final List<String> INPUT_NAMESPACES = List.of("official", "intermediary", "named");
-	private static final List<String> INPUT_NAMESPACES_WITH_MOJANG = List.of("official", "mojang", "intermediary", "named");
 	private final MemoryMappingTree newNs;
 	private final MemoryMappingTree src;
 	private final MemoryMappingTree output;
@@ -105,13 +103,6 @@ public final class ForgeMappingsMerger {
 	private static MemoryMappingTree readInput(Path tiny) throws IOException {
 		MemoryMappingTree src = new MemoryMappingTree();
 		MappingReader.read(tiny, src);
-		List<String> inputNamespaces = new ArrayList<>(src.getDstNamespaces());
-		inputNamespaces.add(0, src.getSrcNamespace());
-
-		if (!inputNamespaces.equals(INPUT_NAMESPACES) && !inputNamespaces.equals(INPUT_NAMESPACES_WITH_MOJANG)) {
-			throw new MappingException("Mapping file " + tiny + " does not have 'official(, mojang), intermediary, named' as its namespaces! Found: " + inputNamespaces);
-		}
-
 		return src;
 	}
 
@@ -391,14 +382,22 @@ public final class ForgeMappingsMerger {
 	 */
 	public static MemoryMappingTree mergeSrg(Path srg, Path tiny, @Nullable ExtraMappings extraMappings, boolean lenient)
 			throws IOException, MappingException {
-		return new ForgeMappingsMerger(readSrg(srg), readInput(tiny), extraMappings, lenient).merge();
+		MemoryMappingTree mappings = readInput(tiny);
+		List<String> dstNamespaces = new ArrayList<>(mappings.getDstNamespaces());
+		dstNamespaces.remove("srg");
+		mappings.setDstNamespaces(dstNamespaces);
+		return new ForgeMappingsMerger(readSrg(srg), mappings, extraMappings, lenient).merge();
 	}
 
 	public static MemoryMappingTree mergeMojang(MappingContext context, Path tiny, @Nullable ExtraMappings extraMappings, boolean lenient)
 			throws IOException, MappingException {
 		MemoryMappingTree mojang = new MemoryMappingTree();
 		SrgProvider.visitMojangMappings(new MappingNsRenamer(mojang, Map.of(MappingsNamespace.NAMED.toString(), MappingsNamespace.MOJANG.toString())), context);
-		return new ForgeMappingsMerger(mojang, readInput(tiny), extraMappings, lenient).merge();
+		MemoryMappingTree mappings = readInput(tiny);
+		List<String> dstNamespaces = new ArrayList<>(mappings.getDstNamespaces());
+		dstNamespaces.remove("mojang");
+		mappings.setDstNamespaces(dstNamespaces);
+		return new ForgeMappingsMerger(mojang, mappings, extraMappings, lenient).merge();
 	}
 
 	private static MemoryMappingTree readSrg(Path srg) throws IOException {
