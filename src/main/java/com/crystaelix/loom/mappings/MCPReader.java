@@ -20,24 +20,17 @@ import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.util.FileSystemUtil;
+import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.adapter.ForwardingMappingVisitor;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
-import net.fabricmc.mappingio.format.srg.TsrgFileReader;
 import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class MCPReader {
-	public static MappingTree read(Path srgPath, Path mcpPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
-		MemoryMappingTree mcpTree = new MemoryMappingTree();
-		TsrgFileReader.read(Files.newBufferedReader(srgPath), new ForwardingMappingVisitor(mcpTree) {
-			@Override
-			public void visitNamespaces(String srcNamespace, List<String> dstNamespaces) throws IOException {
-				List<String> newDstNamespaces = new ArrayList<>(dstNamespaces);
-				newDstNamespaces.set(0, MappingsNamespace.SRG.toString());
-				super.visitNamespaces(MappingsNamespace.OFFICIAL.toString(), newDstNamespaces);
-			}
-		});
+	public static MemoryMappingTree read(Path srgPath, Path mcpPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
+		MemoryMappingTree mcpTree = readSrg(srgPath, null);
 
 		Map<String, String> memberMappings = new HashMap<>();
 		Map<String, String> comments = new HashMap<>();
@@ -54,6 +47,50 @@ public class MCPReader {
 		MappingVisitor officialSwitch = new MappingSourceNsSwitch(mappingTree, MappingsNamespace.OFFICIAL.toString(), false);
 		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
 		mcpTree.accept(mappingTree);
+		return mappingTree;
+	}
+
+	public static MemoryMappingTree readSrg(Path srgPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
+		MemoryMappingTree srgTree = new MemoryMappingTree();
+		MappingVisitor mappingVisitor = new ForwardingMappingVisitor(srgTree) {
+			@Override
+			public void visitNamespaces(String srcNamespace, List<String> dstNamespaces) throws IOException {
+				List<String> newDstNamespaces = new ArrayList<>(dstNamespaces);
+				newDstNamespaces.set(0, MappingsNamespace.SRG.toString());
+				super.visitNamespaces(MappingsNamespace.OFFICIAL.toString(), newDstNamespaces);
+			}
+		};
+
+		if (!ZipUtils.isZip(srgPath)) {
+			MappingReader.read(srgPath, mappingVisitor);
+		} else {
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(srgPath)) {
+				McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
+				Optional<Path> mappingPath = scan.get("joined.tsrg");
+
+				if (mappingPath.isPresent()) {
+					MappingReader.read(mappingPath.get(), mappingVisitor);
+				} else {
+					mappingPath = scan.get("joined.srg");
+
+					if (mappingPath.isEmpty()) {
+						mappingPath = scan.get("packaged.srg");
+					}
+
+					MappingReader.read(mappingPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), mappingVisitor);
+				}
+			}
+		}
+
+		if (intermediarySupplier == null) {
+			return srgTree;
+		}
+
+		MemoryMappingTree mappingTree = new MemoryMappingTree();
+		intermediarySupplier.get().accept(mappingTree);
+		MappingVisitor officialSwitch = new MappingSourceNsSwitch(mappingTree, MappingsNamespace.OFFICIAL.toString(), false);
+		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
+		srgTree.accept(mappingTree);
 		return mappingTree;
 	}
 
