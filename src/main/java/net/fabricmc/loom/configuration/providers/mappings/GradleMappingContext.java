@@ -30,6 +30,7 @@ import java.io.UncheckedIOException;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 
+import dev.architectury.loom.forge.dependency.SrgProvider;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
@@ -127,5 +128,10 @@ public class GradleMappingContext implements MappingContext {
 
 	public LoomGradleExtension getExtension() {
 		return extension;
+	}
+
+	@Override
+	public SrgProvider srgProvider() {
+		return extension.getSrgProvider();
 	}
 }

@@ -29,8 +29,8 @@ import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class MCPReader {
-	public static MemoryMappingTree read(Path srgPath, Path mcpPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
-		MemoryMappingTree mcpTree = readSrg(srgPath, null);
+	public static MemoryMappingTree read(Path srgPath, Path mcpPath, boolean dropNoneIntermediaryRoots, @Nullable Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
+		MemoryMappingTree mcpTree = readSrg(srgPath, false, null);
 
 		Map<String, String> memberMappings = new HashMap<>();
 		Map<String, String> comments = new HashMap<>();
@@ -44,13 +44,20 @@ public class MCPReader {
 
 		MemoryMappingTree mappingTree = new MemoryMappingTree();
 		intermediarySupplier.get().accept(mappingTree);
-		MappingVisitor officialSwitch = new MappingSourceNsSwitch(mappingTree, MappingsNamespace.OFFICIAL.toString(), false);
-		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
 		mcpTree.accept(mappingTree);
-		return mappingTree;
+
+		if (!dropNoneIntermediaryRoots) {
+			return mappingTree;
+		}
+
+		MemoryMappingTree droppedTree = new MemoryMappingTree();
+		MappingVisitor officialSwitch = new MappingSourceNsSwitch(droppedTree, MappingsNamespace.OFFICIAL.toString(), false);
+		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
+		mappingTree.accept(intermediarySwitch);
+		return droppedTree;
 	}
 
-	public static MemoryMappingTree readSrg(Path srgPath, Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
+	public static MemoryMappingTree readSrg(Path srgPath, boolean dropNoneIntermediaryRoots, @Nullable Supplier<MemoryMappingTree> intermediarySupplier) throws IOException {
 		MemoryMappingTree srgTree = new MemoryMappingTree();
 		MappingVisitor mappingVisitor = new ForwardingMappingVisitor(srgTree) {
 			@Override
@@ -88,10 +95,17 @@ public class MCPReader {
 
 		MemoryMappingTree mappingTree = new MemoryMappingTree();
 		intermediarySupplier.get().accept(mappingTree);
-		MappingVisitor officialSwitch = new MappingSourceNsSwitch(mappingTree, MappingsNamespace.OFFICIAL.toString(), false);
-		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
 		srgTree.accept(mappingTree);
-		return mappingTree;
+
+		if (!dropNoneIntermediaryRoots) {
+			return mappingTree;
+		}
+
+		MemoryMappingTree droppedTree = new MemoryMappingTree();
+		MappingVisitor officialSwitch = new MappingSourceNsSwitch(droppedTree, MappingsNamespace.OFFICIAL.toString(), false);
+		MappingVisitor intermediarySwitch = new MappingSourceNsSwitch(officialSwitch, MappingsNamespace.INTERMEDIARY.toString(), true);
+		mappingTree.accept(intermediarySwitch);
+		return droppedTree;
 	}
 
 	private static void readMcp(Path mcpPath, Map<String, String> memberMappings, Map<String, String> comments, Map<String, Map<Integer, String>> paramMappings) throws IOException {

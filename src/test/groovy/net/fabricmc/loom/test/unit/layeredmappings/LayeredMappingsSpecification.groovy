@@ -24,17 +24,8 @@
 
 package net.fabricmc.loom.test.unit.layeredmappings
 
-import java.nio.file.Files
-import java.nio.file.Path
-import java.util.function.Supplier
-import java.util.zip.ZipFile
-
+import dev.architectury.loom.forge.dependency.SrgProvider
 import groovy.transform.EqualsAndHashCode
-import org.gradle.api.artifacts.Dependency
-import org.gradle.api.artifacts.MinimalExternalModuleDependency
-import org.gradle.api.logging.Logger
-import spock.lang.Specification
-
 import net.fabricmc.loom.api.mappings.layered.MappingContext
 import net.fabricmc.loom.api.mappings.layered.MappingLayer
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace
@@ -56,6 +47,15 @@ import net.fabricmc.mappingio.adapter.MappingDstNsReorder
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch
 import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter
 import net.fabricmc.mappingio.tree.MemoryMappingTree
+import org.gradle.api.artifacts.Dependency
+import org.gradle.api.artifacts.MinimalExternalModuleDependency
+import org.gradle.api.logging.Logger
+import spock.lang.Specification
+
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.function.Supplier
+import java.util.zip.ZipFile
 
 abstract class LayeredMappingsSpecification extends Specification implements LayeredMappingsTestConstants {
 	Logger mockLogger = Mock(Logger)
@@ -213,6 +213,11 @@ abstract class LayeredMappingsSpecification extends Specification implements Lay
 		@Override
 		boolean hasProperty(String property) {
 			return enabledProperties.contains(property)
+		}
+
+		@Override
+		SrgProvider srgProvider() {
+			throw new UnsupportedOperationException("TODO")
 		}
 	}
 

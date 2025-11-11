@@ -63,6 +63,7 @@ import org.slf4j.LoggerFactory;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsData;
 import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsLayer;
@@ -74,6 +75,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.mappingio.MappingReader;
@@ -322,14 +324,17 @@ public class MappingConfiguration {
 		project.getDependencies().add(Constants.Configurations.MAPPINGS_FINAL, project.files(tinyMappingsJar.toFile()));
 	}
 
-	public static Path getRawSrgFile(Project project) throws IOException {
+	public static Path getRawSrgFile(Project project) {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		return getRawSrgFile(extension.getSrgProvider());
+	}
 
-		if (extension.getSrgProvider().isTsrgV2()) {
-			return extension.getSrgProvider().getMergedMojangTrimmed();
+	public static Path getRawSrgFile(SrgProvider srgProvider) {
+		if (srgProvider.isTsrgV2()) {
+			return srgProvider.getMergedMojangTrimmed();
 		}
 
-		return extension.getSrgProvider().getSrg();
+		return srgProvider.getSrg();
 	}
 
 	public static Path getMojmapSrgFileIfPossible(Project project) {
@@ -441,10 +446,16 @@ public class MappingConfiguration {
 		}
 
 		MemoryMappingTree tree = new MemoryMappingTree();
-		MCPReader.read(getRawSrgFile(project), mcpJar, intermediateMappingsService::getMemoryMappingTree).accept(tree);
+		MCPReader.read(
+				getRawSrgFile(provider),
+				mcpJar,
+				GradleUtils.getBooleanProperty(project, Constants.Properties.DROP_NON_INTERMEDIATE_ROOT_METHODS),
+				intermediateMappingsService::getMemoryMappingTree
+		).accept(tree);
 
 		try (MappingWriter writer = MappingWriter.create(tinyMappings, MappingFormat.TINY_2_FILE)) {
-			tree.accept(writer);
+			MappingVisitor mappingVisitor = new MappingDstNsReorder(writer, MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.NAMED.toString());
+			tree.accept(mappingVisitor);
 		}
 	}
 
