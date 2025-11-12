@@ -71,16 +71,17 @@ public record LayeredMappingsFactory(LayeredMappingSpec spec) {
 			try {
 				layeredMappingFactory.evaluate(configContext);
 			} catch (IOException e) {
-				throw new UncheckedIOException("Failed to setup layered mappings: %s".formatted(layeredMappingFactory.mavenNotation()), e);
+				throw new UncheckedIOException("Failed to setup layered mappings: %s".formatted(layeredMappingFactory.mavenNotation(configContext.extension())), e);
 			}
 		}
 	}
 
 	private void evaluate(ConfigContext configContext) throws IOException {
-		LOGGER.info("Evaluating layer mapping: {}", mavenNotation());
+		LOGGER.info("Evaluating layer mapping: {}", mavenNotation(configContext.extension()));
 
 		final Path mavenRepoDir = configContext.extension().getFiles().getGlobalMinecraftRepo().toPath();
-		final LocalMavenHelper maven = new LocalMavenHelper(GROUP, MODULE, spec().getVersion(), null, mavenRepoDir);
+		final String intermediateName = configContext.extension().getIntermediateMappingsProvider().getName();
+		final LocalMavenHelper maven = new LocalMavenHelper(GROUP, MODULE, spec.getVersion(), !intermediateName.equals(IntermediaryMappingsProvider.NAME) ? intermediateName : null, mavenRepoDir);
 		final Path jar = resolve(configContext.project());
 		maven.copyToMaven(jar, null);
 	}
@@ -89,7 +90,7 @@ public record LayeredMappingsFactory(LayeredMappingSpec spec) {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final MappingContext mappingContext = new GradleMappingContext(project, spec.getVersion().replace("+", "_").replace(".", "_"));
 		final Path mappingsDir = mappingContext.minecraftProvider().dir("layered").toPath();
-		final Path mappingsZip = mappingsDir.resolve(String.format("%s.%s-%s.jar", GROUP, MODULE, spec.getVersion()));
+		final Path mappingsZip = mappingsDir.resolve(spec.getVersion() + ".jar");
 
 		if (Files.exists(mappingsZip) && !mappingContext.refreshDeps()) {
 			return mappingsZip;
@@ -110,11 +111,18 @@ public record LayeredMappingsFactory(LayeredMappingSpec spec) {
 	}
 
 	public Dependency createDependency(Project project) {
-		return project.getDependencies().create(mavenNotation());
+		return project.getDependencies().create(mavenNotation(LoomGradleExtension.get(project)));
 	}
 
-	public String mavenNotation() {
-		return String.format("%s:%s:%s", GROUP, MODULE, spec.getVersion());
+	public String mavenNotation(LoomGradleExtension extension) {
+		String version = spec.getVersion();
+		String intermediateName = extension.getIntermediateMappingsProvider().getName();
+
+		if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
+			return String.format("%s:%s:%s:%s", GROUP, MODULE, spec.getVersion(), intermediateName);
+		} else {
+			return String.format("%s:%s:%s", GROUP, MODULE, spec.getVersion());
+		}
 	}
 
 	private void writeMapping(LayeredMappingsProcessor processor, List<MappingLayer> layers, Path mappingsFile) throws IOException {
