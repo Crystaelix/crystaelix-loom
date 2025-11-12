@@ -109,13 +109,10 @@ public abstract class IntermediaryMappingsProvider extends IntermediateMappingsP
 
 	@Override
 	public @NotNull String getName() {
-		final String encodedMcVersion = URLEncoder.encode(getMinecraftVersion().get(), StandardCharsets.UTF_8);
 		final String urlRaw = getIntermediaryUrl().get();
 
 		if (!LoomGradleExtensionApiImpl.DEFAULT_INTERMEDIARY_URL.equals(urlRaw)) {
-			final String url = getIntermediaryUrl().get().formatted(encodedMcVersion);
-
-			return NAME + "-" + Checksum.of(url).sha1().hex();
+			return NAME + "-" + Checksum.of(urlRaw).sha1().hex(10);
 		}
 
 		return NAME;
