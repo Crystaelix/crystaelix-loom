@@ -16,6 +16,7 @@ public class McpMappingsScanner {
 			"client.srg", "server.srg",
 			"fields.csv", "methods.csv", "params.csv", "packages.csv",
 			"config.json",
+			"constructors.txt",
 			"joined.exc", "packaged.exc"
 	));
 
