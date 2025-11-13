@@ -32,8 +32,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.util.collection.CollectionUtil;
@@ -160,6 +162,10 @@ public final class ForgeMappingsMerger {
 			for (MappingTree.MethodMapping method : newNsClass.getMethods()) {
 				mergeMethod(newNsClass, method, tinyClass);
 			}
+
+			if (tinyClass != null) {
+				fixMissingMethods(newNsClass, tinyClass);
+			}
 		}
 
 		flatOutput.visitEnd();
@@ -270,6 +276,41 @@ public final class ForgeMappingsMerger {
 							arg.getArgPosition(), arg.getLvIndex(), arg.getSrcName(),
 							arg.getComment()
 					);
+				}
+			}
+		}
+	}
+
+	private void fixMissingMethods(MappingTree.ClassMapping newNsClass, MappingTree.ClassMapping tinyClass) throws IOException {
+		for (MappingTree.MethodMapping tinyMethod : tinyClass.getMethods()) {
+			if (IntStream.range(0, src.getDstNamespaces().size())
+					.mapToObj(tinyMethod::getDstName)
+					.filter(Objects::nonNull)
+					.allMatch(tinyMethod.getSrcName()::equals)
+					&& newNsClass.getMethod(tinyMethod.getSrcName(), tinyMethod.getSrcDesc()) == null) {
+				String[] dstNames = createDstNameArray(tinyMethod);
+				copyDstNames(dstNames, tinyMethod);
+				flatOutput.visitMethod(tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(), dstNames);
+
+				if (tinyMethod.getComment() != null) {
+					flatOutput.visitMethodComment(tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(), tinyMethod.getComment());
+				}
+
+				for (MappingTree.MethodArgMapping arg : tinyMethod.getArgs()) {
+					String[] argDstNames = new String[output.getDstNamespaces().size()];
+					copyDstNames(argDstNames, arg);
+					flatOutput.visitMethodArg(
+							tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(),
+							arg.getArgPosition(), arg.getLvIndex(), arg.getSrcName(), argDstNames
+					);
+
+					if (arg.getComment() != null) {
+						flatOutput.visitMethodArgComment(
+								tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(),
+								arg.getArgPosition(), arg.getLvIndex(), arg.getSrcName(),
+								arg.getComment()
+						);
+					}
 				}
 			}
 		}
