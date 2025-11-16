@@ -331,7 +331,7 @@ public class MappingConfiguration {
 
 	public static Path getRawSrgFile(SrgProvider srgProvider) {
 		if (srgProvider.isTsrgV2()) {
-			return srgProvider.getMergedMojangTrimmed();
+			return srgProvider.getMergedMojang();
 		}
 
 		return srgProvider.getSrg();

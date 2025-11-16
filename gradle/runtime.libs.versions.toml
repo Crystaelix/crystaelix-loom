@@ -26,7 +26,6 @@ asm = "9.7"
 mergetool = "1.1.7"
 binarypatcher = "1.1.1"
 access-transformers-log4j = "2.17.1"
-forge-installer-tools = "1.2.0"
 
 [libraries]
 # Decompilers
@@ -59,4 +58,3 @@ asm = { module = "org.ow2.asm:asm", version.ref = "asm" }
 mergetool = { module = "net.minecraftforge:mergetool", version.ref = "mergetool" }
 binarypatcher = { module = "net.minecraftforge:binarypatcher", version.ref = "binarypatcher" }
 access-transformers-log4j-bom = { module = "org.apache.logging.log4j:log4j-bom", version.ref = "access-transformers-log4j" }
-forge-installer-tools = { module = "net.minecraftforge:installertools", version.ref = "forge-installer-tools" }

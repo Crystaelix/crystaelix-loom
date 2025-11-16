@@ -13,6 +13,7 @@ import net.fabricmc.loom.api.mappings.layered.MappingLayer;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.providers.mappings.intermediary.IntermediaryMappingLayer;
 import net.fabricmc.mappingio.MappingVisitor;
+import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
 import net.fabricmc.mappingio.adapter.MappingNsRenamer;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
@@ -25,6 +26,7 @@ public record SrgMappingLayer(
 	@Override
 	public void visit(MappingVisitor mappingVisitor) throws IOException {
 		mappingVisitor = new MappingNsRenamer(mappingVisitor, Map.of(MappingsNamespace.SRG.toString(), targetNamespace));
+		mappingVisitor = new MappingDstNsReorder(mappingVisitor, List.of(MappingsNamespace.SRG.toString()));
 		MCPReader.readSrg(srgPath, dropNoneIntermediaryRoots, intermediarySupplier).accept(mappingVisitor);
 	}
 

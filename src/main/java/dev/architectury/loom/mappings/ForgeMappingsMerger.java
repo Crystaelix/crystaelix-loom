@@ -434,6 +434,7 @@ public final class ForgeMappingsMerger {
 			throws IOException, MappingException {
 		MemoryMappingTree mojang = new MemoryMappingTree();
 		SrgProvider.visitMojangMappings(new MappingNsRenamer(mojang, Map.of(MappingsNamespace.NAMED.toString(), MappingsNamespace.MOJANG.toString())), context);
+		mojang.setDstNamespaces(List.of(MappingsNamespace.MOJANG.toString()));
 		MemoryMappingTree mappings = readInput(tiny);
 		List<String> dstNamespaces = new ArrayList<>(mappings.getDstNamespaces());
 		dstNamespaces.remove("mojang");
@@ -453,6 +454,7 @@ public final class ForgeMappingsMerger {
 					super.visitNamespaces(MappingsNamespace.OFFICIAL.toString(), newDstNamespaces);
 				}
 			});
+			output.setDstNamespaces(List.of(MappingsNamespace.SRG.toString()));
 			return output;
 		}
 	}
