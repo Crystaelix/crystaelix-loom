@@ -2,7 +2,8 @@
 
 ---
 
-A fork of [Architectury Loom](https://github.com/architectury/architectury-loom) that is a fork of [Fabric Loom](https://github.com/FabricMC/fabric-loom) that supports the Forge modding toolchain. Strongly based off of [architectury-loom#138](https://github.com/architectury/architectury-loom/pull/138).  
+A fork of [Architectury Loom](https://github.com/architectury/architectury-loom) that is a fork of [Fabric Loom](https://github.com/FabricMC/fabric-loom) that supports the Forge modding toolchain.  
+Strongly based off of [architectury-loom#138](https://github.com/architectury/architectury-loom/pull/138).  
 
 A [Gradle](https://gradle.org/) plugin to setup a deobfuscated development environment for Minecraft mods.  
 
