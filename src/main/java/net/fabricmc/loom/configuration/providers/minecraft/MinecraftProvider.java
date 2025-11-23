@@ -268,6 +268,13 @@ public abstract class MinecraftProvider {
 		return getVersionInfo().isLegacySplitOfficialNamespaceVersion();
 	}
 
+	/**
+	 * Returns true if the version uses log4j 2.0-beta9.
+	 */
+	public boolean isLog4jBeta() {
+		return getVersionInfo().isLog4jBeta();
+	}
+
 	public String getJarPrefix() {
 		return jarPrefix;
 	}
