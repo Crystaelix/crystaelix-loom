@@ -51,10 +51,6 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 
 	@ApiStatus.Internal
 	@Input
-	protected abstract Property<Boolean> getUseLegacyConfig();
-
-	@ApiStatus.Internal
-	@Input
 	protected abstract Property<Boolean> getUseForgeLoggerConfig();
 
 	@ApiStatus.Internal
@@ -65,7 +61,6 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 	@Inject
 	public GenerateLog4jConfigTask() {
 		getOutputFile().set(getExtension().getFiles().getDefaultLog4jConfigFile());
-		getUseLegacyConfig().set(!getExtension().isFabricLike() && getExtension().getMinecraftProvider().isLog4jBeta());
 
 		if (getExtension().isModernForgeLike() && getExtension().getForgeProvider().forcesLoggerConfig()) {
 			getUseForgeLoggerConfig().set(true);
@@ -96,9 +91,7 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 			return;
 		}
 
-		String config = getUseLegacyConfig().get() ? "log4j2.legacy.xml" : "log4j2.default.xml";
-
-		try (InputStream is = GenerateLog4jConfigTask.class.getClassLoader().getResourceAsStream(config)) {
+		try (InputStream is = GenerateLog4jConfigTask.class.getClassLoader().getResourceAsStream("log4j2.default.xml")) {
 			Files.deleteIfExists(outputFile);
 			Files.copy(is, outputFile);
 		} catch (IOException e) {

@@ -97,13 +97,6 @@ public record MinecraftVersionMeta(
 		return isLegacyVersion() && isVersionOrNewer(Constants.RELEASE_TIME_BETA_1_0);
 	}
 
-	/**
-	 * Returns true if the version uses log4j 2.0-beta9.
-	 */
-	public boolean isLog4jBeta() {
-		return isVersionOrNewer(Constants.RELEASE_TIME_13W39A) && !isVersionOrNewer(Constants.RELEASE_TIME_17W15A);
-	}
-
 	public boolean hasNativesToExtract() {
 		return libraries.stream().anyMatch(Library::hasNatives);
 	}
