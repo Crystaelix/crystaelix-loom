@@ -323,6 +323,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 						.property("mixin.env.remapRefMap", "true")
 						.property("mixin.env.refMapRemappingFile", srgPath);
 
+				if (platform == ModPlatform.CLEANROOM) {
+					launchConfig.property("foundation.loadsall", "true");
+				}
+
 				Set<String> mixinConfigs = legacyForgeInputs.mixinConfigs();
 
 				if (!mixinConfigs.isEmpty()) {
