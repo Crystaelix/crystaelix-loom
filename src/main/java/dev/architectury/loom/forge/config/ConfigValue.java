@@ -60,6 +60,8 @@ public sealed interface ConfigValue extends Serializable {
 	static ConfigValue of(String str) {
 		if (str.startsWith("{") && str.endsWith("}")) {
 			return new Variable(str.substring(1, str.length() - 1));
+		} else if (str.startsWith("${") && str.endsWith("}")) {
+			return new Variable(str.substring(2, str.length() - 1));
 		}
 
 		return new Constant(str);
