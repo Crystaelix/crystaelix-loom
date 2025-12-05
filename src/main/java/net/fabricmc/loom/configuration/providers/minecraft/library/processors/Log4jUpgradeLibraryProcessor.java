@@ -22,13 +22,13 @@ public class Log4jUpgradeLibraryProcessor extends LibraryProcessor {
 
 	@Override
 	public ApplicationResult getApplicationResult() {
-		return ApplicationResult.MUST_APPLY;
+		return context.isLog4jBeta() ? ApplicationResult.MUST_APPLY : ApplicationResult.CAN_APPLY;
 	}
 
 	@Override
 	public Predicate<Library> apply(Consumer<Library> dependencyConsumer) {
 		return library -> {
-			if (library.is(LOG4J_GROUP) && library.version().equals(LOG4J_VERSION_OLD)) {
+			if (library.is(LOG4J_GROUP) && library.name().startsWith("log4j")) {
 				dependencyConsumer.accept(library.withVersion(LOG4J_VERSION));
 			}
 

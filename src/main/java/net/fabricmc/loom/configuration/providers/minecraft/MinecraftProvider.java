@@ -261,6 +261,13 @@ public abstract class MinecraftProvider {
 	}
 
 	/**
+	 * Returns true if the version uses log4j 2.0-beta9.
+	 */
+	public boolean isLog4jBeta() {
+		return getVersionInfo().isLog4jBeta();
+	}
+
+	/**
 	 * Returns true if the minecraft version is between Beta 1.0 (inclusive) and 1.3 (exclusive),
 	 * which splits the {@code official} mapping namespace into env-specific variants.
 	 */
