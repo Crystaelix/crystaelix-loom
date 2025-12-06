@@ -26,14 +26,12 @@ package dev.architectury.loom.forge.dependency;
 
 import java.io.File;
 import java.nio.file.Path;
-import java.util.Set;
+import java.util.Objects;
 
 import dev.architectury.loom.forge.ForgeVersion;
 import org.gradle.api.GradleException;
 import org.gradle.api.Project;
 import org.gradle.api.artifacts.Dependency;
-import org.gradle.api.artifacts.ExcludeRule;
-import org.gradle.api.artifacts.ModuleDependency;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.DependencyInfo;
@@ -43,7 +41,6 @@ import net.fabricmc.loom.util.ModPlatform;
 public class ForgeProvider extends DependencyProvider {
 	private final ModPlatform platform;
 	private ForgeVersion version = new ForgeVersion("unresolved", "unresolved", "unresolved");
-	private Set<ExcludeRule> excludeRules = Set.of();
 	private File globalCache;
 
 	public ForgeProvider(Project project) {
@@ -55,10 +52,6 @@ public class ForgeProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency) throws Exception {
 		Dependency dep = dependency.getDependency();
 		version = new ForgeVersion(dep.getGroup(), dep.getName(), dependency.getResolvedVersion());
-
-		if (dep instanceof ModuleDependency moduleDependency) {
-			excludeRules = Set.copyOf(moduleDependency.getExcludeRules());
-		}
 
 		if (version.userdev3()) {
 			addDependency(dependency.getDepString() + ":userdev3", Constants.Configurations.FORGE_USERDEV);
@@ -83,6 +76,7 @@ public class ForgeProvider extends DependencyProvider {
 
 	public File getGlobalCache() {
 		if (globalCache == null) {
+			Objects.requireNonNull(version.getCombined(), "Forge provider version is null when trying to get project directory");
 			globalCache = getMinecraftProvider().dir(platform.id() + "/" + version.getCombined());
 			globalCache.mkdirs();
 		}
@@ -110,6 +104,7 @@ public class ForgeProvider extends DependencyProvider {
 		final LoomGradleExtension extension = LoomGradleExtension.get(project);
 		final ModPlatform platform = extension.getPlatform().get();
 		final String version = extension.getForgeProvider().getVersion().getCombined();
+		Objects.requireNonNull(version, "Forge provider version is null when trying to get project directory");
 		return LoomGradleExtension.get(project).getMinecraftProvider().dir(platform.id() + "/" + version).toPath();
 	}
 }
