@@ -24,7 +24,6 @@
 
 package com.crystaelix.loom.legacyforge.minecraft;
 
-import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
@@ -47,7 +46,6 @@ import org.objectweb.asm.ClassWriter;
 
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
-import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.service.ServiceFactory;
@@ -204,17 +202,10 @@ public class MinecraftLegacyPatchedProvider extends MinecraftPatchedProvider {
 		// release version (so we can use the TerminalConsoleAppender) where some of those classes have been moved from
 		// a `helpers` to a `utils` package.
 		// To allow Forge to work regardless, we'll re-package those helper classes into the forge jar.
-		Path log4jBeta9 = project.getConfigurations()
-				.getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES)
-				.getFiles()
-				.stream()
-				.map(File::toPath)
-				.filter(it -> it.getFileName().toString().equals("log4j-core-2.0-beta9.jar"))
-				.findAny()
-				.orElse(null);
-		if (log4jBeta9 != null) {
+		if (minecraftProvider.isLog4jBeta()) {
+			Path log4jLegacy = DependencyDownloader.download(project, LoomVersions.LEGACY_HELPER_LOG4J_CORE.mavenNotation(), false, true).getSingleFile().toPath();
 			Predicate<Path> isHelper = path -> path.startsWith("/org/apache/logging/log4j/core/helpers");
-			walkFileSystems(log4jBeta9, input, isHelper, this::copyReplacing);
+			walkFileSystems(log4jLegacy, input, isHelper, this::copyReplacing);
 		}
 
 		// While Forge will discover mods on the classpath, it won't do the same for ATs, coremods or tweakers.

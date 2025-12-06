@@ -10,24 +10,26 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 
-import net.fabricmc.loom.util.FileSystemUtil;
-
 public class McpMappingsScanner {
 	public static final Set<String> INTERESTING_FILENAMES = new HashSet<>(Arrays.asList(
-			"joined.srg", "joined.csrg", "joined.tsrg",
+			"joined.srg", "joined.csrg", "joined.tsrg", "packaged.srg",
 			"client.srg", "server.srg",
 			"fields.csv", "methods.csv", "params.csv", "packages.csv",
-			"config.json"
+			"config.json",
+			"constructors.txt",
+			"joined.exc", "packaged.exc"
 	));
 
 	private final Map<String, Path> interestingFiles = new HashMap<>();
 
-	public McpMappingsScanner(FileSystemUtil.Delegate fs) throws IOException {
-		Files.walk(fs.getPath("/")).forEach(path -> {
+	public McpMappingsScanner(Path rootPath) throws IOException {
+		Files.walk(rootPath).forEach(path -> {
 			String filename = String.valueOf(path.getFileName());
 
 			if (INTERESTING_FILENAMES.contains(filename)) {
-				interestingFiles.put(filename.intern(), path);
+				if (!interestingFiles.containsKey(filename) || path.getParent() != null && path.getParent().endsWith("conf")) {
+					interestingFiles.put(filename.intern(), path);
+				}
 			}
 		});
 	}

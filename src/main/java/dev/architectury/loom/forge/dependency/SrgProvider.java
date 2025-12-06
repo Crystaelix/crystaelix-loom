@@ -30,17 +30,13 @@ import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Optional;
 
+import com.crystaelix.loom.mappings.MCPReader;
 import com.crystaelix.loom.util.McpMappingsScanner;
-import dev.architectury.loom.forge.tool.ForgeToolValueSource;
-import dev.architectury.loom.util.DependencyDownloader;
 import dev.architectury.loom.util.Stopwatch;
 import org.gradle.api.Project;
-import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
@@ -50,7 +46,7 @@ import net.fabricmc.loom.configuration.providers.mappings.mojmap.MojangMappingLa
 import net.fabricmc.loom.configuration.providers.mappings.mojmap.MojangMappingsSpec;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
-import net.fabricmc.loom.util.LoomVersions;
+import net.fabricmc.mappingio.MappedElementKind;
 import net.fabricmc.mappingio.MappingReader;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.MappingWriter;
@@ -60,12 +56,9 @@ import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 public class SrgProvider extends DependencyProvider {
-	private static final String INSTALLER_TOOLS_MAIN_CLASS = "net.minecraftforge.installertools.ConsoleTool";
-
 	private Path srg;
 	private Boolean isTsrgV2;
-	private Path mergedMojangRaw;
-	private Path mergedMojangTrimmed;
+	private Path mergedMojang;
 	private static Map<String, Path> mojmapTsrg2Map = new HashMap<>();
 
 	public SrgProvider(Project project) {
@@ -76,97 +69,54 @@ public class SrgProvider extends DependencyProvider {
 	public void provide(DependencyInfo dependency) throws Exception {
 		init(dependency.getDependency().getVersion());
 
-		if (!Files.exists(srg) || refreshDeps()) {
+		if (!Files.exists(srg) || MappingReader.detectFormat(srg) != MappingFormat.TSRG_2_FILE || refreshDeps()) {
 			Path srgZip = dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve srg")).toPath();
 
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(srgZip)) {
-				McpMappingsScanner scan = new McpMappingsScanner(fs);
-				Optional<Path> srgPath = scan.get("joined.tsrg");
-
-				if (srgPath.isPresent()) {
-					Files.copy(srgPath.get(), srg, StandardCopyOption.REPLACE_EXISTING);
-				} else {
-					// FG2-era MCP uses the older SRG format, convert it on the fly
-					srgPath = scan.get("joined.srg");
-
-					if (srgPath.isEmpty()) {
-						srgPath = scan.get(getExtension().getMinecraftProvider().provideServer() ? "server.srg" : "client.srg");
-					}
-
-					MemoryMappingTree tree = new MemoryMappingTree();
-					MappingReader.read(srgPath.orElseThrow(() -> new RuntimeException("Could not resolve srg")), tree);
-
-					try (MappingWriter writer = MappingWriter.create(srg, MappingFormat.TSRG_FILE)) {
-						tree.accept(writer);
-					}
-				}
+			try (
+					FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(srgZip);
+					MappingWriter writer = MappingWriter.create(srg, MappingFormat.TSRG_2_FILE)
+			) {
+				McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
+				MCPReader.readSrg(scan, writer);
 			}
 		}
 
 		try (BufferedReader reader = Files.newBufferedReader(srg)) {
-			isTsrgV2 = reader.readLine().startsWith("tsrg2");
+			isTsrgV2 = reader.readLine().startsWith("tsrg2 obf");
 		}
 
 		if (isTsrgV2) {
-			if (!Files.exists(mergedMojangRaw) || !Files.exists(mergedMojangTrimmed) || refreshDeps()) {
+			if (!Files.exists(mergedMojang) || refreshDeps()) {
 				Stopwatch stopwatch = Stopwatch.createStarted();
-				getProject().getLogger().lifecycle(":merging mappings (InstallerTools, srg + mojmap)");
-
-				Files.deleteIfExists(mergedMojangRaw);
-				Path mojmapTsrg2 = getMojmapTsrg2(getProject(), getExtension());
-				ForgeToolValueSource.exec(getProject(), settings -> {
-					settings.classpath(DependencyDownloader.download(getProject(), LoomVersions.FORGE_INSTALLER_TOOLS.mavenNotation()));
-					settings.getMainClass().set(INSTALLER_TOOLS_MAIN_CLASS);
-					settings.args(
-							"--task",
-							"MERGE_MAPPING",
-							"--left",
-							getSrg().toAbsolutePath().toString(),
-							"--right",
-							mojmapTsrg2.toAbsolutePath().toString(),
-							"--classes",
-							"--output",
-							mergedMojangRaw.toAbsolutePath().toString()
-					);
-				});
+				getProject().getLogger().lifecycle(":merging mappings (srg + mojmap)");
 
 				MemoryMappingTree tree = new MemoryMappingTree();
-				MappingVisitor visitor = new ArgDroppingVisitor(new FieldDescWrappingVisitor(tree));
-				MappingReader.read(mergedMojangRaw, visitor);
+				MappingVisitor visitor = new MojmapWrappingVisitor(tree);
+				MappingReader.read(srg, visitor);
 
-				try (MappingWriter writer = MappingWriter.create(mergedMojangTrimmed, MappingFormat.TSRG_2_FILE)) {
+				try (MappingWriter writer = MappingWriter.create(mergedMojang, MappingFormat.TSRG_2_FILE)) {
 					tree.accept(writer);
 				}
 
-				getProject().getLogger().lifecycle(":merged mappings (InstallerTools, srg + mojmap) in " + stopwatch.stop());
+				getProject().getLogger().lifecycle(":merged mappings (srg + mojmap) in " + stopwatch.stop());
 			}
 		}
 	}
 
-	// A visitor that drop all method args from srg
-	private static final class ArgDroppingVisitor extends ForwardingMappingVisitor {
-		ArgDroppingVisitor(MappingVisitor next) {
-			super(next);
-		}
-
-		@Override
-		public boolean visitMethodArg(int argPosition, int lvIndex, @Nullable String srcName) throws IOException {
-			// skip
-			return false;
-		}
-	}
-
 	// Read mojmap and apply field descs to the tsrg2
-	private class FieldDescWrappingVisitor extends ForwardingMappingVisitor {
+	private class MojmapWrappingVisitor extends ForwardingMappingVisitor {
 		private final Map<FieldKey, String> fieldDescMap = new HashMap<>();
+		private final Map<String, String> classMap = new HashMap<>();
 		private String lastClass;
 
-		protected FieldDescWrappingVisitor(MappingVisitor next) throws IOException {
+		protected MojmapWrappingVisitor(MappingVisitor next) throws IOException {
 			super(next);
 			MemoryMappingTree mojmap = new MemoryMappingTree();
 			MappingReader.read(getMojmapTsrg2(getProject(), getExtension()), mojmap);
 
 			for (MappingTree.ClassMapping classMapping : mojmap.getClasses()) {
+				classMap.put(classMapping.getSrcName(), classMapping.getDstName(0));
+
 				for (MappingTree.FieldMapping fieldMapping : classMapping.getFields()) {
 					fieldDescMap.put(new FieldKey(classMapping.getSrcName(), fieldMapping.getSrcName()), fieldMapping.getSrcDesc());
 				}
@@ -192,6 +142,15 @@ public class SrgProvider extends DependencyProvider {
 			return super.visitField(srcName, srcDesc);
 		}
 
+		@Override
+		public void visitDstName(MappedElementKind targetKind, int namespace, String name) throws IOException {
+			if (targetKind == MappedElementKind.CLASS && namespace == 0) {
+				name = classMap.getOrDefault(lastClass, name);
+			}
+
+			super.visitDstName(targetKind, namespace, name);
+		}
+
 		private record FieldKey(String owner, String name) {
 		}
 	}
@@ -199,24 +158,17 @@ public class SrgProvider extends DependencyProvider {
 	private void init(String version) {
 		File dir = getMinecraftProvider().dir("srg/" + version);
 		srg = new File(dir, "srg.tsrg").toPath();
-		mergedMojangRaw = new File(dir, "srg-mojmap-merged-raw.tsrg").toPath();
-		mergedMojangTrimmed = new File(dir, "srg-mojmap-merged-trimmed.tsrg").toPath();
+		mergedMojang = new File(dir, "srg-mojmap-merged.tsrg").toPath();
 	}
 
 	public Path getSrg() {
 		return srg;
 	}
 
-	public Path getMergedMojangRaw() {
+	public Path getMergedMojang() {
 		if (!isTsrgV2()) throw new IllegalStateException("May not access merged mojmap srg if not on modern Minecraft!");
 
-		return mergedMojangRaw;
-	}
-
-	public Path getMergedMojangTrimmed() {
-		if (!isTsrgV2()) throw new IllegalStateException("May not access merged mojmap srg if not on modern Minecraft!");
-
-		return mergedMojangTrimmed;
+		return mergedMojang;
 	}
 
 	public boolean isTsrgV2() {

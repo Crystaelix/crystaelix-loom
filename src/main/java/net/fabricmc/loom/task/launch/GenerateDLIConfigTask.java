@@ -191,7 +191,8 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				.property(!quilt ? "fabric.development" : "loader.development", "true")
 				.property(!quilt ? "fabric.remapClasspathFile" : "loader.remapClasspathFile", getRemapClasspathFile().get().getAsFile().getAbsolutePath())
 				.property("log4j.configurationFile", getLog4jConfigPaths().get())
-				.property("log4j2.formatMsgNoLookups", "true");
+				.property("log4j2.formatMsgNoLookups", "true")
+				.property("log4j2.disable.jmx", "true");
 
 		if (versionInfo.hasNativesToExtract()) {
 			String nativesPath = getNativesDirectoryPath().get();
@@ -322,6 +323,10 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 						.property("net.minecraftforge.gradle.GradleStart.csvDir", legacyForgeInputs.mappingsWorkingDir())
 						.property("mixin.env.remapRefMap", "true")
 						.property("mixin.env.refMapRemappingFile", srgPath);
+
+				if (platform == ModPlatform.CLEANROOM) {
+					launchConfig.property("foundation.loadsall", "true");
+				}
 
 				Set<String> mixinConfigs = legacyForgeInputs.mixinConfigs();
 

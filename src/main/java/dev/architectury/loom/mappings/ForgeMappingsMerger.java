@@ -32,8 +32,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.IntStream;
 
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.util.collection.CollectionUtil;
@@ -60,8 +62,6 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
  * Merges a Tiny file with a new namespace.
  */
 public final class ForgeMappingsMerger {
-	private static final List<String> INPUT_NAMESPACES = List.of("official", "intermediary", "named");
-	private static final List<String> INPUT_NAMESPACES_WITH_MOJANG = List.of("official", "mojang", "intermediary", "named");
 	private final MemoryMappingTree newNs;
 	private final MemoryMappingTree src;
 	private final MemoryMappingTree output;
@@ -105,13 +105,6 @@ public final class ForgeMappingsMerger {
 	private static MemoryMappingTree readInput(Path tiny) throws IOException {
 		MemoryMappingTree src = new MemoryMappingTree();
 		MappingReader.read(tiny, src);
-		List<String> inputNamespaces = new ArrayList<>(src.getDstNamespaces());
-		inputNamespaces.add(0, src.getSrcNamespace());
-
-		if (!inputNamespaces.equals(INPUT_NAMESPACES) && !inputNamespaces.equals(INPUT_NAMESPACES_WITH_MOJANG)) {
-			throw new MappingException("Mapping file " + tiny + " does not have 'official(, mojang), intermediary, named' as its namespaces! Found: " + inputNamespaces);
-		}
-
 		return src;
 	}
 
@@ -168,6 +161,10 @@ public final class ForgeMappingsMerger {
 
 			for (MappingTree.MethodMapping method : newNsClass.getMethods()) {
 				mergeMethod(newNsClass, method, tinyClass);
+			}
+
+			if (tinyClass != null) {
+				fixMissingMethods(newNsClass, tinyClass);
 			}
 		}
 
@@ -284,6 +281,41 @@ public final class ForgeMappingsMerger {
 		}
 	}
 
+	private void fixMissingMethods(MappingTree.ClassMapping newNsClass, MappingTree.ClassMapping tinyClass) throws IOException {
+		for (MappingTree.MethodMapping tinyMethod : tinyClass.getMethods()) {
+			if (IntStream.range(0, src.getDstNamespaces().size())
+					.mapToObj(tinyMethod::getDstName)
+					.filter(Objects::nonNull)
+					.allMatch(tinyMethod.getSrcName()::equals)
+					&& newNsClass.getMethod(tinyMethod.getSrcName(), tinyMethod.getSrcDesc()) == null) {
+				String[] dstNames = createDstNameArray(tinyMethod);
+				copyDstNames(dstNames, tinyMethod);
+				flatOutput.visitMethod(tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(), dstNames);
+
+				if (tinyMethod.getComment() != null) {
+					flatOutput.visitMethodComment(tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(), tinyMethod.getComment());
+				}
+
+				for (MappingTree.MethodArgMapping arg : tinyMethod.getArgs()) {
+					String[] argDstNames = new String[output.getDstNamespaces().size()];
+					copyDstNames(argDstNames, arg);
+					flatOutput.visitMethodArg(
+							tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(),
+							arg.getArgPosition(), arg.getLvIndex(), arg.getSrcName(), argDstNames
+					);
+
+					if (arg.getComment() != null) {
+						flatOutput.visitMethodArgComment(
+								tinyClass.getSrcName(), tinyMethod.getSrcName(), tinyMethod.getSrcDesc(),
+								arg.getArgPosition(), arg.getLvIndex(), arg.getSrcName(),
+								arg.getComment()
+						);
+					}
+				}
+			}
+		}
+	}
+
 	/**
 	 * Resolves conflicts where multiple methods map to a method in the new namespace.
 	 * We will prefer the ones with the Tiny mappings.
@@ -391,14 +423,23 @@ public final class ForgeMappingsMerger {
 	 */
 	public static MemoryMappingTree mergeSrg(Path srg, Path tiny, @Nullable ExtraMappings extraMappings, boolean lenient)
 			throws IOException, MappingException {
-		return new ForgeMappingsMerger(readSrg(srg), readInput(tiny), extraMappings, lenient).merge();
+		MemoryMappingTree mappings = readInput(tiny);
+		List<String> dstNamespaces = new ArrayList<>(mappings.getDstNamespaces());
+		dstNamespaces.remove("srg");
+		mappings.setDstNamespaces(dstNamespaces);
+		return new ForgeMappingsMerger(readSrg(srg), mappings, extraMappings, lenient).merge();
 	}
 
 	public static MemoryMappingTree mergeMojang(MappingContext context, Path tiny, @Nullable ExtraMappings extraMappings, boolean lenient)
 			throws IOException, MappingException {
 		MemoryMappingTree mojang = new MemoryMappingTree();
 		SrgProvider.visitMojangMappings(new MappingNsRenamer(mojang, Map.of(MappingsNamespace.NAMED.toString(), MappingsNamespace.MOJANG.toString())), context);
-		return new ForgeMappingsMerger(mojang, readInput(tiny), extraMappings, lenient).merge();
+		mojang.setDstNamespaces(List.of(MappingsNamespace.MOJANG.toString()));
+		MemoryMappingTree mappings = readInput(tiny);
+		List<String> dstNamespaces = new ArrayList<>(mappings.getDstNamespaces());
+		dstNamespaces.remove("mojang");
+		mappings.setDstNamespaces(dstNamespaces);
+		return new ForgeMappingsMerger(mojang, mappings, extraMappings, lenient).merge();
 	}
 
 	private static MemoryMappingTree readSrg(Path srg) throws IOException {
@@ -413,6 +454,7 @@ public final class ForgeMappingsMerger {
 					super.visitNamespaces(MappingsNamespace.OFFICIAL.toString(), newDstNamespaces);
 				}
 			});
+			output.setDstNamespaces(List.of(MappingsNamespace.SRG.toString()));
 			return output;
 		}
 	}

@@ -51,6 +51,16 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
 public final class MinecraftJarProcessorManager {
 	private static final Logger LOGGER = LoggerFactory.getLogger(MinecraftJarProcessorManager.class);
 
+	// TODO Put this in extension main
+	private final List<String> GLOBAL_PROCESSORS = List.of(
+			"ploceus:lvt",
+			"ploceus:exception_patcher",
+			"ploceus:signature_patcher",
+			"ploceus:preen",
+			"ploceus:nester",
+			"babric:fix-nesting"
+	);
+
 	private final List<ProcessorEntry<?>> jarProcessors;
 
 	private MinecraftJarProcessorManager(List<ProcessorEntry<?>> jarProcessors) {
@@ -125,6 +135,10 @@ public final class MinecraftJarProcessorManager {
 
 	public String getSourceMappingsHash() {
 		return Checksum.of(getCacheValue()).sha1().hex();
+	}
+
+	public boolean requiresLocalMaven() {
+		return !jarProcessors.stream().map(ProcessorEntry::name).allMatch(GLOBAL_PROCESSORS::contains);
 	}
 
 	public boolean requiresProcessingJar(Path jar) {

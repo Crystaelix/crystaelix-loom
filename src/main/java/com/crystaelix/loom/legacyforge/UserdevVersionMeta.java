@@ -12,6 +12,7 @@ import dev.architectury.loom.forge.ForgeVersion;
 import dev.architectury.loom.forge.config.ConfigValue;
 import dev.architectury.loom.forge.config.ForgeRunTemplate;
 import dev.architectury.loom.forge.config.UserdevConfig;
+import dev.architectury.loom.util.Version;
 
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.LoomVersions;
@@ -41,7 +42,7 @@ public record UserdevVersionMeta(
 
 	public UserdevConfig toUserdevConfig(String mcVersion, String depString, ForgeVersion forgeVersion) {
 		return new UserdevConfig(
-				"de.oceanlabs.mcp:mcp:" + inheritsFrom().orElse(mcVersion) + ":srg@zip",
+				getMcpDep(mcVersion, depString),
 				depString + ":universal",
 				"", // Handle elsewhere
 				"", // Handle elsewhere
@@ -78,6 +79,16 @@ public record UserdevVersionMeta(
 				new UserdevConfig.AccessTransformerLocation.FileList(List.of("merged_at.cfg", "src/main/resources/forge_at.cfg", "src/main/resources/fml_at.cfg")),
 				List.of("^(?!binpatches\\.pack\\.lzma$).*$")
 		);
+	}
+
+	public String getMcpDep(String mcVersion, String depString) {
+		if (inheritsFrom().isPresent() || Version.parse(mcVersion).compareTo(Version.parse("1.7.10")) >= 0) {
+			return "de.oceanlabs.mcp:mcp:" + inheritsFrom().orElse(mcVersion) + ":srg@zip";
+		} else if (Version.parse(mcVersion).compareTo(Version.parse("1.7.2")) >= 0) {
+			return depString + ":userdev";
+		} else {
+			return depString + ":src@zip";
+		}
 	}
 
 	public record Library(String name, Map<String, String> natives, List<Rule> rules) {

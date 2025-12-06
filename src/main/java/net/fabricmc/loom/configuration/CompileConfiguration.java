@@ -227,15 +227,15 @@ public abstract class CompileConfiguration implements Runnable {
 		minecraftProvider.provide();
 
 		if (!extension.disableObfuscation()) {
+			// This needs to run after MinecraftProvider.initFiles and MinecraftLibraryProvider.provide
+			// but before MinecraftPatchedProvider.provide.
+			setupDependencyProviders(project, extension);
+
 			// Realise the dependencies without actually resolving them, this forces any lazy providers to be created, populating the layered mapping factories.
 			project.getConfigurations().getByName(Configurations.MAPPINGS).getDependencies().toArray();
 
 			// Created any layered mapping files.
 			LayeredMappingsFactory.afterEvaluate(configContext);
-
-			// This needs to run after MinecraftProvider.initFiles and MinecraftLibraryProvider.provide
-			// but before MinecraftPatchedProvider.provide.
-			setupDependencyProviders(project, extension);
 
 			// Resolve the mapping files from the configuration
 			final DependencyInfo mappingsDep = DependencyInfo.create(getProject(), Configurations.MAPPINGS);

@@ -127,4 +127,11 @@ public final class LibraryContext {
 	public boolean isJava19OrLater() {
 		return javaVersion.isCompatibleWith(JavaVersion.VERSION_19);
 	}
+
+	/**
+	 * @return True if the version uses log4j 2.0-beta9
+	 */
+	public boolean isLog4jBeta() {
+		return versionMeta.isLog4jBeta();
+	}
 }

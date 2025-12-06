@@ -91,7 +91,7 @@ public abstract class ProcessedNamedMinecraftProvider<M extends MinecraftProvide
 
 	@Override
 	public MavenScope getMavenScope() {
-		return MavenScope.LOCAL;
+		return jarProcessorManager.requiresLocalMaven() ? MavenScope.LOCAL : MavenScope.GLOBAL;
 	}
 
 	private void processJars(Map<MinecraftJar, MinecraftJar> minecraftJarMap, ConfigContext configContext) throws IOException {

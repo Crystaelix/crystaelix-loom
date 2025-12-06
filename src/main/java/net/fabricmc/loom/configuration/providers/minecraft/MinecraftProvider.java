@@ -42,6 +42,7 @@ import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.providers.BundleMetadata;
+import net.fabricmc.loom.configuration.providers.mappings.IntermediaryMappingsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.verify.MinecraftJarVerification;
 import net.fabricmc.loom.configuration.providers.minecraft.verify.SignatureVerificationFailure;
 import net.fabricmc.loom.util.Check;
@@ -260,6 +261,13 @@ public abstract class MinecraftProvider {
 	}
 
 	/**
+	 * Returns true if the version uses log4j 2.0-beta9.
+	 */
+	public boolean isLog4jBeta() {
+		return getVersionInfo().isLog4jBeta();
+	}
+
+	/**
 	 * Returns true if the minecraft version is between Beta 1.0 (inclusive) and 1.3 (exclusive),
 	 * which splits the {@code official} mapping namespace into env-specific variants.
 	 */
@@ -298,6 +306,12 @@ public abstract class MinecraftProvider {
 
 	public static File minecraftWorkingDirectory(Project project, String version) {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		String intermediateName = extension.getIntermediateMappingsProvider().getName();
+
+		if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
+			version += "-" + intermediateName;
+		}
+
 		File workingDir = new File(extension.getFiles().getUserCache(), version);
 		workingDir.mkdirs();
 		return workingDir;

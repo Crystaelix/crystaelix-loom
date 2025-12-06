@@ -40,6 +40,8 @@ public class Constants {
 	public static final int ASM_VERSION = Opcodes.ASM9;
 	public static final String RELEASE_TIME_1_3 = "2012-07-25T22:00:00+00:00";
 	public static final String RELEASE_TIME_BETA_1_0 = "2010-12-19T22:00:00+00:00";
+	public static final String RELEASE_TIME_17W15A = "2017-04-12T09:30:50+00:00";
+	public static final String RELEASE_TIME_13W39A = "2013-09-26T15:11:19+00:00";
 
 	private Constants() {
 	}

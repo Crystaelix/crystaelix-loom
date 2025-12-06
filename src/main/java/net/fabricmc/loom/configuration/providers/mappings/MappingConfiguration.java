@@ -44,11 +44,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Supplier;
 
+import com.crystaelix.loom.mappings.MCPReader;
+import com.crystaelix.loom.mappings.MCPWriter;
 import com.crystaelix.loom.util.McpMappingsScanner;
 import dev.architectury.loom.forge.ForgeMigratedMappingConfiguration;
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.mappings.ForgeMappingsMerger;
-import dev.architectury.loom.mappings.MCPReader;
 import dev.architectury.loom.mappings.MappingOption;
 import dev.architectury.loom.util.Stopwatch;
 import org.apache.tools.ant.util.StringUtils;
@@ -62,6 +63,7 @@ import org.slf4j.LoggerFactory;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsData;
 import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.AnnotationsLayer;
@@ -73,6 +75,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeletingFileVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
+import net.fabricmc.loom.util.gradle.GradleUtils;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 import net.fabricmc.loom.util.service.ServiceFactory;
 import net.fabricmc.mappingio.MappingReader;
@@ -82,7 +85,6 @@ import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.tiny.Tiny2FileWriter;
-import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.stitch.Command;
 import net.fabricmc.stitch.commands.CommandProposeFieldNames;
@@ -222,14 +224,6 @@ public class MappingConfiguration {
 			}
 		}
 
-		if (extension.isLegacyForgeLike() && isMCP(inputJar) && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || minecraftProvider.refreshDeps())) {
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(inputJar)) {
-				McpMappingsScanner scan = new McpMappingsScanner(fs);
-				Files.copy(scan.get("fields.csv").get(), fieldsCsv, StandardCopyOption.REPLACE_EXISTING);
-				Files.copy(scan.get("methods.csv").get(), methodsCsv, StandardCopyOption.REPLACE_EXISTING);
-			}
-		}
-
 		if (Files.notExists(tinyMappingsJar) || minecraftProvider.refreshDeps()) {
 			Files.deleteIfExists(tinyMappingsJar);
 			ZipUtils.add(tinyMappingsJar, "mappings/mappings.tiny", Files.readAllBytes(tinyMappings));
@@ -305,13 +299,17 @@ public class MappingConfiguration {
 					}
 				}
 
-				if (extension.isLegacyForgeLike() && (Files.notExists(officialToSrgSrg) || extension.refreshDeps())) {
+				if (extension.isLegacyForgeLike() && (Files.notExists(officialToSrgSrg) || Files.notExists(notchSrgSrg) || Files.notExists(joinedSrg) || extension.refreshDeps())) {
 					try (MappingWriter writer = MappingWriter.create(officialToSrgSrg, MappingFormat.SRG_FILE)) {
 						MappingVisitor visitor = new MappingSourceNsSwitch(new MappingDstNsReorder(writer, "srg"), "official");
 						mappingTree.accept(visitor);
 						Files.copy(officialToSrgSrg, notchSrgSrg, StandardCopyOption.REPLACE_EXISTING);
 						Files.copy(officialToSrgSrg, joinedSrg, StandardCopyOption.REPLACE_EXISTING);
 					}
+				}
+
+				if (extension.isLegacyForgeLike() && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || extension.refreshDeps())) {
+					new MCPWriter(mappingsWorkingDir).write(mappingTree);
 				}
 
 				if ((extension.isCleanroom() || extension.isVintageForge()) && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {
@@ -326,14 +324,17 @@ public class MappingConfiguration {
 		project.getDependencies().add(Constants.Configurations.MAPPINGS_FINAL, project.files(tinyMappingsJar.toFile()));
 	}
 
-	public static Path getRawSrgFile(Project project) throws IOException {
+	public static Path getRawSrgFile(Project project) {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
+		return getRawSrgFile(extension.getSrgProvider());
+	}
 
-		if (extension.getSrgProvider().isTsrgV2()) {
-			return extension.getSrgProvider().getMergedMojangTrimmed();
+	public static Path getRawSrgFile(SrgProvider srgProvider) {
+		if (srgProvider.isTsrgV2()) {
+			return srgProvider.getMergedMojang();
 		}
 
-		return extension.getSrgProvider().getSrg();
+		return srgProvider.getSrg();
 	}
 
 	public static Path getMojmapSrgFileIfPossible(Project project) {
@@ -430,7 +431,6 @@ public class MappingConfiguration {
 	private void readAndMergeMCP(Project project, ServiceFactory serviceFactory, MinecraftProvider minecraftProvider, Path mcpJar) throws Exception {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		IntermediateMappingsService intermediateMappingsService = serviceFactory.get(IntermediateMappingsService.createOptions(project, minecraftProvider));
-		Path intermediaryTinyPath = intermediateMappingsService.getIntermediaryTiny();
 		SrgProvider provider = extension.getSrgProvider();
 
 		if (provider == null) {
@@ -445,17 +445,23 @@ public class MappingConfiguration {
 			provider.provide(DependencyInfo.create(project, configuration.getDependencies().iterator().next(), configuration));
 		}
 
-		Path srgPath = getRawSrgFile(project);
-		MappingTree tree = new MCPReader(intermediaryTinyPath, srgPath).read(mcpJar);
+		MemoryMappingTree tree = new MemoryMappingTree();
+		MCPReader.read(
+				getRawSrgFile(provider),
+				mcpJar,
+				GradleUtils.getBooleanProperty(project, Constants.Properties.DROP_NON_INTERMEDIATE_ROOT_METHODS),
+				intermediateMappingsService::getMemoryMappingTree
+		).accept(tree);
 
 		try (MappingWriter writer = MappingWriter.create(tinyMappings, MappingFormat.TINY_2_FILE)) {
-			tree.accept(writer);
+			MappingVisitor mappingVisitor = new MappingDstNsReorder(writer, MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.NAMED.toString());
+			tree.accept(mappingVisitor);
 		}
 	}
 
 	private boolean isMCP(Path path) throws IOException {
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(path)) {
-			McpMappingsScanner scan = new McpMappingsScanner(fs);
+			McpMappingsScanner scan = new McpMappingsScanner(fs.getPath("/"));
 			return scan.get("fields.csv").isPresent() && scan.get("methods.csv").isPresent();
 		}
 	}

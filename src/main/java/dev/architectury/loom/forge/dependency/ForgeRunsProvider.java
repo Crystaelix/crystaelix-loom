@@ -75,15 +75,15 @@ public class ForgeRunsProvider implements ConfigValue.Resolver {
 		String string = '{' + key + '}';
 
 		// TODO: Look into ways to not hardcode
-		if (key.equals("runtime_classpath")) {
+		if (key.equalsIgnoreCase("runtime_classpath")) {
 			string = runtimeClasspath().stream()
 					.map(File::getAbsolutePath)
 					.collect(Collectors.joining(File.pathSeparator));
-		} else if (key.equals("minecraft_classpath")) {
+		} else if (key.equalsIgnoreCase("minecraft_classpath")) {
 			string = minecraftClasspath().stream()
 					.map(File::getAbsolutePath)
 					.collect(Collectors.joining(File.pathSeparator));
-		} else if (key.equals("runtime_classpath_file")) {
+		} else if (key.equalsIgnoreCase("runtime_classpath_file")) {
 			Path path = extension.getFiles().getProjectPersistentCache().toPath().resolve("forge_runtime_classpath.txt");
 
 			try {
@@ -96,7 +96,7 @@ public class ForgeRunsProvider implements ConfigValue.Resolver {
 			}
 
 			string = path.toAbsolutePath().toString();
-		} else if (key.equals("minecraft_classpath_file")) {
+		} else if (key.equalsIgnoreCase("minecraft_classpath_file")) {
 			Path path = extension.getFiles().getProjectPersistentCache().toPath().resolve("forge_minecraft_classpath.txt");
 
 			try {
@@ -109,23 +109,25 @@ public class ForgeRunsProvider implements ConfigValue.Resolver {
 			}
 
 			string = path.toAbsolutePath().toString();
-		} else if (key.equals("asset_index")) {
+		} else if (key.equalsIgnoreCase("asset_index")) {
 			string = extension.getMinecraftProvider().getVersionInfo().assetIndex().fabricId(extension.getMinecraftProvider().minecraftVersion());
-		} else if (key.equals("assets_root")) {
+		} else if (key.equalsIgnoreCase("assets_root")) {
 			string = new File(extension.getFiles().getUserCache(), "assets").getAbsolutePath();
-		} else if (key.equals("natives")) {
+		} else if (key.equalsIgnoreCase("natives")) {
 			string = extension.getFiles().getNativesDirectory(project).getAbsolutePath();
-		} else if (key.equals("source_roots")) {
+		} else if (key.equalsIgnoreCase("source_roots")) {
 			// ignored, handled later using ForgeModClassesService
-		} else if (key.equals("mcp_mappings")) {
+		} else if (key.equalsIgnoreCase("mc_version")) {
+			string = extension.getMinecraftProvider().minecraftVersion();
+		} else if (key.equalsIgnoreCase("mcp_mappings")) {
 			string = "loom.stub";
-		} else if (key.equals("mcp_to_srg")) {
+		} else if (key.equalsIgnoreCase("mcp_to_srg")) {
 			if (!(extension.isCleanroom() || extension.isVintageForge())) {
 				string = extension.getMappingConfiguration().srgToNamedSrg.toAbsolutePath().toString();
 			} else {
 				string = extension.getMappingConfiguration().srgToNamedTsrg.toAbsolutePath().toString();
 			}
-		} else if (key.equals("modules")) {
+		} else if (key.equalsIgnoreCase("modules")) {
 			string = StreamSupport.stream(json.getAsJsonArray("modules").spliterator(), false)
 					.map(JsonElement::getAsString)
 					.flatMap(str -> {

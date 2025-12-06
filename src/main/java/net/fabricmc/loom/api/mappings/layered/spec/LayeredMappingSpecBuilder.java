@@ -24,6 +24,8 @@
 
 package net.fabricmc.loom.api.mappings.layered.spec;
 
+import com.crystaelix.loom.mappings.mcp.MCPMappingsSpecBuilder;
+import com.crystaelix.loom.mappings.srg.SrgMappingsSpecBuilder;
 import groovy.lang.Closure;
 import groovy.lang.DelegatesTo;
 import org.gradle.api.Action;
@@ -115,4 +117,43 @@ public interface LayeredMappingSpecBuilder {
 	 */
 	@ApiStatus.Experimental
 	LayeredMappingSpecBuilder mappings(Object file, Action<? super FileMappingsSpecBuilder> action);
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder mcp(Object file) {
+		return mcp(file, builder -> { });
+	}
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder mcp(Object file, @DelegatesTo(value = MCPMappingsSpecBuilder.class, strategy = Closure.DELEGATE_FIRST) Closure<?> closure) {
+		return mcp(file, new ClosureAction<>(closure));
+	}
+
+	@ApiStatus.Experimental
+	LayeredMappingSpecBuilder mcp(Object file, Action<? super MCPMappingsSpecBuilder> action);
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder srg() {
+		return srg(builder -> { });
+	}
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder srg(@DelegatesTo(value = SrgMappingsSpecBuilder.class, strategy = Closure.DELEGATE_FIRST) Closure<?> closure) {
+		return srg(new ClosureAction<>(closure));
+	}
+
+	@ApiStatus.Experimental
+	LayeredMappingSpecBuilder srg(Action<? super SrgMappingsSpecBuilder> action);
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder srg(Object file) {
+		return srg(file, builder -> { });
+	}
+
+	@ApiStatus.Experimental
+	default LayeredMappingSpecBuilder srg(Object file, @DelegatesTo(value = SrgMappingsSpecBuilder.class, strategy = Closure.DELEGATE_FIRST) Closure<?> closure) {
+		return srg(file, new ClosureAction<>(closure));
+	}
+
+	@ApiStatus.Experimental
+	LayeredMappingSpecBuilder srg(Object file, Action<? super SrgMappingsSpecBuilder> action);
 }

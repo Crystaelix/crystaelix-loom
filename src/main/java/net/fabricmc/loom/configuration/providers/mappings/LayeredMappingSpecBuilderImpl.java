@@ -28,6 +28,10 @@ import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
 
+import com.crystaelix.loom.mappings.mcp.MCPMappingsSpecBuilder;
+import com.crystaelix.loom.mappings.mcp.MCPMappingsSpecBuilderImpl;
+import com.crystaelix.loom.mappings.srg.SrgMappingsSpecBuilder;
+import com.crystaelix.loom.mappings.srg.SrgMappingsSpecBuilderImpl;
 import dev.architectury.loom.mappings.crane.CraneMappingsSpec;
 import org.gradle.api.Action;
 import org.jetbrains.annotations.Nullable;
@@ -89,6 +93,27 @@ public class LayeredMappingSpecBuilderImpl implements LayeredMappingSpecBuilder 
 	@Override
 	public LayeredMappingSpecBuilder mappings(Object file, Action<? super FileMappingsSpecBuilder> action) {
 		FileMappingsSpecBuilderImpl builder = FileMappingsSpecBuilderImpl.builder(FileSpec.create(file));
+		action.execute(builder);
+		return addLayer(builder.build());
+	}
+
+	@Override
+	public LayeredMappingSpecBuilder mcp(Object file, Action<? super MCPMappingsSpecBuilder> action) {
+		MCPMappingsSpecBuilderImpl builder = MCPMappingsSpecBuilderImpl.builder(FileSpec.create(file));
+		action.execute(builder);
+		return addLayer(builder.build());
+	}
+
+	@Override
+	public LayeredMappingSpecBuilder srg(Action<? super SrgMappingsSpecBuilder> action) {
+		SrgMappingsSpecBuilderImpl builder = SrgMappingsSpecBuilderImpl.builder();
+		action.execute(builder);
+		return addLayer(builder.build());
+	}
+
+	@Override
+	public LayeredMappingSpecBuilder srg(Object file, Action<? super SrgMappingsSpecBuilder> action) {
+		SrgMappingsSpecBuilderImpl builder = SrgMappingsSpecBuilderImpl.builder(FileSpec.create(file));
 		action.execute(builder);
 		return addLayer(builder.build());
 	}
