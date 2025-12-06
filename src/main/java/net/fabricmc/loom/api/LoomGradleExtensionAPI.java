@@ -428,5 +428,4 @@ public interface LoomGradleExtensionAPI {
 	default void vintageForge(Action<ForgeExtensionAPI> action) {
 		forge(action);
 	}
-
 }
