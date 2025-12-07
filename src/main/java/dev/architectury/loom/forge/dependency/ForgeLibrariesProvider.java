@@ -127,7 +127,7 @@ public class ForgeLibrariesProvider {
 
 			if (lib.startsWith("top.outlands:foundation:")) {
 				// Force newer version of Foundation to workaround Cleanroom classloading issue
-				if (extension.isCleanroom()) {
+				if (extension.isCleanroom() || extension.isVintageForge()) {
 					String version = lib.substring(lib.lastIndexOf(":") + 1);
 					// Used for the file extension, for example @jar
 					int atIndex = version.indexOf('@');

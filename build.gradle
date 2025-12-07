@@ -26,8 +26,7 @@ group = "xyz.vintageforge"
 def baseVersion = '1.13'
 
 def ENV = System.getenv()
-//def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
-def runNumber = "3"
+def runNumber = ENV.GITHUB_RUN_NUMBER ?: "4"
 
 def isSnapshot = ENV.PR_NUM != null
 
