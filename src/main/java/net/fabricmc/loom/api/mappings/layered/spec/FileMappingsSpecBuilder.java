@@ -85,6 +85,8 @@ public interface FileMappingsSpecBuilder {
 	 */
 	FileMappingsSpecBuilder containsUnpick();
 
+	FileMappingsSpecBuilder skipClassNames();
+
 	/**
 	 * Sets the merge namespace of this mappings spec.
 	 *
