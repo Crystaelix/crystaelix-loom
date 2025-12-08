@@ -24,8 +24,12 @@
 
 package net.fabricmc.loom.configuration.providers.minecraft.mapped;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.io.Writer;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
@@ -41,6 +45,7 @@ import dev.architectury.loom.forge.InnerClassRemapper;
 import dev.architectury.loom.forge.RemapObjectHolderVisitor;
 import dev.architectury.loom.forge.minecraft.ForgeMinecraftProvider;
 import dev.architectury.loom.mappings.MappingOption;
+import org.apache.commons.compress.compressors.lzma.LZMACompressorOutputStream;
 import org.gradle.api.Project;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -61,8 +66,14 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.configuration.providers.minecraft.SignatureFixerApplyVisitor;
 import net.fabricmc.loom.extension.LoomFiles;
+import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.SidedClassVisitor;
 import net.fabricmc.loom.util.TinyRemapperHelper;
+import net.fabricmc.mappingio.MappingWriter;
+import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
+import net.fabricmc.mappingio.format.MappingFormat;
+import net.fabricmc.mappingio.tree.MappingTree;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 import net.fabricmc.tinyremapper.OutputConsumerPath;
 import net.fabricmc.tinyremapper.TinyRemapper;
@@ -307,20 +318,58 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 
 		getMavenHelper(remappedJars.type()).savePom();
 
-		if (extension.isForgeLikeAndOfficial()) {
+		if (extension.isForgeLikeAndOfficial() || extension.isLegacyForgeLike()) {
 			final MappingOption mappingOption = MappingOption.forPlatform(extension);
 			final TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(project, configContext.serviceFactory(), mappingOption);
 			final String className;
 
 			if (extension.isNeoForge()) {
 				className = "net.neoforged.neoforge.registries.ObjectHolderRegistry";
-			} else {
+			} else if (!extension.getForgeProvider().getVersion().fmlRegistries()) {
 				className = "net.minecraftforge.registries.ObjectHolderRegistry";
+			} else if (!extension.getForgeProvider().getVersion().cpwFml()) {
+				className = "net.minecraftforge.fml.common.registry.ObjectHolderRegistry";
+			} else {
+				className = "cpw.mods.fml.common.registry.ObjectHolderRegistry";
 			}
 
 			final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
 			final MemoryMappingTree mappings = mappingsService.getMappingTree();
 			RemapObjectHolderVisitor.remapObjectHolder(remappedJars.outputJar().getPath(), className, mappings, sourceNamespace, "named");
+		}
+
+		if (extension.isLegacyForgeLike()) {
+			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(remappedJars.outputJar().getPath(), false)) {
+				MappingOption mappingOption = MappingOption.forPlatform(extension);
+				TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(project, configContext.serviceFactory(), mappingOption);
+				String intermediaryNs = IntermediaryNamespaces.runtimeIntermediary(project);
+
+				MemoryMappingTree mappingsSwapped = new MemoryMappingTree();
+				MappingDstNsReorder dstNsReorder = new MappingDstNsReorder(mappingsSwapped, intermediaryNs);
+				MappingSourceNsSwitch srcNsSwitch0 = new MappingSourceNsSwitch(dstNsReorder, MappingsNamespace.NAMED.toString());
+				mappingsService.getMappingTree().accept(srcNsSwitch0);
+
+				for (MappingTree.ClassMapping classDef : mappingsSwapped.getClasses()) {
+					classDef.setDstName(classDef.getSrcName(), 0);
+				}
+
+				MemoryMappingTree mappings = new MemoryMappingTree();
+				MappingSourceNsSwitch srcNsSwitch1 = new MappingSourceNsSwitch(mappings, intermediaryNs);
+				mappingsSwapped.accept(srcNsSwitch1);
+
+				Path deobfFile;
+
+				if (extension.isCleanroom()) {
+					deobfFile = fs.getPath("deobf_data-" + extension.getMinecraftVersion().get() + ".tsrg");
+				} else {
+					deobfFile = fs.getPath("deobfuscation_data-" + extension.getMinecraftVersion().get() + ".lzma");
+				}
+
+				try (Writer writer = new BufferedWriter(new OutputStreamWriter(new LZMACompressorOutputStream(Files.newOutputStream(deobfFile)), StandardCharsets.UTF_8))) {
+					MappingWriter mappingWriter = MappingWriter.create(writer, extension.isCleanroom() ? MappingFormat.TSRG_FILE : MappingFormat.SRG_FILE);
+					mappings.accept(mappingWriter);
+				}
+			}
 		}
 	}
 

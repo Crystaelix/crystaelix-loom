@@ -68,11 +68,11 @@ public class RemapObjectHolderVisitor extends ClassVisitor {
 	public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
 		MethodVisitor methodVisitor = super.visitMethod(access, name, descriptor, signature, exceptions);
 
-		if ("<clinit>".equals(name) && "()V".equals(descriptor) && from != MappingTree.NULL_NAMESPACE_ID && to != MappingTree.NULL_NAMESPACE_ID) {
+		if (("<clinit>".equals(name) || "findObjectHolders".equals(name)) && from != MappingTree.NULL_NAMESPACE_ID && to != MappingTree.NULL_NAMESPACE_ID) {
 			return new MethodVisitor(api, methodVisitor) {
 				@Override
 				public void visitLdcInsn(Object value) {
-					if (value instanceof String str && str.startsWith("net.minecraft.")) {
+					if (value instanceof String str && str.startsWith("net.minecraft.") && !str.endsWith(".")) {
 						value = mappings.mapClassName(str.replace('.', '/'), from, to)
 								.replace('/', '.');
 					}

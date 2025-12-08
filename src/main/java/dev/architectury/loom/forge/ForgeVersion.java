@@ -109,6 +109,14 @@ public class ForgeVersion {
 	}
 
 	/**
+	 * @return if this Forge version has registries classes in FML.
+	 */
+	public boolean fmlRegistries() {
+		return "net.minecraftforge".equals(group) && "forge".equals(name)
+				&& (majorVersion < 14 || majorVersion == 14 && buildNumber < 2348);
+	}
+
+	/**
 	 * @return if this Forge version has FML in the cpw.mods package.
 	 */
 	public boolean cpwFml() {
