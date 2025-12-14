@@ -16,6 +16,10 @@ dependencies {
 	modImplementation files("dummy.jar")
 }
 
+loom {
+	enableTransitiveAccessWideners = true
+}
+
 base {
 	archivesName = "fabric-example-mod"
 }

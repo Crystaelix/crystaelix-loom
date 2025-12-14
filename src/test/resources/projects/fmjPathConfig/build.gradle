@@ -26,12 +26,15 @@ dependencies {
 	modImplementation "net.fabricmc:fabric-loader:0.11.6"
 }
 
-base {
-	archivesName = "fabric-example-mod"
-}
-
-if (project.hasProperty("overrideFMJ")) {
-	loom {
+loom {
+	interfaceInjection {
+		isEnabled = true
+	}
+	if (project.hasProperty("overrideFMJ")) {
 		fabricModJsonPath = file("src/custom/resources/fabric.mod.json")
 	}
+}
+
+base {
+	archivesName = "fabric-example-mod"
 }

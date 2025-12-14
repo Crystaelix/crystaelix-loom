@@ -306,9 +306,9 @@ public abstract class MinecraftProvider {
 
 	public static File minecraftWorkingDirectory(Project project, String version) {
 		LoomGradleExtension extension = LoomGradleExtension.get(project);
-		String intermediateName = extension.getIntermediateMappingsProvider().getName();
+		String intermediateName = extension.disableObfuscation() ? "" : extension.getIntermediateMappingsProvider().getName();
 
-		if (!intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
+		if (!intermediateName.isEmpty() && !intermediateName.equals(IntermediaryMappingsProvider.NAME)) {
 			version += "-" + intermediateName;
 		}
 

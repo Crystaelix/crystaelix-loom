@@ -18,6 +18,12 @@ dependencies {
 	modRuntimeOnly files("dummy.jar")
 }
 
+loom {
+	interfaceInjection {
+		isEnabled = true
+	}
+}
+
 base {
 	archivesName = "fabric-example-mod"
 }

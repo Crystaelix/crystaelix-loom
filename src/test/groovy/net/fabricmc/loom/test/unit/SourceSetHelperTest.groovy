@@ -56,10 +56,10 @@ class SourceSetHelperTest extends Specification {
 
 		def ref = new SourceSetReference(mockSourceSet, mockProject)
 		when:
-		def result = SourceSetHelper.getIdeaClasspath(ref, mockProject)
+		def result = SourceSetHelper.getIdeaClasspath(ref)
 
 		then:
-		result.size() == 1
+		result.size() == 2
 		!result[0].toString().startsWith("file:")
 
 		println(result[0].toString())
@@ -85,10 +85,10 @@ class SourceSetHelperTest extends Specification {
 
 		def ref = new SourceSetReference(mockSourceSet, mockProject)
 		when:
-		def result = SourceSetHelper.getEclipseClasspath(ref, mockProject)
+		def result = SourceSetHelper.getEclipseClasspath(ref)
 
 		then:
-		result.size() == 1
+		result.size() == 2
 		println(result[0].toString())
 	}
 
@@ -112,10 +112,10 @@ class SourceSetHelperTest extends Specification {
 
 		def ref = new SourceSetReference(mockSourceSet, mockProject)
 		when:
-		def result = SourceSetHelper.getVscodeClasspath(ref, mockProject)
+		def result = SourceSetHelper.getVscodeClasspath(ref)
 
 		then:
-		result.size() == 1
+		result.size() == 2
 		println(result[0].toString())
 	}
 

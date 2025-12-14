@@ -54,7 +54,7 @@ class AccessTransformerJarProcessorTest extends Specification {
 		ZipUtils.pack(modDir, jarPath)
 
 		// Create processor and context
-		def processor = new AccessTransformerJarProcessor('at', Mock(Project), [])
+		def processor = new AccessTransformerJarProcessor('at', Mock(Project), false, [])
 		def modJson = FabricModJsonFactory.createFromZip(jarPath)
 		def context = Mock(SpecContext)
 		context.localMods() >> [modJson]

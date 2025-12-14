@@ -7,6 +7,10 @@ dependencies {
 }
 
 loom {
+	enableTransitiveAccessWideners = true
+	interfaceInjection {
+		isEnabled = true
+	}
 	runConfigs.configureEach {
 		ideConfigGenerated = true
 	}
