@@ -24,13 +24,13 @@
 
 package net.fabricmc.loom.kotlin.remapping
 
+import kotlin.metadata.jvm.KotlinClassMetadata
+import kotlin.metadata.jvm.Metadata
 import org.objectweb.asm.AnnotationVisitor
 import org.objectweb.asm.Opcodes
 import org.objectweb.asm.commons.Remapper
 import org.objectweb.asm.tree.AnnotationNode
 import org.slf4j.LoggerFactory
-import kotlin.metadata.jvm.KotlinClassMetadata
-import kotlin.metadata.jvm.Metadata
 
 class KotlinClassMetadataRemappingAnnotationVisitor(
     private val remapper: Remapper,
@@ -39,10 +39,7 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
 ) : AnnotationNode(Opcodes.ASM9, KotlinMetadataRemappingClassVisitor.ANNOTATION_DESCRIPTOR) {
     private val logger = LoggerFactory.getLogger(javaClass)
 
-    override fun visit(
-        name: String?,
-        value: Any?,
-    ) {
+    override fun visit(name: String?, value: Any?) {
         super.visit(name, value)
     }
 
@@ -52,18 +49,24 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
         val header = readHeader() ?: return
 
         val headerVersion = KotlinVersion(header.metadataVersion[0], header.metadataVersion[1], 0)
-        val currentMinorVersion = KotlinVersion(KotlinVersion.CURRENT.major, KotlinVersion.CURRENT.minor, 0)
+        val currentMinorVersion =
+            KotlinVersion(KotlinVersion.CURRENT.major, KotlinVersion.CURRENT.minor, 0)
 
         if (headerVersion != currentMinorVersion) {
             logger.info(
                 "Kotlin metadata for class ($className) as it was built using a different major Kotlin " +
                     "version (${header.metadataVersion[0]}.${header.metadataVersion[1]}.x) while the remapper " +
-                    "is using (${KotlinVersion.CURRENT}).",
+                    "is using (${KotlinVersion.CURRENT})."
             )
         }
         val metadata = KotlinClassMetadata.readLenient(header)
-        if (metadata.version.major < 1 || (metadata.version.major == 1 && metadata.version.minor < 4)) {
-            logger.warn("$className is not supported by kotlin metadata remapping (version: ${metadata.version})")
+        if (
+            metadata.version.major < 1 ||
+                (metadata.version.major == 1 && metadata.version.minor < 4)
+        ) {
+            logger.warn(
+                "$className is not supported by kotlin metadata remapping (version: ${metadata.version})"
+            )
             accept(next)
             return
         }
@@ -72,7 +75,8 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
             is KotlinClassMetadata.Class -> {
                 var klass = metadata.kmClass
                 klass = KotlinClassRemapper(remapper).remap(klass)
-                val remapped = KotlinClassMetadata.Class(klass, metadata.version, metadata.flags).write()
+                val remapped =
+                    KotlinClassMetadata.Class(klass, metadata.version, metadata.flags).write()
                 writeClassHeader(remapped)
                 validateKotlinClassHeader(remapped, header)
             }
@@ -81,7 +85,13 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
 
                 if (klambda != null) {
                     klambda = KotlinClassRemapper(remapper).remap(klambda)
-                    val remapped = KotlinClassMetadata.SyntheticClass(klambda, metadata.version, metadata.flags).write()
+                    val remapped =
+                        KotlinClassMetadata.SyntheticClass(
+                                klambda,
+                                metadata.version,
+                                metadata.flags,
+                            )
+                            .write()
                     writeClassHeader(remapped)
                     validateKotlinClassHeader(remapped, header)
                 } else {
@@ -91,7 +101,9 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
             is KotlinClassMetadata.FileFacade -> {
                 var kpackage = metadata.kmPackage
                 kpackage = KotlinClassRemapper(remapper).remap(kpackage)
-                val remapped = KotlinClassMetadata.FileFacade(kpackage, metadata.version, metadata.flags).write()
+                val remapped =
+                    KotlinClassMetadata.FileFacade(kpackage, metadata.version, metadata.flags)
+                        .write()
                 writeClassHeader(remapped)
                 validateKotlinClassHeader(remapped, header)
             }
@@ -99,17 +111,18 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
                 var kpackage = metadata.kmPackage
                 kpackage = KotlinClassRemapper(remapper).remap(kpackage)
                 val remapped =
-                    KotlinClassMetadata
-                        .MultiFileClassPart(
+                    KotlinClassMetadata.MultiFileClassPart(
                             kpackage,
                             metadata.facadeClassName,
                             metadata.version,
                             metadata.flags,
-                        ).write()
+                        )
+                        .write()
                 writeClassHeader(remapped)
                 validateKotlinClassHeader(remapped, header)
             }
-            is KotlinClassMetadata.MultiFileClassFacade, is KotlinClassMetadata.Unknown -> {
+            is KotlinClassMetadata.MultiFileClassFacade,
+            is KotlinClassMetadata.Unknown -> {
                 // do nothing
                 accept(next)
             }
@@ -166,16 +179,13 @@ class KotlinClassMetadataRemappingAnnotationVisitor(
         newNode.accept(next)
     }
 
-    private fun validateKotlinClassHeader(
-        remapped: Metadata,
-        original: Metadata,
-    ) {
+    private fun validateKotlinClassHeader(remapped: Metadata, original: Metadata) {
         // This can happen when the remapper is ran on a kotlin version
         // that does not match the version the class was compiled with.
         if (remapped.data2.size != original.data2.size) {
             logger.info(
                 "Kotlin class metadata size mismatch: data2 size does not match original in class $className. " +
-                    "New: ${remapped.data2.size} Old: ${original.data2.size}",
+                    "New: ${remapped.data2.size} Old: ${original.data2.size}"
             )
         }
     }

@@ -257,7 +257,8 @@ spotless {
 		licenseHeaderFile(rootProject.file("HEADER")).yearSeparator("-")
 		targetExclude("**/build.gradle.kts")
 		targetExclude("src/test/resources/projects/*/**")
-		ktlint()
+
+		ktfmt().kotlinlangStyle().configure { it.setRemoveUnusedImports(true) }
 	}
 }
 

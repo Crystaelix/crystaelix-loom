@@ -24,14 +24,12 @@
 
 package net.fabricmc.loom.kotlin.remapping
 
-import org.objectweb.asm.commons.Remapper
 import kotlin.metadata.*
 import kotlin.metadata.jvm.*
+import org.objectweb.asm.commons.Remapper
 
 @OptIn(ExperimentalContextReceivers::class)
-class KotlinClassRemapper(
-    private val remapper: Remapper,
-) {
+class KotlinClassRemapper(private val remapper: Remapper) {
     fun remap(clazz: KmClass): KmClass {
         clazz.name = remap(clazz.name)
         clazz.typeParameters.replaceAll(this::remap)
@@ -67,10 +65,7 @@ class KotlinClassRemapper(
         // See: https://github.com/FabricMC/fabric-loom/issues/1363 fix suggested by fan87
         val normalizedName = name.replace('$', '\n')
         val remapped =
-            remapper
-                .map(normalizedName.toJvmInternalName())
-                .replace('$', '.')
-                .replace('\n', '$')
+            remapper.map(normalizedName.toJvmInternalName()).replace('$', '.').replace('\n', '$')
 
         if (local) {
             return ".$remapped"
@@ -113,7 +108,8 @@ class KotlinClassRemapper(
         property.fieldSignature = property.fieldSignature?.let { remap(it) }
         property.getterSignature = property.getterSignature?.let { remap(it) }
         property.setterSignature = property.setterSignature?.let { remap(it) }
-        property.syntheticMethodForAnnotations = property.syntheticMethodForAnnotations?.let { remap(it) }
+        property.syntheticMethodForAnnotations =
+            property.syntheticMethodForAnnotations?.let { remap(it) }
         property.syntheticMethodForDelegate = property.syntheticMethodForDelegate?.let { remap(it) }
         return property
     }
@@ -139,15 +135,13 @@ class KotlinClassRemapper(
     }
 
     private fun remap(typeProjection: KmTypeProjection): KmTypeProjection =
-        KmTypeProjection(
-            typeProjection.variance,
-            typeProjection.type?.let {
-                remap(it)
-            },
-        )
+        KmTypeProjection(typeProjection.variance, typeProjection.type?.let { remap(it) })
 
     private fun remap(flexibleTypeUpperBound: KmFlexibleTypeUpperBound): KmFlexibleTypeUpperBound =
-        KmFlexibleTypeUpperBound(remap(flexibleTypeUpperBound.type), flexibleTypeUpperBound.typeFlexibilityId)
+        KmFlexibleTypeUpperBound(
+            remap(flexibleTypeUpperBound.type),
+            flexibleTypeUpperBound.typeFlexibilityId,
+        )
 
     private fun remap(valueParameter: KmValueParameter): KmValueParameter {
         valueParameter.type = remap(valueParameter.type)
@@ -155,7 +149,8 @@ class KotlinClassRemapper(
         return valueParameter
     }
 
-    private fun remap(annotation: KmAnnotation): KmAnnotation = KmAnnotation(remap(annotation.className), annotation.arguments)
+    private fun remap(annotation: KmAnnotation): KmAnnotation =
+        KmAnnotation(remap(annotation.className), annotation.arguments)
 
     private fun remap(signature: JvmMethodSignature): JvmMethodSignature =
         JvmMethodSignature(signature.name, remapper.mapMethodDesc(signature.descriptor))
