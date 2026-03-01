@@ -131,6 +131,7 @@ public class TinyRemapperService extends Service<TinyRemapperService.Options> im
 			options.getFrom().set(from);
 			options.getTo().set(to);
 			options.getMappings().add(MappingsService.createOptionsWithProjectMappings(project, options.getFrom(), options.getTo()));
+			options.getIgnoreConflicts().set(false);
 			options.getUselegacyMixinAP().set(true);
 			options.getClasspath().from(classpath);
 			options.getKnownIndyBsms().set(extension.getKnownIndyBsms().get().stream().sorted().toList());

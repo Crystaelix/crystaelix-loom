@@ -309,7 +309,7 @@ public class MappingConfiguration {
 				}
 
 				if (extension.isLegacyForgeLike() && (Files.notExists(fieldsCsv) || Files.notExists(methodsCsv) || extension.refreshDeps())) {
-					new MCPWriter(mappingsWorkingDir).write(mappingTree);
+					new MCPWriter(mappingsWorkingDir, false).write(mappingTree);
 				}
 
 				if ((extension.isCleanroom() || extension.isVintageForge()) && (Files.notExists(srgToNamedTsrg) || extension.refreshDeps())) {

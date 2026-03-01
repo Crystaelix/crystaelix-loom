@@ -49,15 +49,21 @@ public record ClasspathGroup(String name, List<String> paths, List<ExternalClass
 
 	public static List<ClasspathGroup> fromModSettings(Set<ModSettings> modSettings, Provider<ClasspathType> type) {
 		return modSettings.stream().map(s -> {
-			SourceSetReference ref = s.getModSourceSet().get();
-			List<String> paths = switch (type.getOrNull()) {
-			case GRADLE -> getPaths(SourceSetHelper.getGradleClasspath(ref));
-			case IDEA -> getPaths(SourceSetHelper.getIdeaClasspath(ref));
-			case IDEA_MODULE -> getPaths(SourceSetHelper.getIdeaModuleCompileOutput(ref));
-			case ECLIPSE -> getPaths(SourceSetHelper.getEclipseClasspath(ref));
-			case VSCODE -> getPaths(SourceSetHelper.getVscodeClasspath(ref));
-			case null -> getPaths(s);
-			};
+			List<String> paths;
+
+			if (type.isPresent() && s.getModSourceSet().isPresent()) {
+				SourceSetReference ref = s.getModSourceSet().get();
+				paths = switch (type.get()) {
+				case GRADLE -> getPaths(SourceSetHelper.getGradleClasspath(ref));
+				case IDEA -> getPaths(SourceSetHelper.getIdeaClasspath(ref));
+				case IDEA_MODULE -> getPaths(SourceSetHelper.getIdeaModuleCompileOutput(ref));
+				case ECLIPSE -> getPaths(SourceSetHelper.getEclipseClasspath(ref));
+				case VSCODE -> getPaths(SourceSetHelper.getVscodeClasspath(ref));
+				};
+			} else {
+				paths = getPaths(s);
+			}
+
 			return new ClasspathGroup(s.getName(), paths, s.getExternalGroups().get());
 		}).toList();
 	}

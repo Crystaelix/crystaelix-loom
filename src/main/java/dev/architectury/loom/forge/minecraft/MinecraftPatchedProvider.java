@@ -69,6 +69,7 @@ import dev.architectury.loom.util.DependencyDownloader;
 import dev.architectury.loom.util.Stopwatch;
 import dev.architectury.loom.util.TempFiles;
 import dev.architectury.loom.util.ThreadingUtils;
+import dev.architectury.loom.util.Version;
 import dev.architectury.loom.util.function.FsPathConsumer;
 import net.minecraftforge.fart.api.Transformer;
 import org.gradle.api.Project;
@@ -90,6 +91,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftProvider;
 import net.fabricmc.loom.util.Check;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
+import net.fabricmc.loom.util.LoomVersions;
 import net.fabricmc.loom.util.TinyRemapperHelper;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
@@ -103,8 +105,13 @@ import net.fabricmc.tinyremapper.extension.mixin.MixinExtension;
 
 public class MinecraftPatchedProvider {
 	protected static final String LOOM_PATCH_VERSION_KEY = "Loom-Patch-Version";
-	protected static final String CURRENT_LOOM_PATCH_VERSION = "9";
+	protected static final String CURRENT_LOOM_PATCH_VERSION = "10";
 	protected static final String NAME_MAPPING_SERVICE_PATH = "/inject/META-INF/services/cpw.mods.modlauncher.api.INameMappingService";
+
+	// The version where the bug was introduced.
+	private static final String MIN_NEOFORGE_MANUAL_CLEAN_JAR_CREATION_VERSION = "21.10.57-beta";
+	// The version where the bug was fixed.
+	private static final String MAX_NEOFORGE_MANUAL_CLEAN_JAR_CREATION_VERSION = "21.10.64";
 
 	protected final Project project;
 	protected final Logger logger;
@@ -191,6 +198,23 @@ public class MinecraftPatchedProvider {
 		}
 	}
 
+	// See https://github.com/neoforged/NeoForge/issues/2848
+	private boolean shouldUseNeoForgeInstallerToolsToCreatePrePatchJar() {
+		if (!getExtension().isNeoForge()) {
+			return false;
+		}
+
+		Version currentVersion = Version.parse(getExtension().getForgeProvider().getVersion().getCombined());
+		Version minVersion = Version.parse(MIN_NEOFORGE_MANUAL_CLEAN_JAR_CREATION_VERSION);
+
+		if (currentVersion.compareTo(minVersion) < 0) {
+			return false; // old enough to skip the workaround
+		}
+
+		Version maxVersion = Version.parse(MAX_NEOFORGE_MANUAL_CLEAN_JAR_CREATION_VERSION);
+		return currentVersion.compareTo(maxVersion) < 0;
+	}
+
 	public void provide() throws Exception {
 		initPatchedFiles();
 		checkCache();
@@ -199,14 +223,7 @@ public class MinecraftPatchedProvider {
 
 		if (Files.notExists(minecraftIntermediateJar)) {
 			this.dirty = true;
-
-			try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
-				McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"));
-				builder.enqueue("rename");
-				McpExecutor executor = serviceFactory.get(builder.build());
-				Path output = executor.execute();
-				Files.copy(output, minecraftIntermediateJar);
-			}
+			createPrePatchJar();
 		}
 
 		if (dirty || Files.notExists(minecraftPatchedIntermediateJar)) {
@@ -231,6 +248,51 @@ public class MinecraftPatchedProvider {
 		}
 
 		DependencyProvider.addDependency(project, minecraftClientExtra, Constants.Configurations.FORGE_EXTRA);
+	}
+
+	private void createPrePatchJar() throws IOException {
+		if (shouldUseNeoForgeInstallerToolsToCreatePrePatchJar()) {
+			createNeoForgeInstallerToolsPrePatchJar();
+			return;
+		}
+
+		try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
+			McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"));
+			builder.enqueue("rename");
+			McpExecutor executor = serviceFactory.get(builder.build());
+			Path output = executor.execute();
+			Files.copy(output, minecraftIntermediateJar);
+		}
+	}
+
+	private void createNeoForgeInstallerToolsPrePatchJar() throws IOException {
+		try (var tempFiles = new TempFiles()) {
+			final Path mappings = tempFiles.file("mappings", ".txt");
+
+			getExtension().download(minecraftProvider.getVersionInfo().download("client_mappings").url())
+					.downloadPath(mappings);
+
+			ForgeToolValueSource.exec(project, settings -> {
+				// todo: does it work without fatjar
+				settings.getExecClasspath().from(DependencyDownloader.download(project, LoomVersions.NEOFORGE_INSTALLER_TOOLS.mavenNotation() + ":fatjar"));
+				settings.getMainClass().set("net.neoforged.installertools.ConsoleTool");
+				settings.args("--task", "PROCESS_MINECRAFT_JAR");
+
+				switch (type) {
+				case CLIENT_ONLY -> settings.args("--input", minecraftProvider.getMinecraftClientJar().getAbsolutePath());
+				case SERVER_ONLY -> settings.args("--input", minecraftProvider.getMinecraftServerJar().getAbsolutePath());
+
+				case MERGED -> {
+					settings.args("--input", minecraftProvider.getMinecraftClientJar().getAbsolutePath());
+					settings.args("--input", minecraftProvider.getMinecraftServerJar().getAbsolutePath());
+				}
+				}
+
+				settings.args("--input-mappings", mappings.toAbsolutePath().toString());
+				settings.args("--output", minecraftIntermediateJar.toAbsolutePath().toString());
+				settings.args("--neoform-data", getExtension().getMcpConfigProvider().getMcp().toAbsolutePath().toString());
+			});
+		}
 	}
 
 	private void fillClientExtraJar(ServiceFactory serviceFactory) throws IOException {
@@ -454,7 +516,6 @@ public class MinecraftPatchedProvider {
 			TinyRemapper remapper = TinyRemapper.newRemapper().build();
 
 			try (OutputConsumerPath outputConsumer = new OutputConsumerPath.Builder(output).build()) {
-				outputConsumer.addNonClassFiles(input);
 				outputConsumer.addNonClassFiles(forgeJar, remapper, List.of(MetaInfFixer.INSTANCE, new UserdevFilter()));
 
 				InputTag mcTag = remapper.createInputTag();
@@ -745,8 +806,8 @@ public class MinecraftPatchedProvider {
 	}
 
 	public enum Type {
-		CLIENT_ONLY("client", "client", (patch, userdev) -> patch.clientPatches),
-		SERVER_ONLY("server", "server", (patch, userdev) -> patch.serverPatches),
+		CLIENT_ONLY("client", "client", (patch, userdev) -> patch.extractClientPatches()),
+		SERVER_ONLY("server", "server", (patch, userdev) -> patch.extractServerPatches()),
 		MERGED("merged", "joined", (patch, userdev) -> userdev.getJoinedPatches());
 
 		public final String id;

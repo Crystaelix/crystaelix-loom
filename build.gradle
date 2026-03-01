@@ -362,7 +362,6 @@ publishing {
 		}
 	}
 
-
 	repositories {
 		maven {
 			url = "https://repo.rafi67000.xyz/vintageforge"

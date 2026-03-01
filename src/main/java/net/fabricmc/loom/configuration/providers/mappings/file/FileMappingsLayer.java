@@ -40,6 +40,7 @@ import net.fabricmc.loom.configuration.providers.mappings.extras.annotations.Ann
 import net.fabricmc.loom.configuration.providers.mappings.extras.unpick.UnpickLayer;
 import net.fabricmc.loom.configuration.providers.mappings.intermediary.IntermediaryMappingLayer;
 import net.fabricmc.loom.configuration.providers.mappings.unpick.UnpickMetadata;
+import net.fabricmc.loom.configuration.providers.mappings.utils.DstClassNameSkippingMappingVisitor;
 import net.fabricmc.loom.util.FileSystemUtil;
 import net.fabricmc.loom.util.ZipUtils;
 import net.fabricmc.mappingio.MappingReader;
@@ -55,6 +56,7 @@ public record FileMappingsLayer(
 		boolean enigma, // Enigma cannot be automatically detected since it's stored in a directory.
 		boolean unpick,
 		boolean annotations,
+		boolean skipClassNames,
 		String mergeNamespace
 ) implements MappingLayer, UnpickLayer, AnnotationsLayer {
 	@Override
@@ -70,7 +72,11 @@ public record FileMappingsLayer(
 	}
 
 	private void visit(Path path, MappingVisitor mappingVisitor) throws IOException {
-		MappingSourceNsSwitch nsSwitch = new MappingSourceNsSwitch(mappingVisitor, mergeNamespace.toString());
+		mappingVisitor = new MappingSourceNsSwitch(mappingVisitor, mergeNamespace);
+
+		if (skipClassNames) {
+			mappingVisitor = new DstClassNameSkippingMappingVisitor(mappingVisitor);
+		}
 
 		// Replace the default fallback namespaces with
 		// our fallback namespaces if potentially needed.
@@ -78,9 +84,9 @@ public record FileMappingsLayer(
 				MappingUtil.NS_SOURCE_FALLBACK, fallbackSourceNamespace,
 				MappingUtil.NS_TARGET_FALLBACK, fallbackTargetNamespace
 		);
-		MappingNsRenamer renamer = new MappingNsRenamer(nsSwitch, fallbackNamespaceReplacements);
+		mappingVisitor = new MappingNsRenamer(mappingVisitor, fallbackNamespaceReplacements);
 
-		MappingReader.read(path, enigma ? MappingFormat.ENIGMA_DIR : null, renamer);
+		MappingReader.read(path, enigma ? MappingFormat.ENIGMA_DIR : null, mappingVisitor);
 	}
 
 	@Override

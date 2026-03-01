@@ -1,9 +1,5 @@
 name: Publish
-on:
-  push:
-    branches:
-      - 'dev/1.10'
-      - 'dev/1.13'
+on: [push, workflow_dispatch]
 
 jobs:
   build:
@@ -17,4 +13,4 @@ jobs:
       - uses: actions/checkout@v4
       - uses: gradle/actions/wrapper-validation@v4
       - name: Upload to Maven
-        run: ./gradlew publish -PVintageForgeUsername="${{ secrets.MAVEN_USERNAME }}" -PVintageForgePassword="${{ secrets.MAVEN_PASSWORD }}" --stacktrace
+        run: ./gradlew publish --stacktrace -PVintageForgeUsername="${{ secrets.MAVEN_USERNAME }}" -PVintageForgePassword="${{ secrets.MAVEN_PASSWORD }}" --stacktrace

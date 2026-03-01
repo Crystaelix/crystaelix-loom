@@ -77,40 +77,40 @@ class IdeaClasspathModificationsTest extends Specification {
 	@Language("XML")
 	private static final String EXPECTED = '''
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
-    <option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
-    <module name="main.test"/>
-    <option name="PROGRAM_PARAMETERS" value=""/>
-    <option name="VM_PARAMETERS" value=""/>
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
-    <method v="2">
-      <option enabled="true" name="Make"/>
-    </method>
-    <envs>
-      %IDEA_ENV_VARS%
-    </envs>
-    <shortenClasspath name="ARGS_FILE"/>
-  <classpathModifications><entry exclude="true" path="/path/to/file.jar"/></classpathModifications></configuration>
+	<configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
+		<option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
+		<module name="main.test"/>
+		<option name="PROGRAM_PARAMETERS" value=""/>
+		<option name="VM_PARAMETERS" value=""/>
+		<option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
+		<method v="2">
+			<option enabled="true" name="Make"/>
+		</method>
+		<envs>
+			%IDEA_ENV_VARS%
+		</envs>
+		<shortenClasspath name="ARGS_FILE"/>
+	<classpathModifications><entry exclude="true" path="/path/to/file.jar"/></classpathModifications></configuration>
 </component>
 '''.trim()
 
 	@Language("XML")
 	private static final String EXPECTED2 = '''
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
-    <option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
-    <module name="main.test"/>
-    <option name="PROGRAM_PARAMETERS" value=""/>
-    <option name="VM_PARAMETERS" value=""/>
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
-    <method v="2">
-      <option enabled="true" name="Make"/>
-    </method>
-    <envs>
-      %IDEA_ENV_VARS%
-    </envs>
-    <shortenClasspath name="ARGS_FILE"/>
-  <classpathModifications><entry exclude="true" path="/path/to/file.jar"/><entry exclude="true" path="/path/to/another.jar"/></classpathModifications></configuration>
+	<configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
+		<option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
+		<module name="main.test"/>
+		<option name="PROGRAM_PARAMETERS" value=""/>
+		<option name="VM_PARAMETERS" value=""/>
+		<option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
+		<method v="2">
+			<option enabled="true" name="Make"/>
+		</method>
+		<envs>
+			%IDEA_ENV_VARS%
+		</envs>
+		<shortenClasspath name="ARGS_FILE"/>
+	<classpathModifications><entry exclude="true" path="/path/to/file.jar"/><entry exclude="true" path="/path/to/another.jar"/></classpathModifications></configuration>
 </component>
 '''.trim()
 }

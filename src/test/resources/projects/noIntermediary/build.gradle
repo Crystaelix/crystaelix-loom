@@ -3,7 +3,7 @@ plugins {
 	id 'maven-publish'
 }
 
-version = loom.modVersion
+version = project.mod_version
 group = project.maven_group
 
 repositories {
@@ -14,10 +14,14 @@ repositories {
 	// for more information about repositories.
 }
 
+loom {
+	noIntermediateMappings()
+}
+
 dependencies {
 	// To change the versions see the gradle.properties file
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	mappings loom.officialMojangMappings()
 	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 
 	// Fabric API. This is technically optional, but you probably want it anyway.
@@ -27,14 +31,18 @@ dependencies {
 	// You may need to force-disable transitiveness on them.
 }
 
-test {
-	enabled = false
-}
-
 base {
 	archivesName = project.archives_base_name
 }
 
+processResources {
+	def version = project.version
+	inputs.property "version", version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": version
+	}
+}
 tasks.withType(JavaCompile).configureEach {
 	// ensure that the encoding is set to UTF-8, no matter what the system default is
 	// this fixes some edge cases with special characters not displaying correctly
@@ -61,6 +69,13 @@ java {
 	targetCompatibility = JavaVersion.VERSION_1_8
 }
 
+jar {
+	def archivesName = base.archivesName.get()
+	from("LICENSE") {
+		rename { "${it}_${archivesName}"}
+	}
+}
+
 // configure the maven publication
 publishing {
 	publications {
@@ -76,26 +91,4 @@ publishing {
 		// The repositories here will be used for publishing your artifact, not for
 		// retrieving dependencies.
 	}
-}
-
-jar {
-	manifest {
-		attributes 'Inherited-In-Remap-Jar': '1234'
-		attributes(['Inherited-In-Remap-Jar': '5678'], 'fabric.mod.json') // category not present in remapJar
-		attributes(['Inherited-In-Remap-Jar': '9'], 'modid.mixins.json') // category present in remapJar
-		attributes 'Hello-World': 'shadowed in remapJar'
-	}
-}
-
-remapJar {
-	from 'test_file.txt'
-
-	manifest {
-		attributes 'Hello-World': 'test'
-		attributes(['Hello-World': 'another test'], 'modid.mixins.json')
-	}
-}
-
-remapSourcesJar {
-	from 'test_src_file.txt'
 }

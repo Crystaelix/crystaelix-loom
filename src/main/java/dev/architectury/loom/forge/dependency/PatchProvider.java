@@ -32,14 +32,17 @@ import java.nio.file.StandardCopyOption;
 
 import com.crystaelix.loom.legacyforge.LegacyPatchConverter;
 import org.gradle.api.Project;
+import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.FileSystemUtil;
 
 public class PatchProvider extends DependencyProvider {
-	public Path clientPatches;
-	public Path serverPatches;
+	private Path projectCacheFolder;
+	private Path installerJar;
+	private @Nullable Path clientPatches;
+	private @Nullable Path serverPatches;
 
 	public PatchProvider(Project project) {
 		super(project);
@@ -48,35 +51,51 @@ public class PatchProvider extends DependencyProvider {
 	@Override
 	public void provide(DependencyInfo dependency) throws Exception {
 		init();
+		installerJar = getExtension().isModernForgeLike()
+				? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
+				: getExtension().getForgeUniversalProvider().getForge().toPath();
+	}
 
-		if (Files.notExists(clientPatches) || Files.notExists(serverPatches) || refreshDeps()) {
-			getProject().getLogger().info(":extracting forge patches");
+	public Path extractClientPatches() {
+		if (clientPatches == null) {
+			clientPatches = projectCacheFolder.resolve("patches-client.lzma");
+			extractPatches(clientPatches, "client");
+		}
 
-			Path installerJar = getExtension().isModernForgeLike()
-					? dependency.resolveFile().orElseThrow(() -> new RuntimeException("Could not resolve Forge installer")).toPath()
-					: getExtension().getForgeUniversalProvider().getForge().toPath();
+		return clientPatches;
+	}
 
-			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar)) {
-				if (getExtension().isModernForgeLike()) {
-					Files.copy(fs.getPath("data", "client.lzma"), clientPatches, StandardCopyOption.REPLACE_EXISTING);
-					Files.copy(fs.getPath("data", "server.lzma"), serverPatches, StandardCopyOption.REPLACE_EXISTING);
-				} else {
-					byte[] patches = Files.readAllBytes(fs.getPath("binpatches.pack.lzma"));
-					Files.write(clientPatches, LegacyPatchConverter.convert(
-							getProject().getLogger(), patches, "binpatch/client/"
-					));
-					Files.write(serverPatches, LegacyPatchConverter.convert(
-							getProject().getLogger(), patches, "binpatch/server/"
-					));
-				}
+	public Path extractServerPatches() {
+		if (serverPatches == null) {
+			serverPatches = projectCacheFolder.resolve("patches-server.lzma");
+			extractPatches(serverPatches, "server");
+		}
+
+		return serverPatches;
+	}
+
+	private void extractPatches(Path targetPath, String name) {
+		if (Files.exists(targetPath) && !refreshDeps()) {
+			// No need to extract
+			return;
+		}
+
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(installerJar, false)) {
+			if (getExtension().isModernForgeLike()) {
+				Files.copy(fs.getPath("data", name + ".lzma"), targetPath, StandardCopyOption.REPLACE_EXISTING);
+			} else {
+				byte[] patches = Files.readAllBytes(fs.getPath("binpatches.pack.lzma"));
+				Files.write(targetPath, LegacyPatchConverter.convert(
+						getProject().getLogger(), patches, "binpatch/" + name + "/"
+				));
 			}
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
 		}
 	}
 
 	private void init() {
-		final Path projectCacheFolder = ForgeProvider.getForgeCache(getProject());
-		clientPatches = projectCacheFolder.resolve("patches-client.lzma");
-		serverPatches = projectCacheFolder.resolve("patches-server.lzma");
+		this.projectCacheFolder = ForgeProvider.getForgeCache(getProject());
 
 		try {
 			Files.createDirectories(projectCacheFolder);

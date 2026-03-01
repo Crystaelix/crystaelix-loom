@@ -115,12 +115,7 @@ class LayeredMappingsTest extends Specification implements GradleProjectTestTrai
 	@Unroll
 	def "build no intermediary (gradle #version)"() {
 		setup:
-		def gradle = gradleProject(project: "mojangMappings", version: version)
-		gradle.buildGradle << '''
-			loom {
-				noIntermediateMappings()
-			}
-		'''
+		def gradle = gradleProject(project: "noIntermediary", version: version)
 
 		when:
 		def result = gradle.run(task: "build")

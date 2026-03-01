@@ -25,23 +25,7 @@
 package net.fabricmc.loom.kotlin.remapping
 
 import org.objectweb.asm.commons.Remapper
-import kotlin.metadata.ClassName
-import kotlin.metadata.ExperimentalContextReceivers
-import kotlin.metadata.KmAnnotation
-import kotlin.metadata.KmClass
-import kotlin.metadata.KmClassifier
-import kotlin.metadata.KmConstructor
-import kotlin.metadata.KmFlexibleTypeUpperBound
-import kotlin.metadata.KmFunction
-import kotlin.metadata.KmLambda
-import kotlin.metadata.KmPackage
-import kotlin.metadata.KmProperty
-import kotlin.metadata.KmType
-import kotlin.metadata.KmTypeAlias
-import kotlin.metadata.KmTypeParameter
-import kotlin.metadata.KmTypeProjection
-import kotlin.metadata.KmValueParameter
-import kotlin.metadata.isLocalClassName
+import kotlin.metadata.*
 import kotlin.metadata.jvm.*
 
 @OptIn(ExperimentalContextReceivers::class)

@@ -104,11 +104,11 @@ public class AccessTransformerJarProcessor implements MinecraftJarProcessor<Acce
 	}
 
 	private void addEntries(FabricModJson fabricModJson, List<AccessTransformerEntry> entries) {
-		LoomGradleExtension extension = LoomGradleExtension.get(project);
 		Set<String> atPaths = new TreeSet<>();
 		atPaths.add(Constants.Forge.ACCESS_TRANSFORMER_PATH);
 
 		if (fabricModJson instanceof ModMetadataFabricModJson modMetadataFabricModJson) {
+			LoomGradleExtension extension = LoomGradleExtension.get(project);
 			atPaths.addAll(modMetadataFabricModJson.getModMetadata().getAccessTransformers(extension.getPlatform().get()));
 		}
 

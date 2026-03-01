@@ -38,9 +38,11 @@ import net.fabricmc.mappingio.tree.MappingTree;
 
 public class MCPWriter {
 	private final Path dir;
+	private final boolean comments;
 
-	public MCPWriter(Path dir) {
+	public MCPWriter(Path dir, boolean comments) {
 		this.dir = dir;
+		this.comments = comments;
 	}
 
 	public void write(MappingTree mappings) throws IOException {
@@ -65,7 +67,7 @@ public class MCPWriter {
 					String name = fieldDef.getName(namedIndex);
 
 					if (!Objects.equals(srgName, name) && !written.contains(srgName)) {
-						fieldsWriter.writeNext(new String[] {srgName, name, "2", fieldDef.getComment()}, false);
+						fieldsWriter.writeNext(new String[] {srgName, name, "2", comments ? fieldDef.getComment() : ""}, false);
 						written.add(srgName);
 					}
 				}
@@ -75,7 +77,7 @@ public class MCPWriter {
 					String name = methodDef.getName(namedIndex);
 
 					if (!Objects.equals(srgName, name) && !written.contains(srgName)) {
-						methodsWriter.writeNext(new String[] {srgName, name, "2", methodDef.getComment()}, false);
+						methodsWriter.writeNext(new String[] {srgName, name, "2", comments ? methodDef.getComment() : ""}, false);
 						written.add(srgName);
 					}
 				}
