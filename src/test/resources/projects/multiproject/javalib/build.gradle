@@ -1,4 +1,4 @@
 plugins {
 	id 'java-library'
-	id 'com.crystaelix.loom-companion'
+	id 'xyz.vintageforge.loom-companion'
 }
