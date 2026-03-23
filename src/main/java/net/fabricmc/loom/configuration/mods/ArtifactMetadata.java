@@ -138,15 +138,15 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 			try {
 				final JsonObject json = LoomGradlePlugin.GSON.fromJson(Files.readString(fs.getPath(mixinConfig)), JsonObject.class);
 
-				if (!json.has("refmap")) {
-					return true;
+				if (json.has("refmap")) {
+					return false;
 				}
 			} catch (JsonSyntaxException e) {
 				LOGGER.error("Could not parse mixin config in file {}", mixinConfig, e);
 			}
 		}
 
-		return false;
+		return true;
 	}
 
 	// Validates that the version matches or is less than the current loom version
