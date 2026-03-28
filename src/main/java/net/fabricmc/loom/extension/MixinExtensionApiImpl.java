@@ -70,7 +70,7 @@ public abstract class MixinExtensionApiImpl implements MixinExtensionAPI {
 	}
 
 	private static boolean shouldUseMixinApByDefault(Project project) {
-		return LoomGradleExtension.get(project).isSrgForgeLike() && !LoomGradleExtension.get(project).getForgeProvider().usesMojangAtRuntime();
+		return LoomGradleExtension.get(project).isFabricLike() || !LoomGradleExtension.get(project).getForgeProvider().usesMojangAtRuntime();
 	}
 
 	protected final PatternSet add0(SourceSet sourceSet, String refmapName) {
