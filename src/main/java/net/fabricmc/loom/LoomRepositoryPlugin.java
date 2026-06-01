@@ -80,6 +80,12 @@ public class LoomRepositoryPlugin implements Plugin<PluginAware> {
 				content.includeGroup("dev.architectury");
 			});
 		});
+
+		repositories.maven(repo -> {
+			repo.setName("Legacy Fabric");
+			repo.setUrl("https://maven.legacyfabric.net/");
+		});
+
 		repositories.maven(repo -> {
 			repo.setName("Fabric");
 			repo.setUrl(MirrorUtil.getFabricRepository(target));
