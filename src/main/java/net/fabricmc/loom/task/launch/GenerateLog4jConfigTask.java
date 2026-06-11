@@ -88,7 +88,10 @@ public abstract class GenerateLog4jConfigTask extends AbstractLoomTask {
 			final @Nullable RegularFile source = getForgeLoggerConfigSource().getOrNull();
 			if (source == null) ForgeLoggerConfig.throwNotFound();
 			ForgeLoggerConfig.copyToPath(source.getAsFile().toPath(), outputFile);
-			return;
+
+			if (Files.exists(outputFile)) {
+				return;
+			}
 		}
 
 		try (InputStream is = GenerateLog4jConfigTask.class.getClassLoader().getResourceAsStream("log4j2.default.xml")) {

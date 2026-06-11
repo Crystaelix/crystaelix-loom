@@ -46,8 +46,18 @@ public final class ForgeLoggerConfig {
 
 	public static void copyToPath(Path libraryFile, Path outputFile) {
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(libraryFile, false)) {
-			final Path configPath = fs.getPath("log4j2.xml");
-			Files.copy(configPath, outputFile, StandardCopyOption.REPLACE_EXISTING);
+			Path configPath = fs.getPath("log4j2.xml");
+
+			if (Files.exists(configPath)) {
+				Files.copy(configPath, outputFile, StandardCopyOption.REPLACE_EXISTING);
+				return;
+			}
+
+			configPath = fs.getPath("net/neoforged/fml/startup/log4j2.xml");
+
+			if (Files.exists(configPath)) {
+				Files.copy(configPath, outputFile, StandardCopyOption.REPLACE_EXISTING);
+			}
 		} catch (IOException e) {
 			throw new UncheckedIOException(e);
 		}

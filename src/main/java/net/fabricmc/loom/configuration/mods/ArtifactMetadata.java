@@ -101,7 +101,7 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 					} catch (IllegalArgumentException e) {
 						throw new IllegalStateException("Unknown mixin remap type: " + mixinRemapType);
 					}
-				} else if (mixinConfigs != null && platform.isSrgForgeLike() && hasRefmaplessMixinConfig(fs, mixinConfigs)) {
+				} else if (mixinConfigs != null && !mixinConfigs.isBlank() && platform.isSrgForgeLike() && hasRefmaplessMixinConfig(fs, mixinConfigs)) {
 					// On Forge, we support both mixins with and without refmaps.
 					// Check for mixins without them, and if any are found, mark the remap type as static.
 					refmapRemapType = MixinRemapType.STATIC;
@@ -138,15 +138,15 @@ public record ArtifactMetadata(boolean isFabricMod, RemapRequirements remapRequi
 			try {
 				final JsonObject json = LoomGradlePlugin.GSON.fromJson(Files.readString(fs.getPath(mixinConfig)), JsonObject.class);
 
-				if (!json.has("refmap")) {
-					return true;
+				if (json.has("refmap")) {
+					return false;
 				}
 			} catch (JsonSyntaxException e) {
 				LOGGER.error("Could not parse mixin config in file {}", mixinConfig, e);
 			}
 		}
 
-		return false;
+		return true;
 	}
 
 	// Validates that the version matches or is less than the current loom version
