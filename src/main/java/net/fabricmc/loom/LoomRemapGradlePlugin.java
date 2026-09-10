@@ -31,7 +31,7 @@ import org.gradle.api.Project;
  * An alias for `net.fabricmc.fabric-loom-remap` to `fabric-loom`.
  */
 public class LoomRemapGradlePlugin implements Plugin<Project> {
-	public static final String NAME = "dev.architectury.loom-remap";
+	public static final String NAME = "com.crystaelix.loom-remap";
 
 	@Override
 	public void apply(Project target) {
