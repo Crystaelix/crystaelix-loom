@@ -29,7 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -40,6 +39,7 @@ import blue.endless.jankson.JsonElement;
 import blue.endless.jankson.JsonGrammar;
 import blue.endless.jankson.api.SyntaxError;
 import com.google.gson.JsonObject;
+import dev.architectury.loom.extensions.AccessWidenerInjection;
 import dev.architectury.loom.extensions.ModBuildExtensions;
 import dev.architectury.loom.metadata.QuiltModJson;
 import org.gradle.api.artifacts.ConfigurationContainer;
@@ -60,7 +60,6 @@ import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.PathSensitive;
 import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.SourceSet;
-import org.gradle.api.tasks.TaskProvider;
 import org.jetbrains.annotations.ApiStatus;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
@@ -71,7 +70,6 @@ import net.fabricmc.classtweaker.api.ClassTweakerWriter;
 import net.fabricmc.classtweaker.visitors.ClassTweakerRemapperVisitor;
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.build.nesting.JarNester;
-import net.fabricmc.loom.build.nesting.NestableJarGenerationTask;
 import net.fabricmc.loom.configuration.accesswidener.AccessWidenerFile;
 import net.fabricmc.loom.configuration.mods.ArtifactMetadata;
 import net.fabricmc.loom.task.service.ClientEntriesService;
@@ -161,17 +159,13 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 		super();
 		LoomGradleExtension extension = LoomGradleExtension.get(getProject());
 		final ConfigurationContainer configurations = getProject().getConfigurations();
-		getClasspath().from(configurations.getByName(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
+		getClasspath().from(configurations.named(JavaPlugin.COMPILE_CLASSPATH_CONFIGURATION_NAME));
 		getAddNestedDependencies().convention(true).finalizeValueOnRead();
 		getOptimizeFabricModJson().convention(false).finalizeValueOnRead();
 		getReadMixinConfigsFromManifest().convention(LoomGradleExtension.get(getProject()).isForgeLike()).finalizeValueOnRead();
 		getInjectAccessWidener().convention(false);
 
 		getTargetNamespace().set(extension.getProductionNamespace());
-
-		TaskProvider<NestableJarGenerationTask> processIncludeJars = getProject().getTasks().named(Constants.Task.PROCESS_INCLUDE_JARS, NestableJarGenerationTask.class);
-		getNestedJars().from(processIncludeJars.map(task -> getProject().fileTree(task.getOutputDirectory())));
-		getNestedJars().builtBy(processIncludeJars);
 
 		getUseMixinAP().set(extension.getMixin().getUseLegacyMixinAp());
 
@@ -340,24 +334,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 			if (!getParameters().getInjectAccessWidener().isPresent()) return false;
 
 			Path path = getParameters().getInjectAccessWidener().getAsFile().get().toPath();
-
-			byte[] remapped = remapAccessWidener(Files.readAllBytes(path));
-
-			ZipUtils.add(outputFile, path.getFileName().toString(), remapped);
-
-			if (getParameters().getPlatform().get() == ModPlatform.QUILT) {
-				ZipUtils.transformJson(JsonObject.class, outputFile, Map.of("quilt.mod.json", json -> {
-					json.addProperty("access_widener", path.getFileName().toString());
-					return json;
-				}));
-				return true;
-			}
-
-			ZipUtils.transformJson(JsonObject.class, outputFile, Map.of("fabric.mod.json", json -> {
-				json.addProperty("accessWidener", path.getFileName().toString());
-				return json;
-			}));
-
+			AccessWidenerInjection.injectAccessWidener(outputFile, path, this::remapAccessWidener, getParameters().getPlatform().get());
 			return true;
 		}
 
@@ -404,7 +381,7 @@ public abstract class RemapJarTask extends AbstractRemapJarTask {
 				return;
 			}
 
-			JarNester.nestJars(nestedJars.getFiles(), outputFile.toFile(), getParameters().getPlatform().get(), LOGGER);
+			JarNester.nestJars(nestedJars.getFiles(), outputFile.toFile(), getParameters().getPlatform().get());
 		}
 
 		private void addRefmaps(ServiceFactory serviceFactory) throws IOException {

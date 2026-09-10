@@ -43,6 +43,7 @@ import dev.architectury.loom.forge.dependency.ForgeModClassesService;
 import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.file.DirectoryProperty;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
@@ -52,9 +53,12 @@ import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
 import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
+import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.gradle.process.ExecOperations;
 import org.gradle.process.ProcessForkOptions;
@@ -65,11 +69,14 @@ import org.slf4j.LoggerFactory;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.configuration.classpathgroups.ClasspathGroup;
-import net.fabricmc.loom.configuration.ide.RunConfig;
+import net.fabricmc.loom.api.RunConfiguration;
+import net.fabricmc.loom.configuration.ide.RunConfigUtils;
+import net.fabricmc.loom.configuration.ide.RuntimeLibraries;
 import net.fabricmc.loom.task.prod.TracyCapture;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.Platform;
 import net.fabricmc.loom.util.XVFBExistsValueSource;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 @DisableCachingByDefault
@@ -79,8 +86,10 @@ public abstract class AbstractRunTask extends JavaExec {
 	@Inject
 	protected abstract ExecOperations getExecOperations();
 
-	@Input
-	protected abstract Property<String> getInternalRunDir();
+	// TODO maybe revert back to a string
+	@InputFiles
+	@PathSensitive(PathSensitivity.NONE)
+	protected abstract DirectoryProperty getInternalRunDir();
 	@Input
 	protected abstract MapProperty<String, Object> getInternalEnvironmentVars();
 	@Input
@@ -124,16 +133,16 @@ public abstract class AbstractRunTask extends JavaExec {
 	@Input
 	protected abstract Property<String> getRunConfigName();
 
-	public AbstractRunTask(Function<Project, RunConfig> configProvider) {
+	public AbstractRunTask(Function<Project, RunConfiguration> configProvider) {
 		super();
 		setGroup(Constants.TaskGroup.FABRIC);
 
-		final Provider<RunConfig> config = getProject().provider(() -> configProvider.apply(getProject()));
+		final Provider<RunConfiguration> config = getProject().provider(() -> configProvider.apply(getProject()));
 
-		getInternalClasspath().from(config.map(runConfig -> runConfig.sourceSet.getRuntimeClasspath()
+		getInternalClasspath().from(config.map(runConfig -> SourceSetHelper.getSourceSetByName(runConfig.getSourceSet().get(), getProject()).getRuntimeClasspath()
 				.filter(new LibraryFilter(
-						config.get().getExcludedLibraryPaths(getProject()),
-						config.get().configName)
+						RuntimeLibraries.getExcludedLibraryPaths(getProject(), config.get()),
+						RunConfigUtils.getDisplayName(config.get(), getProject()))
 				)));
 
 		JavaPluginExtension java = getProject().getExtensions().getByType(JavaPluginExtension.class);
@@ -142,7 +151,7 @@ public abstract class AbstractRunTask extends JavaExec {
 		getArgumentProviders().add(new CommandLineArgumentProvider() {
 			@Override
 			public Iterable<String> asArguments() {
-				return config.get().programArgs;
+				return config.get().getProgramArguments().get();
 			}
 		});
 		getArgumentProviders().add(new CommandLineArgumentProvider() {
@@ -155,12 +164,12 @@ public abstract class AbstractRunTask extends JavaExec {
 				return List.of();
 			}
 		});
-		getMainClass().set(config.map(runConfig -> runConfig.mainClass));
+		getMainClass().set(config.flatMap(RunConfiguration::getDevLaunchMainClass));
 		getJvmArguments().addAll(getProject().provider(this::getGameJvmArgs));
 
-		getInternalRunDir().set(config.map(runConfig -> runConfig.runDir));
-		getInternalEnvironmentVars().set(config.map(runConfig -> runConfig.environmentVariables));
-		getInternalJvmArgs().set(config.map(runConfig -> runConfig.vmArgs));
+		getInternalRunDir().set(config.flatMap(RunConfiguration::getRunDirectory));
+		getInternalEnvironmentVars().set(config.flatMap(RunConfiguration::getEnvironmentVars));
+		getInternalJvmArgs().set(config.flatMap(RunConfiguration::getJvmArguments));
 		getUseArgFile().set(getProject().provider(this::canUseArgFile));
 		getProjectDir().set(getProject().getProjectDir().getAbsolutePath());
 
@@ -168,7 +177,7 @@ public abstract class AbstractRunTask extends JavaExec {
 		getUseXvfb().convention(
 				getProject().getProviders().environmentVariable("CI")
 						.map(value -> Platform.CURRENT.getOperatingSystem().isLinux())
-						.zip(config, (enabled, runConfig) -> enabled && runConfig.environment.equals("client"))
+						.zip(config, (enabled, runConfig) -> enabled && runConfig.getRuntimeEnvironment().get().equals("client"))
 						.flatMap(enabled -> enabled ? XVFBExistsValueSource.exists(getProject()) : getProject().getProviders().provider(() -> false))
 						.orElse(false)
 		);
@@ -178,7 +187,7 @@ public abstract class AbstractRunTask extends JavaExec {
 		getArgFilePath().set(argFile.getAbsolutePath());
 
 		getModClassesOptions().set(ForgeModClassesService.createOptions(getProject(), getProject().provider(() -> ClasspathGroup.ClasspathType.GRADLE)));
-		getRunConfigName().set(config.map(runConfig -> runConfig.name));
+		getRunConfigName().set(config.map(RunConfiguration::getName));
 	}
 
 	private boolean canUseArgFile() {
@@ -210,9 +219,21 @@ public abstract class AbstractRunTask extends JavaExec {
 			super.setClasspath(getInternalClasspath());
 		}
 
-		setWorkingDir(new File(getProjectDir().get(), getInternalRunDir().get()));
+		setWorkingDir(getInternalRunDir());
 		environment(getInternalEnvironmentVars().get());
 		configureForgeModClasses(this);
+
+		Path runDirectory = getInternalRunDir().getAsFile().get().toPath();
+
+		if (!Files.exists(runDirectory)) {
+			try {
+				Files.createDirectories(runDirectory);
+			} catch (IOException e) {
+				throw new UncheckedIOException("Failed to create run directory " + runDirectory, e);
+			}
+		} else if (!Files.isDirectory(runDirectory)) {
+			LOGGER.warn("Run directory {} is not a directory", runDirectory);
+		}
 
 		// Wrap with Tracy if enabled
 		if (getTracyCapture().isPresent()) {

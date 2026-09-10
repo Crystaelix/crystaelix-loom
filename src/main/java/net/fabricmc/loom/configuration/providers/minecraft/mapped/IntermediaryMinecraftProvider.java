@@ -57,6 +57,12 @@ public abstract sealed class IntermediaryMinecraftProvider<M extends MinecraftPr
 		return MavenScope.GLOBAL;
 	}
 
+	@Override
+	protected boolean requiresBackupJars() {
+		// No backup jars should be created for intermediary providers, as we never decompile the intermediary jars.
+		return false;
+	}
+
 	public static final class MergedImpl extends IntermediaryMinecraftProvider<MergedMinecraftProvider> implements Merged {
 		public MergedImpl(Project project, MergedMinecraftProvider minecraftProvider) {
 			super(project, minecraftProvider);

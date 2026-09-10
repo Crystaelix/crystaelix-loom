@@ -31,6 +31,8 @@ import java.util.function.Consumer;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectList;
+import org.gradle.api.NamedDomainObjectProvider;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -52,7 +54,6 @@ import net.fabricmc.loom.api.mappings.layered.spec.LayeredMappingSpecBuilder;
 import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
 import net.fabricmc.loom.api.remapping.RemapperExtension;
 import net.fabricmc.loom.api.remapping.RemapperParameters;
-import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
 import net.fabricmc.loom.configuration.providers.minecraft.ManifestLocations;
@@ -368,6 +369,37 @@ public interface LoomGradleExtensionAPI {
 	@ApiStatus.Experimental
 	void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars);
 
+	/**
+	 * Includes dependencies from a configuration in the specified jar task.
+	 *
+	 * <p>This is the task-bound equivalent of the default {@code include} configuration.
+	 * Dependencies are converted to nestable jars before they are nested into the jar task.
+	 *
+	 * <p>Example usage:
+	 * {@snippet lang=groovy :
+	 * loom {
+	 * 	   nestJars(tasks.jar, configurations.myInclude)
+	 * 	   nestJars(tasks.named('remapJar'), configurations.named('myRemapInclude'))
+	 * }
+	 * }
+	 *
+	 * @param jarTask the jar task to include dependencies in
+	 * @param configuration the configuration containing dependencies to include
+	 * @since 1.17
+	 */
+	@ApiStatus.Experimental
+	void nestJars(TaskProvider<? extends Jar> jarTask, Configuration configuration);
+
+	/**
+	 * Includes dependencies from a lazily provided configuration in the specified jar task.
+	 *
+	 * @param jarTask the jar task to include dependencies in
+	 * @param configuration the lazy configuration containing dependencies to include
+	 * @since 1.17
+	 */
+	@ApiStatus.Experimental
+	void nestJars(TaskProvider<? extends Jar> jarTask, NamedDomainObjectProvider<? extends Configuration> configuration);
+
 	// ===================
 	//  Architectury Loom
 	// ===================
@@ -426,13 +458,22 @@ public interface LoomGradleExtensionAPI {
 
 	boolean shouldGenerateSrgTiny();
 
+	/**
+	 * @deprecated Unsupported.
+	 */
+	@Deprecated
 	default void addTaskBeforeRun(String task) {
 		this.getTasksBeforeRun().add(task);
 	}
 
+	/**
+	 * @deprecated Unsupported.
+	 */
+	@Deprecated
 	List<String> getTasksBeforeRun();
 
-	List<Consumer<RunConfig>> getSettingsPostEdit();
+	@ApiStatus.Internal
+	List<Consumer<RunConfiguration>> getSettingsPostEdit();
 
 	/**
 	 * Gets the Forge extension used to configure Forge details.
@@ -492,4 +533,46 @@ public interface LoomGradleExtensionAPI {
 	default void cleanroom(Action<ForgeExtensionAPI> action) {
 		forge(action);
 	}
+
+	/**
+	 * Injects the {@linkplain #getAccessWidenerPath() project access widener or class tweaker file} into the specified jar and adds it to the mod metadata file.
+	 *
+	 * <p>Only the access widener file name is considered; it will be placed top-level in the mod jar.
+	 *
+	 * <p>Only one injected access widener or class tweaker is supported per jar task.
+	 * When using this API with obfuscated Minecraft versions, the target task must be a {@link net.fabricmc.loom.task.RemapJarTask}
+	 * so that the access widener gets remapped properly.
+	 *
+	 * <p>This method only works in Fabric and Quilt mods.
+	 *
+	 * <p>Code example:
+	 * {@snippet : lang=groovy
+	 * loom.injectAccessWidener(tasks.named('jar'))
+	 * }
+	 *
+	 * @param jarTask the task to inject to
+	 * @see net.fabricmc.loom.task.RemapJarTask#getInjectAccessWidener()
+	 */
+	@ApiStatus.Experimental
+	default void injectAccessWidener(TaskProvider<? extends Jar> jarTask) {
+		injectAccessWidener(jarTask, getAccessWidenerPath());
+	}
+
+	/**
+	 * Injects an access widener or class tweaker file into the specified jar and adds it to the mod metadata file.
+	 *
+	 * <p>Only the access widener file name is considered; it will be placed top-level in the mod jar.
+	 *
+	 * <p>Only one injected access widener or class tweaker is supported per jar task.
+	 * When using this API with obfuscated Minecraft versions, the target task must be a {@link net.fabricmc.loom.task.RemapJarTask}
+	 * so that the access widener gets remapped properly.
+	 *
+	 * <p>This method only works in Fabric and Quilt mods.
+	 *
+	 * @param jarTask           the task to inject to
+	 * @param accessWidenerFile the access widener file, resolved as per {@link org.gradle.api.Project#file(Object)}
+	 * @see net.fabricmc.loom.task.RemapJarTask#getInjectAccessWidener()
+	 */
+	@ApiStatus.Experimental
+	void injectAccessWidener(TaskProvider<? extends Jar> jarTask, Object accessWidenerFile);
 }

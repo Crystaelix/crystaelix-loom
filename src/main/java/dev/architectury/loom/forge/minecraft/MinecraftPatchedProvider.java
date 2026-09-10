@@ -269,6 +269,11 @@ public class MinecraftPatchedProvider {
 		Files.deleteIfExists(mcOutput);
 		Files.copy(minecraftPatchedIntermediateAtJar, mcOutput);
 
+		// No manifest available to reuse here (mergetool's output has none, Forge's own jar is signed).
+		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(mcOutput, false)) {
+			createEmptyJarManifest(fs.getPath("META-INF", "MANIFEST.MF"));
+		}
+
 		copyUserdevFiles(forgeUserdevJar, mcOutput);
 		applyLoomPatchVersion(mcOutput);
 	}
@@ -296,7 +301,7 @@ public class MinecraftPatchedProvider {
 	private void createUnobfuscatedPrePatchJar() throws IOException {
 		try (var tempFiles = new TempFiles(); var serviceFactory = new ScopedServiceFactory()) {
 			McpExecutorBuilder builder = createMcpExecutor(tempFiles.directory("loom-mcp"));
-			builder.enqueue("preProcessJar");
+			builder.enqueue(getExtension().isNeoForge() ? "preProcessJar" : "merge");
 			McpExecutor executor = serviceFactory.get(builder.build());
 			Path output = executor.execute();
 			Files.copy(output, minecraftIntermediateJar, StandardCopyOption.REPLACE_EXISTING);
@@ -337,9 +342,18 @@ public class MinecraftPatchedProvider {
 		Files.deleteIfExists(minecraftClientExtra);
 
 		try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(minecraftClientExtra, true)) {
+			Path manifestPath = fs.getPath("META-INF", "MANIFEST.MF");
+
 			if (getExtension().isNeoForge()) {
-				Path manifestPath = fs.getPath("META-INF", "MANIFEST.MF");
 				generateNeoForgeDistManifest(serviceFactory, manifestPath);
+			} else if (getExtension().isForge()) {
+				// Generates an empty manifest for forge client-extra jar.
+				// In ForgeGradle, it copies the client manifest when generating client-extra.
+				//
+				// This will let UnionFS read this instead of the merged mapped jar in later launch process. (see ForgeUserdevLaunchHandler#getMinecraftPaths, Forge 1.21.1+)
+				// Otherwise, it reads MANIFEST.MF of the merged minecraft jar which may have 'Automatic-Module-Name',
+				// overriding "minecraft" mod id to it.
+				createEmptyJarManifest(manifestPath);
 			}
 		}
 
@@ -588,7 +602,9 @@ public class MinecraftPatchedProvider {
 
 	private void remapCoreMods(Path patchedJar, ServiceFactory serviceFactory) throws Exception {
 		MemoryMappingTree mappings = getMappingTree(serviceFactory);
-		CoreModClassRemapper.remapJar(project, getExtension().getPlatform().get(), patchedJar, mappings);
+
+		final boolean isRuntimeMojang = getExtension().getForgeProvider().usesMojangAtRuntime();
+		CoreModClassRemapper.remapJar(project, isRuntimeMojang, patchedJar, mappings);
 	}
 
 	protected void patchJars(Path input, Path output, Type type) throws Exception {
@@ -600,7 +616,7 @@ public class MinecraftPatchedProvider {
 		deleteParameterNames(output);
 
 		if (getExtension().isForgeLikeAndNotOfficial() && !getExtension().isUnobfuscatedForge()) {
-			fixParameterAnnotation(output);
+			fixParameterAnnotation(minecraftPatchedIntermediateJar);
 		}
 
 		logger.lifecycle(":patched jars in " + stopwatch.stop());
@@ -816,6 +832,21 @@ public class MinecraftPatchedProvider {
 			try (OutputStream stream = Files.newOutputStream(manifestPath, StandardOpenOption.CREATE)) {
 				manifest.write(stream);
 			}
+		}
+	}
+
+	private void createEmptyJarManifest(Path manifestPath) throws IOException {
+		if (Files.exists(manifestPath)) {
+			return;
+		}
+
+		Manifest manifest = new Manifest();
+		manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+
+		Files.createDirectories(manifestPath.getParent());
+
+		try (OutputStream out = Files.newOutputStream(manifestPath)) {
+			manifest.write(out);
 		}
 	}
 

@@ -369,7 +369,7 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 			}
 
 			for (ForgeRunTemplate.Resolved template : getRunTemplates().get()) {
-				// Note: lowercase to match RunConfig which lowercases all user input for
+				// Note: lowercase to match DefaultRunConfigurationSettings which lowercases all user input for
 				// RunConfigSettings.environment
 				var env = template.name().toLowerCase(Locale.ROOT);
 

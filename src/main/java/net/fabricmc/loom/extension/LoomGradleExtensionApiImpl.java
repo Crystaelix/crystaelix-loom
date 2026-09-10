@@ -35,10 +35,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.Consumer;
 
+import dev.architectury.loom.extensions.AccessWidenerInjection;
 import org.gradle.api.Action;
 import org.gradle.api.NamedDomainObjectContainer;
 import org.gradle.api.NamedDomainObjectList;
+import org.gradle.api.NamedDomainObjectProvider;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.Configuration;
 import org.gradle.api.artifacts.Dependency;
 import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
@@ -61,6 +64,7 @@ import net.fabricmc.loom.api.MixinExtensionAPI;
 import net.fabricmc.loom.api.ModSettings;
 import net.fabricmc.loom.api.NeoForgeExtensionAPI;
 import net.fabricmc.loom.api.RemapConfigurationSettings;
+import net.fabricmc.loom.api.RunConfiguration;
 import net.fabricmc.loom.api.decompilers.DecompilerOptions;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
@@ -69,8 +73,8 @@ import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
 import net.fabricmc.loom.api.remapping.RemapperExtension;
 import net.fabricmc.loom.api.remapping.RemapperParameters;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
+import net.fabricmc.loom.configuration.IncludeConfigurations;
 import net.fabricmc.loom.configuration.RemapConfigurations;
-import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.mods.ArtifactMetadata;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
@@ -83,6 +87,8 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfigura
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.task.GenerateSourcesTask;
+import net.fabricmc.loom.task.NestJarsAction;
+import net.fabricmc.loom.task.RemapJarTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeprecationHelper;
 import net.fabricmc.loom.util.Lazy;
@@ -146,7 +152,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	private final Property<Boolean> silentMojangMappingsLicense;
 	public Boolean generateSrgTiny = null;
 	private final List<String> tasksBeforeRun = Collections.synchronizedList(new ArrayList<>());
-	public final List<Consumer<RunConfig>> settingsPostEdit = new ArrayList<>();
+	public final List<Consumer<RunConfiguration>> settingsPostEdit = new ArrayList<>();
 
 	protected LoomGradleExtensionApiImpl(Project project, LoomFiles directories) {
 		this.jarProcessors = project.getObjects().listProperty(JarProcessor.class)
@@ -623,6 +629,29 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		return jars;
 	}
 
+	@Override
+	public void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars) {
+		jarTask.configure(task -> {
+			if (task instanceof RemapJarTask remapJarTask) {
+				// For RemapJarTask, add to the nestedJars property
+				remapJarTask.getNestedJars().from(jars);
+			} else {
+				// For regular Jar tasks (non-remap mode), add a NestJarsAction with the FileCollection
+				NestJarsAction.addToTask(task, jars, getPlatform().get());
+			}
+		});
+	}
+
+	@Override
+	public void nestJars(TaskProvider<? extends Jar> jarTask, Configuration configuration) {
+		IncludeConfigurations.nestJars(getProject(), jarTask, configuration);
+	}
+
+	@Override
+	public void nestJars(TaskProvider<? extends Jar> jarTask, NamedDomainObjectProvider<? extends Configuration> configuration) {
+		IncludeConfigurations.nestJars(getProject(), jarTask, configuration);
+	}
+
 	private boolean notObfuscated() {
 		return LoomGradleExtension.get(getProject()).disableObfuscation();
 	}
@@ -674,7 +703,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
-	public List<Consumer<RunConfig>> getSettingsPostEdit() {
+	public List<Consumer<RunConfiguration>> getSettingsPostEdit() {
 		return settingsPostEdit;
 	}
 
@@ -686,6 +715,11 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	@Override
 	public void neoForge(Action<NeoForgeExtensionAPI> action) {
 		action.execute(getNeoForge());
+	}
+
+	@Override
+	public void injectAccessWidener(TaskProvider<? extends Jar> jarTask, Object accessWidenerFile) {
+		AccessWidenerInjection.addToTask(jarTask, accessWidenerFile, getPlatform().get());
 	}
 
 	private static String computeDefaultProductionNamespace(Project project) {
@@ -739,11 +773,6 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 
 		@Override
 		public NeoForgeExtensionAPI getNeoForge() {
-			throw new RuntimeException("Yeah... something is really wrong");
-		}
-
-		@Override
-		public void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars) {
 			throw new RuntimeException("Yeah... something is really wrong");
 		}
 	}
