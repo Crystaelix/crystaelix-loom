@@ -65,10 +65,11 @@ import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.compile.JavaCompile;
 import org.gradle.api.tasks.javadoc.Javadoc;
 import org.gradle.api.tasks.testing.Test;
-import org.jetbrains.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.InterfaceInjectionExtensionAPI;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
+import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.build.mixin.GroovyApInvoker;
 import net.fabricmc.loom.build.mixin.JavaApInvoker;
 import net.fabricmc.loom.build.mixin.KaptApInvoker;
@@ -76,8 +77,10 @@ import net.fabricmc.loom.build.mixin.ScalaApInvoker;
 import net.fabricmc.loom.configuration.accesswidener.AccessWidenerJarProcessor;
 import net.fabricmc.loom.configuration.ifaceinject.InterfaceInjectionProcessor;
 import net.fabricmc.loom.configuration.mods.ModConfigurationRemapper;
+import net.fabricmc.loom.configuration.processors.JsrAnnotationRemapperProcessor;
 import net.fabricmc.loom.configuration.processors.MinecraftJarProcessorManager;
 import net.fabricmc.loom.configuration.processors.ModJavadocProcessor;
+import net.fabricmc.loom.configuration.processors.speccontext.DebofConfiguration;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingsFactory;
 import net.fabricmc.loom.configuration.providers.mappings.MappingConfiguration;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
@@ -91,6 +94,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftPr
 import net.fabricmc.loom.extension.MixinExtension;
 import net.fabricmc.loom.task.service.ClasspathGroupService;
 import net.fabricmc.loom.util.Checksum;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ExceptionUtil;
 import net.fabricmc.loom.util.ProcessUtil;
 import net.fabricmc.loom.util.gradle.GradleUtils;
@@ -119,6 +123,10 @@ public abstract class CompileConfiguration implements Runnable {
 
 		afterEvaluationWithService((serviceFactory) -> {
 			final ConfigContext configContext = new ConfigContextImpl(getProject(), serviceFactory, extension);
+
+			if (extension.disableObfuscation()) {
+				DebofConfiguration.create(getProject());
+			}
 
 			MinecraftSourceSets.get(getProject()).afterEvaluate(getProject());
 
@@ -180,8 +188,10 @@ public abstract class CompileConfiguration implements Runnable {
 
 		finalizedBy("eclipse", "genEclipseRuns");
 
-		// Add the "dev" jar to the "namedElements" configuration
-		getProject().artifacts(artifactHandler -> artifactHandler.add(Configurations.NAMED_ELEMENTS, getTasks().named("jar")));
+		if (!extension.disableObfuscation()) {
+			// Add the "dev" jar to the "namedElements" configuration
+			getProject().artifacts(artifactHandler -> artifactHandler.add(Configurations.NAMED_ELEMENTS, getTasks().named("jar")));
+		}
 
 		// Ensure that the encoding is set to UTF-8, no matter what the system default is
 		// this fixes some edge cases with special characters not displaying correctly
@@ -210,6 +220,18 @@ public abstract class CompileConfiguration implements Runnable {
 		final MinecraftMetadataProvider metadataProvider = MinecraftMetadataProvider.create(configContext);
 		extension.setMetadataProvider(metadataProvider);
 
+		if (metadataProvider.getVersionMeta().isVersionOrNewer(Constants.RELEASE_TIME_1_21_11_UNOBFUSCATED_SNAPSHOTS) && !metadataProvider.getVersionMeta().downloads().containsKey("client_mappings")) {
+			extension.getProductionNamespace().convention(MappingsNamespace.OFFICIAL.toString());
+		} else {
+			extension.getProductionNamespace().convention(IntermediaryNamespaces.intermediaryNamespace(extension.getPlatform().get()).toString());
+		}
+
+		// runtimeIntermediaryNamespace defaults to productionNamespace;
+		// overridden later for Forge with mojang-at-runtime (see configureCompile)
+		extension.getRuntimeIntermediaryNamespace().convention(extension.getProductionNamespace());
+
+		extension.getProductionNamespace().finalizeValue();
+
 		var jarConfiguration = extension.getMinecraftJarConfiguration().get();
 
 		// Provide the vanilla mc jars
@@ -219,9 +241,15 @@ public abstract class CompileConfiguration implements Runnable {
 			throw new UnsupportedOperationException("Using %s with split jars is not supported!".formatted(extension.getPlatform().get().displayName()));
 		}
 
-		if (extension.isForgeLike() && extension.disableObfuscation()) {
-			// TODO: Allow setting up Forge and NeoForge without obfuscation
-			throw new UnsupportedOperationException("Using %s without obfuscation is not supported!".formatted(extension.getPlatform().get().displayName()));
+		// TODO: Re-evaluate if isUnobfuscatedForge() should even exist, or if the checks below should be removed
+		if (extension.isForgeLike() && extension.disableObfuscation() && !extension.isUnobfuscatedForge()) {
+			throw new UnsupportedOperationException(("Architectury Loom: The dev.architectury.loom-no-remap plugin was applied, but the Minecraft version '%s' is obfuscated. "
+					+ "Forge / NeoForge support for obfuscated Minecraft is through the regular dev.architectury.loom plugin instead.").formatted(metadataProvider.getMinecraftVersion()));
+		}
+
+		if (extension.isForgeLike() && !extension.disableObfuscation() && extension.isUnobfuscatedForge()) {
+			throw new UnsupportedOperationException(("Architectury Loom: The Minecraft version '%s' is unobfuscated (no mappings). "
+					+ "Forge / NeoForge support for unobfuscated Minecraft is through the dev.architectury.loom-no-remap plugin instead.").formatted(metadataProvider.getMinecraftVersion()));
 		}
 
 		extension.setMinecraftProvider(minecraftProvider);
@@ -250,6 +278,15 @@ public abstract class CompileConfiguration implements Runnable {
 
 			mappingConfiguration.setupPost(project);
 			mappingConfiguration.applyToProject(getProject(), mappingsDep);
+		} else if (extension.isUnobfuscatedForge()) {
+			// Unobfuscated NeoForge: run the forge patch pipeline without requiring user-provided mappings.
+			setupDependencyProviders(project, extension);
+			ForgeLibrariesProvider.provide(null, project);
+			((ForgeMinecraftProvider) minecraftProvider).getPatchedProvider().provide();
+		}
+
+		if (extension.isForgeLike() && extension.getForgeProvider().usesMojangAtRuntime() && !extension.isUnobfuscatedForge()) {
+			extension.getRuntimeIntermediaryNamespace().set(MappingsNamespace.MOJANG.toString());
 		}
 
 		if (extension.isForgeLike()) {
@@ -261,7 +298,7 @@ public abstract class CompileConfiguration implements Runnable {
 		}
 
 		// Provide the remapped mc jars
-		@Nullable IntermediaryMinecraftProvider<?> intermediaryMinecraftProvider = extension.disableObfuscation() ? null : jarConfiguration.createIntermediaryMinecraftProvider(project);
+		IntermediaryMinecraftProvider<?> intermediaryMinecraftProvider = extension.disableObfuscation() ? null : jarConfiguration.createIntermediaryMinecraftProvider(project);
 		NamedMinecraftProvider<?> namedMinecraftProvider = jarConfiguration.createNamedMinecraftProvider(project);
 
 		registerGameProcessors(configContext);
@@ -288,11 +325,13 @@ public abstract class CompileConfiguration implements Runnable {
 			srgMinecraftProvider.provide(provideContext);
 		}
 
-		if (extension.isForgeLike() && extension.getForgeProvider().usesMojangAtRuntime()) {
+		if (extension.isForgeLike() && extension.getForgeProvider().usesMojangAtRuntime() && !extension.isUnobfuscatedForge()) {
 			final MojangMappedMinecraftProvider<?> mojangMappedMinecraftProvider = jarConfiguration.createMojangMappedMinecraftProvider(project);
 			extension.setMojangMappedMinecraftProvider(mojangMappedMinecraftProvider);
 			mojangMappedMinecraftProvider.provide(provideContext);
 		}
+
+		extension.getRuntimeIntermediaryNamespace().finalizeValue();
 	}
 
 	private void registerGameProcessors(ConfigContext configContext) {
@@ -309,6 +348,10 @@ public abstract class CompileConfiguration implements Runnable {
 
 		if (interfaceInjection.isEnabled()) {
 			extension.addMinecraftJarProcessor(InterfaceInjectionProcessor.class, "fabric-loom:interface-inject", interfaceInjection.getEnableDependencyInterfaceInjection().get());
+		}
+
+		if (!extension.getRemapJsrAnnotationsToJetBrains().get()) {
+			extension.addMinecraftJarProcessor(JsrAnnotationRemapperProcessor.class, "fabric-loom:jsr-annotations");
 		}
 
 		if (extension.isForgeLike()) {

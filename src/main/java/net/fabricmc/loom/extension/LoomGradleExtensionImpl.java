@@ -43,8 +43,11 @@ import org.gradle.api.file.ConfigurableFileCollection;
 import org.gradle.api.file.FileCollection;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.jvm.tasks.Jar;
 
 import net.fabricmc.loom.LoomGradleExtension;
+import net.fabricmc.loom.LoomNoRemapGradlePlugin;
 import net.fabricmc.loom.api.ForgeExtensionAPI;
 import net.fabricmc.loom.api.NeoForgeExtensionAPI;
 import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
@@ -63,6 +66,8 @@ import net.fabricmc.loom.configuration.providers.minecraft.mapped.IntermediaryMi
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MojangMappedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.NamedMinecraftProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.SrgMinecraftProvider;
+import net.fabricmc.loom.task.NestJarsAction;
+import net.fabricmc.loom.task.RemapJarTask;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.Lazy;
 import net.fabricmc.loom.util.ModPlatform;
@@ -137,8 +142,13 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 		disableObfuscation = project.getObjects().property(Boolean.class);
 		dontRemap = project.getObjects().property(Boolean.class);
 
-		disableObfuscation.set(project.provider(() -> GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DISABLE_OBFUSCATION)));
-		disableObfuscation.finalizeValueOnRead();
+		if (project.getPluginManager().hasPlugin(LoomNoRemapGradlePlugin.NAME)) {
+			disableObfuscation.set(true);
+			disableObfuscation.finalizeValue();
+		} else {
+			disableObfuscation.set(project.provider(() -> GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DISABLE_OBFUSCATION)));
+			disableObfuscation.finalizeValueOnRead();
+		}
 
 		dontRemap.set(disableObfuscation.map(notObfuscated -> notObfuscated || GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DONT_REMAP)));
 		dontRemap.finalizeValueOnRead();
@@ -185,6 +195,7 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	@Override
 	public MappingConfiguration getMappingConfiguration() {
 		if (disableObfuscation()) {
+			project.getLogger().lifecycle("help", new RuntimeException());
 			throw new UnsupportedOperationException("Cannot get mappings configuration in a non-obfuscated environment");
 		}
 
@@ -408,5 +419,23 @@ public abstract class LoomGradleExtensionImpl extends LoomGradleExtensionApiImpl
 	public void setForgeRunsProvider(ForgeRunsProvider forgeRunsProvider) {
 		ModPlatform.assertForgeLike(this);
 		this.forgeRunsProvider = forgeRunsProvider;
+	}
+
+	@Override
+	public MappingsNamespace getProductionNamespaceEnum() {
+		return Objects.requireNonNull(MappingsNamespace.of(getProductionNamespace().get()), "Invalid production namespace");
+	}
+
+	@Override
+	public void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars) {
+		jarTask.configure(task -> {
+			if (task instanceof RemapJarTask remapJarTask) {
+				// For RemapJarTask, add to the nestedJars property
+				remapJarTask.getNestedJars().from(jars);
+			} else {
+				// For regular Jar tasks (non-remap mode), add a NestJarsAction with the FileCollection
+				NestJarsAction.addToTask(task, jars, getPlatform().get());
+			}
+		});
 	}
 }

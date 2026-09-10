@@ -51,7 +51,8 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.Internal;
 import org.gradle.api.tasks.Nested;
-import org.jetbrains.annotations.Nullable;
+import org.gradle.api.tasks.Optional;
+import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.util.download.Download;
 import net.fabricmc.loom.util.download.DownloadBuilder;
@@ -90,7 +91,9 @@ public final class McpExecutor extends Service<McpExecutor.Options> {
 
 		/**
 		 * Mappings extracted from {@code data.mappings} in the MCPConfig JSON.
+		 * Optional for spec 6+ where mappings are absent.
 		 */
+		@Optional
 		@InputFile
 		RegularFileProperty getMappings();
 
@@ -217,6 +220,10 @@ public final class McpExecutor extends Service<McpExecutor.Options> {
 
 		@Override
 		public Path mappings() {
+			if (!getOptions().getMappings().isPresent()) {
+				throw new UnsupportedOperationException("Mappings are not available (spec 6+ unobfuscated)");
+			}
+
 			return getOptions().getMappings().get().getAsFile().toPath();
 		}
 

@@ -34,7 +34,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.gradle.api.JavaVersion;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPluginExtension;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -130,7 +130,7 @@ public abstract class MinecraftProvider {
 	}
 
 	private void verifyJars() throws IOException, SignatureVerificationFailure {
-		if (GradleUtils.getBooleanProperty(getProject(), Constants.Properties.DISABLE_MINECRAFT_VERIFICATION)) {
+		if (!GradleUtils.getBooleanProperty(getProject(), Constants.Properties.ENABLE_MINECRAFT_VERIFICATION)) {
 			LOGGER.info("Skipping Minecraft jar verification!");
 			return;
 		}

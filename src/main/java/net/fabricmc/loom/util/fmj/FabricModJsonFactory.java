@@ -44,7 +44,7 @@ import dev.architectury.loom.metadata.ModsToml;
 import dev.architectury.loom.metadata.QuiltModJson;
 import org.gradle.api.Project;
 import org.gradle.api.tasks.SourceSet;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

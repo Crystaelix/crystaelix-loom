@@ -32,7 +32,7 @@ import java.nio.file.StandardCopyOption;
 
 import com.crystaelix.loom.legacyforge.LegacyPatchConverter;
 import org.gradle.api.Project;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.configuration.DependencyInfo;
 import net.fabricmc.loom.util.Constants;

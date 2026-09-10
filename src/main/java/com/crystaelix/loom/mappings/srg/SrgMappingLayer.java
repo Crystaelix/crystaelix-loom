@@ -31,7 +31,7 @@ import java.util.Map;
 import java.util.function.Supplier;
 
 import com.crystaelix.loom.mappings.MCPReader;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.api.mappings.layered.MappingLayer;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;

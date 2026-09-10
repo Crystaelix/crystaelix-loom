@@ -40,7 +40,7 @@ import java.util.stream.IntStream;
 import dev.architectury.loom.forge.dependency.SrgProvider;
 import dev.architectury.loom.util.collection.CollectionUtil;
 import dev.architectury.loom.util.collection.Multimap;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
@@ -174,7 +174,7 @@ public final class ForgeMappingsMerger {
 		return output;
 	}
 
-	private void mergeField(MappingTree.ClassMapping newNsClass, MappingTree.FieldMapping newNsField, @Nullable MappingTree.ClassMapping tinyClass) throws IOException {
+	private void mergeField(MappingTree.ClassMapping newNsClass, MappingTree.FieldMapping newNsField, MappingTree.@Nullable ClassMapping tinyClass) throws IOException {
 		String[] dstNames = createDstNameArray(newNsField);
 		MappingTree.FieldMapping tinyField = null;
 		String srcDesc = newNsField.getSrcDesc();
@@ -206,7 +206,7 @@ public final class ForgeMappingsMerger {
 		}
 	}
 
-	private void mergeMethod(MappingTree.ClassMapping newNsClass, MappingTree.MethodMapping newNsMethod, @Nullable MappingTree.ClassMapping tinyClass) throws IOException {
+	private void mergeMethod(MappingTree.ClassMapping newNsClass, MappingTree.MethodMapping newNsMethod, MappingTree.@Nullable ClassMapping tinyClass) throws IOException {
 		String[] dstNames = createDstNameArray(newNsMethod);
 		MappingTree.MethodMapping tinyMethod = null;
 		String intermediaryName, namedName;
@@ -230,7 +230,7 @@ public final class ForgeMappingsMerger {
 				return;
 			}
 
-			@Nullable MappingTree.MethodMapping fillMethod = null;
+			MappingTree.@Nullable MethodMapping fillMethod = null;
 
 			if (extra != null) {
 				MappingTree.MethodMapping extraMethod = extra.getMethod(newNsClass.getSrcName(), newNsMethod.getSrcName(), newNsMethod.getSrcDesc());

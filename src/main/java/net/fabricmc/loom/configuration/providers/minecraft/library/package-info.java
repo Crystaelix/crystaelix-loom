@@ -22,27 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.processors;
+@NullMarked
+package net.fabricmc.loom.configuration.providers.minecraft.library;
 
-import java.util.List;
-
-import net.fabricmc.loom.api.processor.SpecContext;
-import net.fabricmc.loom.util.fmj.FabricModJson;
-
-// TODO debof - fixme
-public record SpecContextDebofImpl(List<FabricModJson> modDependencies,
-									List<FabricModJson> localMods) implements SpecContext {
-	public static SpecContext create() {
-		return new SpecContextDebofImpl(List.of(), List.of());
-	}
-
-	@Override
-	public List<FabricModJson> modDependenciesCompileRuntime() {
-		return List.of();
-	}
-
-	@Override
-	public List<FabricModJson> modDependenciesCompileRuntimeClient() {
-		return List.of();
-	}
-}
+import org.jspecify.annotations.NullMarked;

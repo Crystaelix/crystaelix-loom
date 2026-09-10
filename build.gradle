@@ -23,11 +23,11 @@ tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).all {
 }
 
 group = "com.crystaelix"
-def baseVersion = '1.13'
+def baseVersion = '1.14'
 
 def ENV = System.getenv()
 //def runNumber = ENV.GITHUB_RUN_NUMBER ?: "9999"
-def runNumber = "18"
+def runNumber = "0"
 
 def isSnapshot = ENV.PR_NUM != null
 
@@ -66,11 +66,11 @@ configurations.configureEach {
 		// I am sorry, for now
 		// failOnNonReproducibleResolution()
 	}
+}
 
-	if (canBeConsumed)  {
-		attributes {
-			attribute(GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE, objects.named(GradlePluginApiVersion, GradleVersion.current().getVersion()))
-		}
+configurations.named(JavaPlugin.RUNTIME_ELEMENTS_CONFIGURATION_NAME) {
+	attributes {
+		attribute(GradlePluginApiVersion.GRADLE_PLUGIN_API_VERSION_ATTRIBUTE, objects.named(GradlePluginApiVersion, GradleVersion.current().getVersion()))
 	}
 }
 
@@ -278,6 +278,14 @@ gradlePlugin {
 			id = 'com.crystaelix.loom'
 			implementationClass = 'net.fabricmc.loom.LoomGradlePlugin'
 		}
+		fabricLoomNoRemap {
+			id = 'com.crystaelix.loom-no-remap'
+			implementationClass = 'net.fabricmc.loom.LoomNoRemapGradlePlugin'
+		}
+		fabricLoomRemap {
+			id = 'com.crystaelix.loom-remap'
+			implementationClass = 'net.fabricmc.loom.LoomRemapGradlePlugin'
+		}
 		fabricLoomCompanion {
 			id = 'com.crystaelix.loom-companion'
 			implementationClass = 'net.fabricmc.loom.LoomCompanionGradlePlugin'
@@ -353,7 +361,7 @@ publishing {
 						Node groupId = dependency.appendChild(document.createElement('groupId'))
 						groupId.setTextContent(project.group)
 						Node artifactId = dependency.appendChild(document.createElement('artifactId'))
-						artifactId.setTextContent(project.archivesBaseName)
+						artifactId.setTextContent(project.base.archivesName.get())
 						Node version = dependency.appendChild(document.createElement('version'))
 						version.setTextContent(project.version)
 					})
@@ -399,6 +407,8 @@ tasks.register('writeActionsTestMatrix') {
 				className = className.substring(className.lastIndexOf("integration/") + "integration/".length()).replace('/', '.')
 
 				testMatrix.add("net.fabricmc.loom.test.integration.${className}")
+			} else if (it.name.endsWith("noRemap")) {
+				testMatrix.add("net.fabricmc.loom.test.integration.noRemap.*")
 			}
 		}
 
@@ -460,3 +470,4 @@ abstract class PrintActionsTestName extends DefaultTask {
 }
 
 apply from: rootProject.file('gradle/versions.gradle')
+apply from: rootProject.file('gradle/package-info.gradle')

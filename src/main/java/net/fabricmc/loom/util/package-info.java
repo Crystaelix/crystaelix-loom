@@ -22,40 +22,7 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.test.unit
+@NullMarked
+package net.fabricmc.loom.util;
 
-import org.gradle.api.file.ConfigurableFileCollection
-import org.gradle.api.provider.Property
-import spock.lang.Specification
-
-import net.fabricmc.loom.test.util.TestServiceFactory
-
-class TestServiceFactoryTest extends Specification {
-	def "property"() {
-		setup:
-		def test = TestServiceFactory.objectFactory.newInstance(PropertyTest)
-		when:
-		test.example.set("hello")
-		then:
-		test.example.isPresent()
-		test.example.get() == "hello"
-	}
-
-	def "file property"() {
-		setup:
-		def test = TestServiceFactory.objectFactory.newInstance(FileTest)
-		when:
-		test.example.from(new File("test"))
-		then:
-		test.example.files.size() == 1
-		test.example.singleFile != null
-	}
-
-	interface PropertyTest {
-		Property<String> getExample()
-	}
-
-	interface FileTest {
-		ConfigurableFileCollection getExample()
-	}
-}
+import org.jspecify.annotations.NullMarked;

@@ -25,7 +25,7 @@
 package com.crystaelix.loom.mappings.srg;
 
 import dev.architectury.loom.forge.dependency.SrgProvider;
-import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
 import net.fabricmc.loom.api.mappings.layered.spec.FileSpec;
