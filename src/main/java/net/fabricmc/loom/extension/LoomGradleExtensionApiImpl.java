@@ -68,9 +68,11 @@ import net.fabricmc.loom.api.mappings.layered.spec.LayeredMappingSpecBuilder;
 import net.fabricmc.loom.api.processor.MinecraftJarProcessor;
 import net.fabricmc.loom.api.remapping.RemapperExtension;
 import net.fabricmc.loom.api.remapping.RemapperParameters;
+import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.RemapConfigurations;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
+import net.fabricmc.loom.configuration.mods.ArtifactMetadata;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
 import net.fabricmc.loom.configuration.providers.mappings.GeneratedIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.mappings.LayeredMappingSpec;
@@ -81,6 +83,7 @@ import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfigura
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftMetadataProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftSourceSets;
 import net.fabricmc.loom.task.GenerateSourcesTask;
+import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.DeprecationHelper;
 import net.fabricmc.loom.util.Lazy;
 import net.fabricmc.loom.util.MirrorUtil;
@@ -111,10 +114,13 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	protected final Property<String> intermediary;
 	protected final Property<IntermediateMappingsProvider> intermediateMappingsProvider;
 	private final Property<String> productionNamespace;
-	private final Property<String> runtimeIntermediaryNamespace;
+	private final Property<Boolean> useIntermediateMappings;
+	private final Property<String> defaultMixinRemapType;
 	private final Property<Boolean> remapJsrAnnotationsToJetBrains;
 	private final Property<Boolean> runtimeOnlyLog4j;
+	private final Property<Boolean> runtimeOnlyLwjglGraphics;
 	private final Property<Boolean> splitModDependencies;
+	private final Property<Boolean> uncompressNestedJars;
 	private final Property<MinecraftJarConfiguration<?, ?, ?>> minecraftJarConfiguration;
 	private final Property<Boolean> splitEnvironmentalSourceSet;
 	private final InterfaceInjectionExtensionAPI interfaceInjectionExtension;
@@ -167,9 +173,14 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		this.intermediary = project.getObjects().property(String.class)
 				.convention(DEFAULT_INTERMEDIARY_URL);
 		this.productionNamespace = project.getObjects().property(String.class);
+		this.productionNamespace.convention(project.provider(() -> computeDefaultProductionNamespace(project)));
 		this.productionNamespace.finalizeValueOnRead();
-		this.runtimeIntermediaryNamespace = project.getObjects().property(String.class);
-		this.runtimeIntermediaryNamespace.finalizeValueOnRead();
+		this.useIntermediateMappings = project.getObjects().property(Boolean.class);
+		this.useIntermediateMappings.convention(project.provider(() -> !LoomGradleExtension.get(project).getMetadataProvider().isUnobfuscated()));
+		this.useIntermediateMappings.finalizeValueOnRead();
+		this.defaultMixinRemapType = project.getObjects().property(String.class);
+		this.defaultMixinRemapType.convention(project.provider(() -> ArtifactMetadata.MixinRemapType.getDefaultValue(project).name()));
+		this.defaultMixinRemapType.finalizeValueOnRead();
 
 		this.intermediateMappingsProvider = project.getObjects().property(IntermediateMappingsProvider.class);
 		this.intermediateMappingsProvider.finalizeValueOnRead();
@@ -214,8 +225,14 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 		this.runtimeOnlyLog4j = project.getObjects().property(Boolean.class).convention(false);
 		this.runtimeOnlyLog4j.finalizeValueOnRead();
 
+		this.runtimeOnlyLwjglGraphics = project.getObjects().property(Boolean.class).convention(false);
+		this.runtimeOnlyLwjglGraphics.finalizeValueOnRead();
+
 		this.splitModDependencies = project.getObjects().property(Boolean.class).convention(true);
 		this.splitModDependencies.finalizeValueOnRead();
+
+		this.uncompressNestedJars = project.getObjects().property(Boolean.class).convention(false);
+		this.uncompressNestedJars.finalizeValueOnRead();
 
 		this.interfaceInjectionExtension = project.getObjects().newInstance(InterfaceInjectionExtensionAPI.class);
 		this.interfaceInjectionExtension.getIsEnabled().convention(false);
@@ -405,6 +422,16 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
+	public Property<Boolean> getUseIntermediateMappings() {
+		return useIntermediateMappings;
+	}
+
+	@Override
+	public Property<String> getDefaultMixinRemapType() {
+		return defaultMixinRemapType;
+	}
+
+	@Override
 	public IntermediateMappingsProvider getIntermediateMappingsProvider() {
 		if (LoomGradleExtension.get(getProject()).disableObfuscation()) {
 			throw new UnsupportedOperationException("Cannot get intermediate mappings provider in a non-obfuscated environment");
@@ -480,8 +507,18 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
+	public Property<Boolean> getRuntimeOnlyLwjglGraphics() {
+		return runtimeOnlyLwjglGraphics;
+	}
+
+	@Override
 	public Property<Boolean> getSplitModDependencies() {
 		return splitModDependencies;
+	}
+
+	@Override
+	public Property<Boolean> getUncompressNestedJars() {
+		return uncompressNestedJars;
 	}
 
 	@Override
@@ -605,11 +642,6 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	}
 
 	@Override
-	public Property<String> getRuntimeIntermediaryNamespace() {
-		return runtimeIntermediaryNamespace;
-	}
-
-	@Override
 	public Provider<ModPlatform> getPlatform() {
 		return platform;
 	}
@@ -654,6 +686,18 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 	@Override
 	public void neoForge(Action<NeoForgeExtensionAPI> action) {
 		action.execute(getNeoForge());
+	}
+
+	private static String computeDefaultProductionNamespace(Project project) {
+		final LoomGradleExtension extension = LoomGradleExtension.get(project);
+
+		if (extension.getMetadataProvider().isUnobfuscated()) {
+			return MappingsNamespace.OFFICIAL.toString();
+		} else if (extension.isForge() && extension.getMetadataProvider().getVersionMeta().isVersionOrNewer(Constants.Forge.RELEASE_TIME_1_20_6)) {
+			return MappingsNamespace.MOJANG.toString();
+		} else {
+			return IntermediaryNamespaces.intermediaryNamespace(extension.getPlatform().get()).toString();
+		}
 	}
 
 	// This is here to ensure that LoomGradleExtensionApiImpl compiles without any unimplemented methods

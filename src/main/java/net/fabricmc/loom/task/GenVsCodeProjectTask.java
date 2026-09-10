@@ -32,7 +32,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -52,6 +51,7 @@ import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.LoomGradlePlugin;
@@ -64,6 +64,7 @@ import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 // Recommended vscode plugin pack:
 // https://marketplace.visualstudio.com/items?itemName=vscjava.vscode-java-pack
+@DisableCachingByDefault
 public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	// Prevent Gradle from running vscode task asynchronously
 	@ServiceReference(SyncTaskBuildService.NAME)
@@ -84,7 +85,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 	public GenVsCodeProjectTask() {
 		setGroup(Constants.TaskGroup.IDE);
 		getLaunchConfigurations().set(getProject().provider(this::getConfigurations));
-		getLaunchJson().convention(getProject().getRootProject().getLayout().getProjectDirectory().file(".vscode/launch.json"));
+		getLaunchJson().convention(getProject().getIsolated().getRootProject().getProjectDirectory().file(".vscode/launch.json"));
 		getModClassesOptions().set(ForgeModClassesService.createOptions(getProject(), getProject().provider(() -> ClasspathGroup.ClasspathType.VSCODE)));
 	}
 
@@ -145,7 +146,7 @@ public abstract class GenVsCodeProjectTask extends AbstractLoomTask {
 				}
 			}
 
-			final List<JsonElement> toRemove = new LinkedList<>();
+			final List<JsonElement> toRemove = new ArrayList<>();
 
 			// Remove any existing with the same name
 			for (JsonElement jsonElement : configurations) {

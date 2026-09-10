@@ -54,11 +54,15 @@ import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.api.tasks.TaskAction;
+import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.LoomGradlePlugin;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftVersionMeta;
 import net.fabricmc.loom.configuration.providers.minecraft.mapped.MappedMinecraftProvider;
@@ -68,6 +72,7 @@ import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.ModPlatform;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
+@DisableCachingByDefault
 public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	@Input
 	protected abstract Property<String> getVersionInfoJson();
@@ -104,7 +109,11 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	@Input
 	protected abstract Property<String> getProductionNamespace();
 
+	@Input
+	protected abstract Property<String> getDefaultMixinRemapType();
+
 	@InputFile
+	@PathSensitive(PathSensitivity.ABSOLUTE)
 	@Optional
 	public abstract RegularFileProperty getRemapClasspathFile();
 
@@ -127,11 +136,13 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 	@ApiStatus.Internal
 	@InputFile
 	@Optional
+	@PathSensitive(PathSensitivity.ABSOLUTE)
 	protected abstract RegularFileProperty getPlatformMappingFile();
 
 	@ApiStatus.Internal
 	@InputFiles
 	@Optional
+	@PathSensitive(PathSensitivity.ABSOLUTE)
 	protected abstract ConfigurableFileCollection getMappingJars();
 
 	@ApiStatus.Internal
@@ -156,7 +167,8 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 		getAssetsDirectoryPath().set(new File(getExtension().getFiles().getUserCache(), "assets").getAbsolutePath());
 		getNativesDirectoryPath().set(getExtension().getFiles().getNativesDirectory(getProject()).getAbsolutePath());
 		getDevLauncherConfig().set(getExtension().getFiles().getDevLauncherConfig());
-		getProductionNamespace().set(getExtension().getProductionNamespaceEnum().toString());
+		getProductionNamespace().set(getExtension().getProductionNamespaceEnum().map(MappingsNamespace::toString));
+		getDefaultMixinRemapType().set(getExtension().getDefaultMixinRemapTypeEnum().map(remapType -> remapType.toString().toLowerCase(Locale.ROOT)));
 
 		if (!getExtension().disableObfuscation()) {
 			getPlatformMappingFile().set(getProject().getLayout().file(getProject().provider(() -> getExtension().getPlatformMappingFile().toFile())));
@@ -202,7 +214,8 @@ public abstract class GenerateDLIConfigTask extends AbstractLoomTask {
 				.property("log4j2.formatMsgNoLookups", "true")
 				.property("log4j2.disable.jmx", "true")
 				.property("log4j2.formatMsgNoLookups", "true")
-				.property("fabric.defaultModDistributionNamespace", getProductionNamespace().get());
+				.property("fabric.defaultModDistributionNamespace", getProductionNamespace().get())
+				.property("fabric.defaultMixinRemapType", getDefaultMixinRemapType().get());
 
 		if (getRemapClasspathFile().isPresent()) {
 			launchConfig.property(!quilt ? "fabric.remapClasspathFile" : "loader.remapClasspathFile", getRemapClasspathFile().get().getAsFile().getAbsolutePath());

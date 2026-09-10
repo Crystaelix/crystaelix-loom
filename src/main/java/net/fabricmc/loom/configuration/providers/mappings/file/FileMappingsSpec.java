@@ -24,19 +24,26 @@
 
 package net.fabricmc.loom.configuration.providers.mappings.file;
 
+import java.util.Optional;
+
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
+import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.api.mappings.layered.spec.FileSpec;
 import net.fabricmc.loom.api.mappings.layered.spec.MappingsSpec;
 
 public record FileMappingsSpec(
 		FileSpec fileSpec, String mappingPath,
-		String fallbackSourceNamespace, String fallbackTargetNamespace,
+		Optional<String> fallbackSourceNamespace, String fallbackTargetNamespace,
 		boolean enigma, boolean unpick, boolean annotations,
 		boolean skipClassNames,
-		String mergeNamespace
+		Optional<String> mergeNamespace,
+		Optional<String> fallbackUnpickConstants
 ) implements MappingsSpec<FileMappingsLayer> {
 	@Override
 	public FileMappingsLayer createLayer(MappingContext context) {
-		return new FileMappingsLayer(fileSpec.get(context), mappingPath, fallbackSourceNamespace, fallbackTargetNamespace, enigma, unpick, annotations, skipClassNames, mergeNamespace);
+		String finalFallbackSourceNamespace = fallbackSourceNamespace.orElse(context.productionNamespace());
+		String finalMergeNamespace = mergeNamespace.orElse(context.isUsingIntermediateMappings() ? MappingsNamespace.INTERMEDIARY.toString() : MappingsNamespace.OFFICIAL.toString());
+		String finalFallbackUnpickConstants = unpick ? fallbackUnpickConstants.orElse(null) : null;
+		return new FileMappingsLayer(fileSpec.get(context), mappingPath, finalFallbackSourceNamespace, fallbackTargetNamespace, enigma, unpick, annotations, skipClassNames, finalMergeNamespace, finalFallbackUnpickConstants);
 	}
 }

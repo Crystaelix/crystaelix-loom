@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2023 FabricMC
+ * Copyright (c) 2023-2026 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,21 +26,28 @@ package net.fabricmc.loom.extension;
 
 import javax.inject.Inject;
 
+import dev.architectury.loom.accesstransformer.Aw2At;
+import org.gradle.api.Action;
 import org.gradle.api.Project;
 import org.gradle.api.file.ConfigurableFileCollection;
+import org.gradle.api.tasks.TaskProvider;
+import org.gradle.jvm.tasks.Jar;
 import org.gradle.api.provider.Property;
 
 import net.fabricmc.loom.api.NeoForgeExtensionAPI;
+import net.fabricmc.loom.api.aw2at.Aw2AtSettings;
 
-public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
+public abstract class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	private final ConfigurableFileCollection accessTransformers;
 	private final Property<Boolean> transitiveAccessTransformers;
+	private final Project project;
 
 	@Inject
 	public NeoForgeExtensionImpl(Project project) {
 		accessTransformers = project.getObjects().fileCollection();
 		transitiveAccessTransformers = project.getObjects().property(Boolean.class).convention(false);
 		transitiveAccessTransformers.finalizeValueOnRead();
+		this.project = project;
 	}
 
 	@Override
@@ -56,5 +63,10 @@ public class NeoForgeExtensionImpl implements NeoForgeExtensionAPI {
 	@Override
 	public Property<Boolean> getEnableTransitiveAccessTransformers() {
 		return transitiveAccessTransformers;
+	}
+
+	@Override
+	public void convertAccessWideners(TaskProvider<? extends Jar> jarTask, Action<? super Aw2AtSettings> action) {
+		Aw2At.addToTask(project, jarTask, action);
 	}
 }

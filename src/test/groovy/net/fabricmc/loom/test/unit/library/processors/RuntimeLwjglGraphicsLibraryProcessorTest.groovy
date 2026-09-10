@@ -1,7 +1,7 @@
 /*
  * This file is part of fabric-loom, licensed under the MIT License (MIT).
  *
- * Copyright (c) 2022-2025 FabricMC
+ * Copyright (c) 2026 FabricMC
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -22,29 +22,24 @@
  * SOFTWARE.
  */
 
-package net.fabricmc.loom.configuration.providers.mappings;
+package net.fabricmc.loom.test.unit.library.processors
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import net.fabricmc.loom.configuration.providers.minecraft.library.Library
+import net.fabricmc.loom.configuration.providers.minecraft.library.LibraryProcessor
+import net.fabricmc.loom.configuration.providers.minecraft.library.processors.RuntimeLwjglGraphicsLibraryProcessor
+import net.fabricmc.loom.test.util.PlatformTestUtils
 
-import net.fabricmc.loom.api.mappings.intermediate.IntermediateMappingsProvider;
+class RuntimeLwjglGraphicsLibraryProcessorTest extends LibraryProcessorTest {
+	def "Make lwjgl-opengl runtime"() {
+		when:
+		def (original, context) = getLibs("26.1-snapshot-10", PlatformTestUtils.MAC_OS_X64)
+		def processor = new RuntimeLwjglGraphicsLibraryProcessor(PlatformTestUtils.MAC_OS_X64, context)
+		def processed = mockLibraryProcessorManager().processLibraries([processor], original)
 
-/**
- * A bit of a hack, creates an empty intermediary mapping file to be used for mc versions without any intermediate mappings.
- */
-public abstract class NoOpIntermediateMappingsProvider extends IntermediateMappingsProvider {
-	private static final String HEADER_OFFICIAL_MERGED = "tiny\t2\t0\tofficial\tintermediary";
-	private static final String HEADER_OFFICIAL_LEGACY_MERGED = "tiny\t2\t0\tintermediary\tclientOfficial\tserverOfficial";
+		then:
+		processor.applicationResult == LibraryProcessor.ApplicationResult.CAN_APPLY
 
-	@Override
-	public void provide(Path tinyMappings) throws IOException {
-		Files.writeString(tinyMappings, getUseSplitOfficialNamespaces().get() ? HEADER_OFFICIAL_LEGACY_MERGED : HEADER_OFFICIAL_MERGED, StandardCharsets.UTF_8);
-	}
-
-	@Override
-	public String getName() {
-		return "empty";
+		findLibrary("org.lwjgl:lwjgl-opengl", original).target() == Library.Target.COMPILE
+		findLibrary("org.lwjgl:lwjgl-opengl", processed).target() == Library.Target.RUNTIME
 	}
 }

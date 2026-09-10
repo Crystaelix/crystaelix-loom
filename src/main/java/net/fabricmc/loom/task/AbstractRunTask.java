@@ -50,14 +50,15 @@ import org.gradle.api.provider.MapProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.provider.Provider;
 import org.gradle.api.specs.Spec;
+import org.gradle.api.tasks.Classpath;
 import org.gradle.api.tasks.Input;
-import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.JavaExec;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.process.CommandLineArgumentProvider;
 import org.gradle.process.ExecOperations;
 import org.gradle.process.ProcessForkOptions;
+import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -68,8 +69,10 @@ import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.task.prod.TracyCapture;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.Platform;
+import net.fabricmc.loom.util.XVFBExistsValueSource;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
+@DisableCachingByDefault
 public abstract class AbstractRunTask extends JavaExec {
 	private static final Logger LOGGER = LoggerFactory.getLogger(AbstractRunTask.class);
 
@@ -90,7 +93,7 @@ public abstract class AbstractRunTask extends JavaExec {
 	// We use a string here, as it's technically an output, but we don't want to cache runs of this task by default.
 	protected abstract Property<String> getArgFilePath();
 	@Input
-	protected abstract Property<Boolean> getUseXvfb();
+	public abstract Property<Boolean> getUseXvfb();
 
 	@Nested
 	@Optional
@@ -109,7 +112,7 @@ public abstract class AbstractRunTask extends JavaExec {
 	}
 
 	// We control the classpath, as we use a ArgFile to pass it over the command line: https://docs.oracle.com/javase/7/docs/technotes/tools/windows/javac.html#commandlineargfile
-	@InputFiles
+	@Classpath
 	protected abstract ConfigurableFileCollection getInternalClasspath();
 
 	@ApiStatus.Internal
@@ -161,10 +164,12 @@ public abstract class AbstractRunTask extends JavaExec {
 		getUseArgFile().set(getProject().provider(this::canUseArgFile));
 		getProjectDir().set(getProject().getProjectDir().getAbsolutePath());
 
-		// Set up useXvfb: convention is CI + Linux
+		// Set up useXvfb: convention is CI + Linux + client run config + xvfb exists
 		getUseXvfb().convention(
 				getProject().getProviders().environmentVariable("CI")
 						.map(value -> Platform.CURRENT.getOperatingSystem().isLinux())
+						.zip(config, (enabled, runConfig) -> enabled && runConfig.environment.equals("client"))
+						.flatMap(enabled -> enabled ? XVFBExistsValueSource.exists(getProject()) : getProject().getProviders().provider(() -> false))
 						.orElse(false)
 		);
 
@@ -234,13 +239,11 @@ public abstract class AbstractRunTask extends JavaExec {
 	}
 
 	private void execWithXvfb() {
-		String xvfbRunPath = "/usr/bin/xvfb-run";
-
 		String javaExec = getJavaLauncher().get().getExecutablePath().getAsFile().getAbsolutePath();
 
 		// Build the complete command line: xvfb-run --auto-servernum java [jvm-args] mainclass [program-args]
 		List<String> commandLine = new ArrayList<>();
-		commandLine.add(xvfbRunPath);
+		commandLine.add(XVFBExistsValueSource.XVFB);
 		commandLine.add("--auto-servernum");
 		commandLine.add(javaExec);
 		commandLine.addAll(getJvmArguments().get());

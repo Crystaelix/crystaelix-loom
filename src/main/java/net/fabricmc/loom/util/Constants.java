@@ -135,8 +135,8 @@ public class Constants {
 	}
 
 	public static final class MixinArguments {
-		public static final String IN_MAP_FILE_NAMED_INTERMEDIARY = "inMapFileNamedIntermediary";
-		public static final String OUT_MAP_FILE_NAMED_INTERMEDIARY = "outMapFileNamedIntermediary";
+		public static final String IN_MAP_FILE_NAMED = "inMapFileNamed";
+		public static final String OUT_MAP_FILE_NAMED = "outMapFileNamed";
 		public static final String OUT_REFMAP_FILE = "outRefMapFile";
 		public static final String DEFAULT_OBFUSCATION_ENV = "defaultObfuscationEnv";
 		public static final String QUIET = "quiet";
@@ -242,6 +242,12 @@ public class Constants {
 		 */
 		public static final int MIN_USE_MOJANG_NS_VERSION = 50;
 		public static final int MIN_FORCE_LOGGER_CONFIG_VERSION = 47;
+
+		/**
+		 * The release time of 1.20.6, the minimum version of Minecraft where Forge uses "mojang" as the namespace in production.
+		 * Equivalent to {@link #MIN_USE_MOJANG_NS_VERSION}.
+		 */
+		public static final String RELEASE_TIME_1_20_6 = "2024-04-29T12:40:45+00:00";
 
 		private Forge() {
 		}

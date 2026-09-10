@@ -88,17 +88,7 @@ public abstract class MinecraftProvider {
 
 		initFiles();
 
-		final MinecraftVersionMeta.JavaVersion javaVersion = getVersionInfo().javaVersion();
-
-		if (javaVersion != null) {
-			final int requiredMajorJavaVersion = getVersionInfo().javaVersion().majorVersion();
-			final JavaVersion requiredJavaVersion = JavaVersion.toVersion(requiredMajorJavaVersion);
-			final JavaVersion currentJavaVersion = getProject().getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
-
-			if (!currentJavaVersion.isCompatibleWith(requiredJavaVersion)) {
-				LOGGER.warn("Minecraft " + minecraftVersion() + " requires Java " + requiredJavaVersion + " but Gradle is targetting " + currentJavaVersion);
-			}
-		}
+		verifyJavaVersion();
 
 		boolean didDownload = downloadJars();
 
@@ -116,6 +106,27 @@ public abstract class MinecraftProvider {
 
 		final MinecraftLibraryProvider libraryProvider = new MinecraftLibraryProvider(this, configContext.project());
 		libraryProvider.provide();
+	}
+
+	private void verifyJavaVersion() {
+		if (configContext.extension().disableObfuscation()) {
+			return;
+		}
+
+		// Verify that the current Gradle Java version is the same or higher than the required Java version for this Minecraft version.
+		// This is required so the remappers can retrive the correct context of Java classes when remapping.
+
+		final MinecraftVersionMeta.JavaVersion javaVersion = getVersionInfo().javaVersion();
+
+		if (javaVersion != null) {
+			final int requiredMajorJavaVersion = getVersionInfo().javaVersion().majorVersion();
+			final JavaVersion requiredJavaVersion = JavaVersion.toVersion(requiredMajorJavaVersion);
+			final JavaVersion currentJavaVersion = getProject().getExtensions().getByType(JavaPluginExtension.class).getTargetCompatibility();
+
+			if (!JavaVersion.current().isCompatibleWith(requiredJavaVersion)) {
+				LOGGER.warn("Minecraft " + minecraftVersion() + " requires Java " + requiredJavaVersion + " but Gradle is targetting " + currentJavaVersion);
+			}
+		}
 	}
 
 	protected void initFiles() {

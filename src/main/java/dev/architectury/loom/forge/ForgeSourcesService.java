@@ -31,11 +31,12 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.jspecify.annotations.Nullable;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
-import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.task.GenerateSourcesTask;
 import net.fabricmc.loom.task.service.MappingsService;
 import net.fabricmc.loom.task.service.SourceRemapperService;
@@ -55,6 +56,7 @@ public final class ForgeSourcesService extends Service<ForgeSourcesService.Optio
 
 	public interface Options extends Service.Options {
 		@InputFiles
+		@PathSensitive(PathSensitivity.NONE)
 		ConfigurableFileCollection getForgeSourceJars();
 
 		@Optional
@@ -118,7 +120,7 @@ public final class ForgeSourcesService extends Service<ForgeSourcesService.Optio
 
 			if (!extension.isUnobfuscatedForge()) {
 				options.getSourceRemapperService().set(SourceRemapperService.TYPE.create(project, sro -> {
-					final MappingsNamespace sourceNamespace = IntermediaryNamespaces.intermediaryNamespace(project);
+					final MappingsNamespace sourceNamespace = extension.getProductionNamespaceEnum().get();
 					final String targetNamespace = MappingsNamespace.NAMED.toString();
 
 					sro.getMappings().set(MappingsService.createOptionsWithProjectMappings(

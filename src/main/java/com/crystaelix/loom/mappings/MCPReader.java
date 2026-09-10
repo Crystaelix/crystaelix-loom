@@ -360,7 +360,7 @@ public class MCPReader {
 		}
 
 		@Override
-		public @Nullable MappingTree.MethodArgMapping getArg(int argPosition, int lvIndex, @Nullable String srcName) {
+		public MappingTree.@Nullable MethodArgMapping getArg(int argPosition, int lvIndex, @Nullable String srcName) {
 			return null;
 		}
 
@@ -370,7 +370,7 @@ public class MCPReader {
 		}
 
 		@Override
-		public @Nullable MappingTree.MethodVarMapping getVar(int lvtRowIndex, int lvIndex, int startOpIdx, int endOpIdx, @Nullable String srcName) {
+		public MappingTree.@Nullable MethodVarMapping getVar(int lvtRowIndex, int lvIndex, int startOpIdx, int endOpIdx, @Nullable String srcName) {
 			return null;
 		}
 
@@ -405,7 +405,7 @@ public class MCPReader {
 		}
 
 		@Override
-		public @Nullable MappingTree.MethodVarMapping removeVar(int lvtRowIndex, int lvIndex, int startOpIdx, int endOpIdx, @Nullable String srcName) {
+		public MappingTree.@Nullable MethodVarMapping removeVar(int lvtRowIndex, int lvIndex, int startOpIdx, int endOpIdx, @Nullable String srcName) {
 			throw new UnsupportedOperationException();
 		}
 

@@ -391,7 +391,7 @@ public class MinecraftPatchedProvider {
 		MemoryMappingTree mappings = getMappingTree(serviceFactory);
 
 		TinyRemapper.Builder builder = TinyRemapper.newRemapper()
-				.withMappings(TinyRemapperHelper.create(mappings, from, to, true))
+				.withMappings(TinyRemapperHelper.create(mappings, from, to, true, true))
 				.withMappings(InnerClassRemapper.of(InnerClassRemapper.readClassNames(input), mappings, from, to))
 				.renameInvalidLocals(true)
 				.rebuildSourceFilenames(true);

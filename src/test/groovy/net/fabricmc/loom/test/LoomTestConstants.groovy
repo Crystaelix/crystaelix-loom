@@ -40,15 +40,12 @@ class LoomTestConstants {
 	public final static List<String> STANDARD_TEST_VERSIONS = (NIGHTLY_EXISTS ? [
 		DEFAULT_GRADLE,
 		PRE_RELEASE_GRADLE
-	] : [
-		DEFAULT_GRADLE,
-		LoomTestVersions.GRADLE_LATEST.version()
-	]).shuffled().toArray()
+	] : [DEFAULT_GRADLE]).shuffled().toArray()
 
 	public static final File TEST_DIR = new File("./.gradle/test-files")
 
 	// Try to detect if the debugging agent is enabled.
-	public static final boolean IS_DEBUGGING_ENABLED = ManagementFactory.runtimeMXBean.inputArguments.any { it.startsWith('-agentlib:jdwp') }
+	public static final boolean IS_DEBUGGING_ENABLED = ManagementFactory.runtimeMXBean.inputArguments.any { it.startsWith('-agentlib:jdwp') || it.contains("libasyncProfiler") }
 
 	/**
 	 * Nightly gradle versions get removed after a certain amount of time, lets check to see if its still online before running the tests.

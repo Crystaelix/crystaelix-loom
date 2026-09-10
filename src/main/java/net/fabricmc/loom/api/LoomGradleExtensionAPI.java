@@ -55,7 +55,6 @@ import net.fabricmc.loom.api.remapping.RemapperParameters;
 import net.fabricmc.loom.configuration.ide.RunConfig;
 import net.fabricmc.loom.configuration.ide.RunConfigSettings;
 import net.fabricmc.loom.configuration.processors.JarProcessor;
-import net.fabricmc.loom.configuration.providers.mappings.NoOpIntermediateMappingsProvider;
 import net.fabricmc.loom.configuration.providers.minecraft.ManifestLocations;
 import net.fabricmc.loom.configuration.providers.minecraft.MinecraftJarConfiguration;
 import net.fabricmc.loom.task.GenerateSourcesTask;
@@ -222,7 +221,8 @@ public interface LoomGradleExtensionAPI {
 	 */
 	@ApiStatus.Experimental
 	default void noIntermediateMappings() {
-		setIntermediateMappingsProvider(NoOpIntermediateMappingsProvider.class, p -> { });
+		getUseIntermediateMappings().set(false);
+		getUseIntermediateMappings().finalizeValue();
 	}
 
 	/**
@@ -258,23 +258,27 @@ public interface LoomGradleExtensionAPI {
 	 * <p>This serves as the source namespace for all remapping operations on both the
 	 * Minecraft jar (access wideners, interface injection, javadoc) and mod dependencies.
 	 *
-	 * <p>Convention values:
+	 * <p>Values:
 	 * <ul>
 	 *   <li>Fabric/Quilt (normal versions): {@code intermediary}</li>
-	 *   <li>Forge: {@code srg}</li>
-	 *   <li>NeoForge: {@code mojang}</li>
+	 *   <li>Forge (before 1.20.6): {@code srg}</li>
+	 *   <li>NeoForge and Forge (1.20.6+): {@code mojang}</li>
 	 *   <li>All platforms (unobfuscated 1.21.11+): {@code official}</li>
 	 * </ul>
 	 *
-	 * <p>In architectury-loom, this property replaces both the upstream concept of
-	 * "production namespace" and the platform-specific intermediary namespace, since
-	 * the processed jar is always in the platform's intermediary namespace when
-	 * processors run.
-	 *
 	 * @return the production namespace property
-	 * @see #getRuntimeIntermediaryNamespace()
 	 */
 	Property<String> getProductionNamespace();
+
+	/**
+	 * @return whether to use intermediate mappings
+	 */
+	Property<Boolean> getUseIntermediateMappings();
+
+	/**
+	 * @return the default mixin remap type
+	 */
+	Property<String> getDefaultMixinRemapType();
 
 	@ApiStatus.Experimental
 	Property<MinecraftJarConfiguration<?, ?, ?>> getMinecraftJarConfiguration();
@@ -310,7 +314,25 @@ public interface LoomGradleExtensionAPI {
 
 	Property<Boolean> getRuntimeOnlyLog4j();
 
+	/**
+	 * When enabled, lwjgl-opengl or lwjgl-vulkan will be added as a runtime dependency preventing the mod from compiling against a specific graphics API.
+	 */
+	Property<Boolean> getRuntimeOnlyLwjglGraphics();
+
 	Property<Boolean> getSplitModDependencies();
+
+	/**
+	 * Whether to transform zip entries within nested jars to be using STORED compression.
+	 *
+	 * <p>This will usually reduce the resulting jar size by avoiding double-compression.
+	 *
+	 * <p>However, this will very likely increase the decompressed size during runtime as a side effect.
+	 *
+	 * <p>Default: false
+	 *
+	 * @return the property controlling this toggle
+	 */
+	Property<Boolean> getUncompressNestedJars();
 
 	<T extends RemapperParameters> void addRemapperExtension(Class<? extends RemapperExtension<T>> remapperExtensionClass, Class<T> parametersClass, Action<T> parameterAction);
 
@@ -324,21 +346,31 @@ public interface LoomGradleExtensionAPI {
 	 */
 	FileCollection getNamedMinecraftJars();
 
+	/**
+	 * Nest mod jars from a {@link FileCollection} into the specified jar task.
+	 * This is useful for including locally built mod jars or jars that don't come from Maven.
+	 *
+	 * <p>Important: The jars must already be valid mod jars (containing a fabric.mod.json file).
+	 * Non-mod jars will be rejected.
+	 *
+	 * <p>Example usage:
+	 * {@snippet lang=groovy :
+	 * loom {
+	 *     nestJars(tasks.jar, files('local-mod.jar'))
+	 *     nestJars(tasks.remapJar, tasks.named('buildOtherMod'))
+	 * }
+	 * }
+	 *
+	 * @param jarTask the jar task to nest jars into (can be jar or remapJar)
+	 * @param jars the file collection containing mod jars to nest
+	 * @since 1.14
+	 */
+	@ApiStatus.Experimental
+	void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars);
+
 	// ===================
 	//  Architectury Loom
 	// ===================
-
-	/**
-	 * Returns the runtime intermediary namespace for the current platform and MC version.
-	 * This is the namespace used in the compiled jar at runtime.
-	 *
-	 * <p>Same as {@link #getProductionNamespace()} in most cases, except for Forge
-	 * with mojang-at-runtime where it returns {@code mojang}.
-	 *
-	 * @return the runtime intermediary namespace property
-	 */
-	@ApiStatus.Experimental
-	Property<String> getRuntimeIntermediaryNamespace();
 
 	void silentMojangMappingsLicense();
 
@@ -460,26 +492,4 @@ public interface LoomGradleExtensionAPI {
 	default void cleanroom(Action<ForgeExtensionAPI> action) {
 		forge(action);
 	}
-
-	/**
-	 * Nest mod jars from a {@link FileCollection} into the specified jar task.
-	 * This is useful for including locally built mod jars or jars that don't come from Maven.
-	 *
-	 * <p>Important: The jars must already be valid mod jars (containing a fabric.mod.json file).
-	 * Non-mod jars will be rejected.
-	 *
-	 * <p>Example usage:
-	 * {@snippet lang=groovy :
-	 * loom {
-	 *     nestJars(tasks.jar, files('local-mod.jar'))
-	 *     nestJars(tasks.remapJar, tasks.named('buildOtherMod'))
-	 * }
-	 * }
-	 *
-	 * @param jarTask the jar task to nest jars into (can be jar or remapJar)
-	 * @param jars the file collection containing mod jars to nest
-	 * @since 1.14
-	 */
-	@ApiStatus.Experimental
-	void nestJars(TaskProvider<? extends Jar> jarTask, FileCollection jars);
 }

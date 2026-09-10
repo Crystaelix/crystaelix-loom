@@ -1,11 +1,11 @@
 pluginManagement {
 	plugins {
-		id 'com.crystaelix.loom'
+		id 'com.crystaelix.loom-repositories'
 	}
 }
 
 plugins {
-	id 'com.crystaelix.loom'
+	id 'com.crystaelix.loom-repositories'
 }
 
 dependencyResolutionManagement {

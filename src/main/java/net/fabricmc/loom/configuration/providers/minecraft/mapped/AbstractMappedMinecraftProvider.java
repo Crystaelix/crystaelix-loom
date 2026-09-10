@@ -52,7 +52,6 @@ import org.slf4j.LoggerFactory;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
-import net.fabricmc.loom.build.IntermediaryNamespaces;
 import net.fabricmc.loom.configuration.ConfigContext;
 import net.fabricmc.loom.configuration.mods.dependency.LocalMavenHelper;
 import net.fabricmc.loom.configuration.providers.mappings.IntermediaryMappingsProvider;
@@ -291,7 +290,11 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 		final MinecraftVersionMeta.JavaVersion javaVersion = minecraftProvider.getVersionInfo().javaVersion();
 		final boolean fixRecords = javaVersion != null && javaVersion.majorVersion() >= 16;
 
-		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceFactory(), fromM, toM, fixRecords, (builder) -> {
+		// Arch: disable namespace validation for toM = intermediary when intermediate mappings are disabled.
+		// See https://github.com/FabricMC/fabric-loom/issues/1576.
+		final boolean validateTargetNamespace = !(getTargetNamespace() == MappingsNamespace.INTERMEDIARY && !extension.getUseIntermediateMappings().get());
+
+		TinyRemapper remapper = TinyRemapperHelper.getTinyRemapper(getProject(), configContext.serviceFactory(), fromM, toM, fixRecords, validateTargetNamespace, (builder) -> {
 			if (remappedAnnotations != null) {
 				builder.extraPostApplyVisitor(new AnnotationsApplyVisitor(remappedAnnotations));
 			}
@@ -333,7 +336,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 				className = "cpw.mods.fml.common.registry.ObjectHolderRegistry";
 			}
 
-			final String sourceNamespace = IntermediaryNamespaces.runtimeIntermediary(project);
+			final String sourceNamespace = extension.getProductionNamespace().get();
 			final MemoryMappingTree mappings = mappingsService.getMappingTree();
 			RemapObjectHolderVisitor.remapObjectHolder(remappedJars.outputJar().getPath(), className, mappings, sourceNamespace, "named");
 		}
@@ -342,10 +345,10 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 			try (FileSystemUtil.Delegate fs = FileSystemUtil.getJarFileSystem(remappedJars.outputJar().getPath(), false)) {
 				MappingOption mappingOption = MappingOption.forPlatform(extension);
 				TinyMappingsService mappingsService = extension.getMappingConfiguration().getMappingsService(project, configContext.serviceFactory(), mappingOption);
-				String intermediaryNs = IntermediaryNamespaces.runtimeIntermediary(project);
+				String productionNs = extension.getProductionNamespace().toString();
 
 				MemoryMappingTree mappingsSwapped = new MemoryMappingTree();
-				MappingDstNsReorder dstNsReorder = new MappingDstNsReorder(mappingsSwapped, intermediaryNs);
+				MappingDstNsReorder dstNsReorder = new MappingDstNsReorder(mappingsSwapped, productionNs);
 				MappingSourceNsSwitch srcNsSwitch0 = new MappingSourceNsSwitch(dstNsReorder, MappingsNamespace.NAMED.toString());
 				mappingsService.getMappingTree().accept(srcNsSwitch0);
 
@@ -354,7 +357,7 @@ public abstract class AbstractMappedMinecraftProvider<M extends MinecraftProvide
 				}
 
 				MemoryMappingTree mappings = new MemoryMappingTree();
-				MappingSourceNsSwitch srcNsSwitch1 = new MappingSourceNsSwitch(mappings, intermediaryNs);
+				MappingSourceNsSwitch srcNsSwitch1 = new MappingSourceNsSwitch(mappings, productionNs);
 				mappingsSwapped.accept(srcNsSwitch1);
 
 				Path deobfFile;

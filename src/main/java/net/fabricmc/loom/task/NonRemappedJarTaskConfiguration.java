@@ -29,6 +29,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import dev.architectury.loom.accesstransformer.Aw2At;
+import dev.architectury.loom.extensions.ModBuildExtensions;
+import dev.architectury.loom.util.PropertyUtil;
 import org.gradle.api.Project;
 import org.gradle.api.plugins.JavaPlugin;
 import org.gradle.api.provider.Provider;
@@ -78,7 +81,17 @@ public class NonRemappedJarTaskConfiguration {
 			task.usesService(manifestServiceProvider);
 		});
 
-		extension.getUnmappedModCollection().from(project.getTasks().getByName(JavaPlugin.JAR_TASK_NAME));
+		extension.getUnmappedModCollection().from(project.getTasks().named(JavaPlugin.JAR_TASK_NAME));
+
+		if (extension.isForge()) {
+			if (PropertyUtil.getAndFinalize(extension.getForge().getConvertAccessWideners())) {
+				extension.getForge().convertAccessWideners(project.getTasks().named(JavaPlugin.JAR_TASK_NAME, Jar.class), settings -> {
+					settings.getAccessWideners().addAll(Aw2At.getForgeAtAccessWideners(project));
+				});
+			}
+
+			ModBuildExtensions.addMixinConfigsToDefaultJarManifest(project);
+		}
 	}
 
 	private List<String> getClientOnlyEntries() {

@@ -36,17 +36,22 @@ import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.InputFiles;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
+import org.gradle.api.tasks.PathSensitive;
+import org.gradle.api.tasks.PathSensitivity;
 import org.gradle.process.ExecSpec;
+import org.gradle.work.DisableCachingByDefault;
 import org.jetbrains.annotations.ApiStatus;
 
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.loom.util.Platform;
+import net.fabricmc.loom.util.XVFBExistsValueSource;
 
 /**
  * A task that runs the Minecraft client in a similar way to a production launcher. You must manually register a task of this type to use it.
  */
 @ApiStatus.Experimental
+@DisableCachingByDefault
 public abstract non-sealed class ClientProductionRunTask extends AbstractProductionRunTask {
 	/**
 	 * Whether to use XVFB to run the game, using a virtual framebuffer. This is useful for CI environments that don't have a display server.
@@ -78,6 +83,7 @@ public abstract non-sealed class ClientProductionRunTask extends AbstractProduct
 	protected abstract Property<String> getAssetsIndex();
 
 	@InputFiles
+	@PathSensitive(PathSensitivity.ABSOLUTE)
 	protected abstract DirectoryProperty getAssetsDir();
 
 	@Inject
@@ -101,7 +107,7 @@ public abstract non-sealed class ClientProductionRunTask extends AbstractProduct
 		getClasspath().from(getExtension().getMinecraftProvider().getMinecraftClientJar());
 		getClasspath().from(detachedConfigurationProvider("net.fabricmc:fabric-loader:%s", getProjectLoaderVersion()));
 
-		if (getExtension().getProductionNamespaceEnum() == MappingsNamespace.INTERMEDIARY) {
+		if (getExtension().getProductionNamespaceEnum().get() == MappingsNamespace.INTERMEDIARY) {
 			getClasspath().from(detachedConfigurationProvider("net.fabricmc:intermediary:%s", getExtension().getMinecraftVersion()));
 		}
 
@@ -127,7 +133,7 @@ public abstract non-sealed class ClientProductionRunTask extends AbstractProduct
 				throw new UnsupportedOperationException("XVFB is only supported on Linux");
 			}
 
-			exec.commandLine("/usr/bin/xvfb-run");
+			exec.commandLine(XVFBExistsValueSource.XVFB);
 			exec.args("-a", getJavaLauncher().get().getExecutablePath());
 
 			return;
