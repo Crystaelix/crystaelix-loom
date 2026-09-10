@@ -616,7 +616,7 @@ public class MinecraftPatchedProvider {
 		deleteParameterNames(output);
 
 		if (getExtension().isForgeLikeAndNotOfficial() && !getExtension().isUnobfuscatedForge()) {
-			fixParameterAnnotation(minecraftPatchedIntermediateJar);
+			fixParameterAnnotation(output);
 		}
 
 		logger.lifecycle(":patched jars in " + stopwatch.stop());
