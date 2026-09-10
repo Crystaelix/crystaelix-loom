@@ -156,7 +156,7 @@ public abstract class CompileConfiguration implements Runnable {
 
 			MixinExtension mixin = LoomGradleExtension.get(getProject()).getMixin();
 
-			if (mixin.getUseLegacyMixinAp().get()) {
+			if (!extension.disableObfuscation() && mixin.getUseLegacyMixinAp().get()) {
 				setupMixinAp(mixin);
 			}
 

@@ -65,7 +65,7 @@ public class MixinRefmapService extends Service<MixinRefmapService.Options> {
 		return project.provider(() -> {
 			final LoomGradleExtension extension = LoomGradleExtension.get(project);
 
-			if (!extension.getMixin().getUseLegacyMixinAp().get()) {
+			if (extension.disableObfuscation() || !extension.getMixin().getUseLegacyMixinAp().get()) {
 				return List.of();
 			}
 

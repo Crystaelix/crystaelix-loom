@@ -101,7 +101,7 @@ public class TinyRemapperService extends Service<TinyRemapperService.Options> im
 			final LoomGradleExtension extension = LoomGradleExtension.get(project);
 			final ConfigurationContainer configurations = project.getConfigurations();
 			final boolean ignoreConflicts = extension.isForgeLike();
-			final boolean legacyMixin = extension.getMixin().getUseLegacyMixinAp().get();
+			final boolean legacyMixin = !extension.disableObfuscation() && extension.getMixin().getUseLegacyMixinAp().get();
 			final FileCollection classpath = remapJarTask.getClasspath()
 					.minus(configurations.getByName(Constants.Configurations.MINECRAFT_COMPILE_LIBRARIES))
 					.minus(configurations.getByName(Constants.Configurations.MINECRAFT_RUNTIME_LIBRARIES));
