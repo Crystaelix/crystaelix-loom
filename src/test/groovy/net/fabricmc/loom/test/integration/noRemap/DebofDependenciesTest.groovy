@@ -54,6 +54,11 @@ class DebofDependenciesTest extends Specification implements GradleProjectTestTr
 		def gradle = gradleProject(project: "minimalBaseNoRemap", version: PRE_RELEASE_GRADLE)
 		gradle.buildGradle << repositoriesBlock
 		gradle.buildGradle << '''
+				loom {
+					enableTransitiveAccessWideners = true
+					interfaceInjection.isEnabled = true
+                }
+
 				dependencies {
 					minecraft 'com.mojang:minecraft:25w45a_unobfuscated'
 					implementation 'loom.test:test:1.0.0'
