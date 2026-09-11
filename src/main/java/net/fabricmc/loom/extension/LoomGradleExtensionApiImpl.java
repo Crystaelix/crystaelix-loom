@@ -694,7 +694,7 @@ public abstract class LoomGradleExtensionApiImpl implements LoomGradleExtensionA
 			return generateSrgTiny;
 		}
 
-		return isSrgForgeLike();
+		return !notObfuscated() && isSrgForgeLike();
 	}
 
 	@Override

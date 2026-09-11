@@ -17,6 +17,7 @@ dependencies {
 }
 
 loom {
+	enableModProvidedJavadoc = true
 	productionNamespace = "official"
 }
 

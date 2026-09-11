@@ -88,7 +88,7 @@ public class ForgeUserdevProvider extends DependencyProvider {
 
 		addDependency(config.mcp(), Constants.Configurations.MCP_CONFIG);
 
-		if (!getExtension().isNeoForge()) {
+		if (getExtension().shouldGenerateSrgTiny()) {
 			addDependency(config.mcp(), Constants.Configurations.SRG);
 		}
 

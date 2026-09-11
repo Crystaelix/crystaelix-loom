@@ -257,20 +257,20 @@ class IdeaSyncTaskTest extends Specification {
 	private static String rawRunConfigXml(String displayName, String moduleName, String runDirectory, String vmParameters) {
 		return """\
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="${displayName}" type="Application" factoryName="Application" >
-    <option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main" />
-    <module name="${moduleName}" />
-    <option name="PROGRAM_PARAMETERS" value="" />
-    <option name="VM_PARAMETERS" value="${vmParameters}" />
-    <option name="WORKING_DIRECTORY" value="${runDirectory}/" />
-    <method v="2">
-      <option name="Make" enabled="true" />
-    </method>
-    <envs>
+	<configuration default="false" name="${displayName}" type="Application" factoryName="Application" >
+		<option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main" />
+		<module name="${moduleName}" />
+		<option name="PROGRAM_PARAMETERS" value="" />
+		<option name="VM_PARAMETERS" value="${vmParameters}" />
+		<option name="WORKING_DIRECTORY" value="${runDirectory}/" />
+		<method v="2">
+			<option name="Make" enabled="true" />
+		</method>
+		<envs>
 
-    </envs>
-    <shortenClasspath name="ARGS_FILE" />
-  </configuration>
+		</envs>
+		<shortenClasspath name="ARGS_FILE" />
+	</configuration>
 </component>
 """
 	}
@@ -278,28 +278,28 @@ class IdeaSyncTaskTest extends Specification {
 	private static String expectedGradleRunConfigXml(String displayName, String taskName) {
 		return """\
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="${displayName}" type="GradleRunConfiguration" factoryName="Gradle" >
-    <ExternalSystemSettings>
-      <option name="executionName" />
-      <option name="externalProjectPath" value="\$PROJECT_DIR\$" />
-      <option name="externalSystemIdString" value="GRADLE" />
-      <option name="scriptParameters" value="" />
-      <option name="taskDescriptions">
-        <list />
-      </option>
-      <option name="taskNames">
-        <list>
-          <option value="${taskName}" />
-        </list>
-      </option>
-      <option name="vmOptions" />
-    </ExternalSystemSettings>
-    <ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
-    <ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
-    <DebugAllEnabled>false</DebugAllEnabled>
-    <RunAsTest>false</RunAsTest>
-    <method v="2" />
-  </configuration>
+	<configuration default="false" name="${displayName}" type="GradleRunConfiguration" factoryName="Gradle" >
+		<ExternalSystemSettings>
+			<option name="executionName" />
+			<option name="externalProjectPath" value="\$PROJECT_DIR\$" />
+			<option name="externalSystemIdString" value="GRADLE" />
+			<option name="scriptParameters" value="" />
+			<option name="taskDescriptions">
+				<list />
+			</option>
+			<option name="taskNames">
+				<list>
+					<option value="${taskName}" />
+				</list>
+			</option>
+			<option name="vmOptions" />
+		</ExternalSystemSettings>
+		<ExternalSystemDebugServerProcess>false</ExternalSystemDebugServerProcess>
+		<ExternalSystemReattachDebugProcess>true</ExternalSystemReattachDebugProcess>
+		<DebugAllEnabled>false</DebugAllEnabled>
+		<RunAsTest>false</RunAsTest>
+		<method v="2" />
+	</configuration>
 </component>
 """
 	}
@@ -307,40 +307,40 @@ class IdeaSyncTaskTest extends Specification {
 	@Language("XML")
 	private static final String EXPECTED = '''
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
-    <option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
-    <module name="main.test"/>
-    <option name="PROGRAM_PARAMETERS" value=""/>
-    <option name="VM_PARAMETERS" value=""/>
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
-    <method v="2">
-      <option enabled="true" name="Make"/>
-    </method>
-    <envs>
-      %IDEA_ENV_VARS%
-    </envs>
-    <shortenClasspath name="ARGS_FILE"/>
-  <classpathModifications><entry exclude="true" path="/path/to/file.jar"/></classpathModifications></configuration>
+	<configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
+		<option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
+		<module name="main.test"/>
+		<option name="PROGRAM_PARAMETERS" value=""/>
+		<option name="VM_PARAMETERS" value=""/>
+		<option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
+		<method v="2">
+			<option enabled="true" name="Make"/>
+		</method>
+		<envs>
+			%IDEA_ENV_VARS%
+		</envs>
+		<shortenClasspath name="ARGS_FILE"/>
+	<classpathModifications><entry exclude="true" path="/path/to/file.jar"/></classpathModifications></configuration>
 </component>
 '''.trim()
 
 	@Language("XML")
 	private static final String EXPECTED2 = '''
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
-    <option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
-    <module name="main.test"/>
-    <option name="PROGRAM_PARAMETERS" value=""/>
-    <option name="VM_PARAMETERS" value=""/>
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
-    <method v="2">
-      <option enabled="true" name="Make"/>
-    </method>
-    <envs>
-      %IDEA_ENV_VARS%
-    </envs>
-    <shortenClasspath name="ARGS_FILE"/>
-  <classpathModifications><entry exclude="true" path="/path/to/file.jar"/><entry exclude="true" path="/path/to/another.jar"/></classpathModifications></configuration>
+	<configuration default="false" factoryName="Application" name="Minecraft Client" type="Application">
+		<option name="MAIN_CLASS_NAME" value="net.minecraft.client.Main"/>
+		<module name="main.test"/>
+		<option name="PROGRAM_PARAMETERS" value=""/>
+		<option name="VM_PARAMETERS" value=""/>
+		<option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/.run/"/>
+		<method v="2">
+			<option enabled="true" name="Make"/>
+		</method>
+		<envs>
+			%IDEA_ENV_VARS%
+		</envs>
+		<shortenClasspath name="ARGS_FILE"/>
+	<classpathModifications><entry exclude="true" path="/path/to/file.jar"/><entry exclude="true" path="/path/to/another.jar"/></classpathModifications></configuration>
 </component>
 '''.trim()
 }

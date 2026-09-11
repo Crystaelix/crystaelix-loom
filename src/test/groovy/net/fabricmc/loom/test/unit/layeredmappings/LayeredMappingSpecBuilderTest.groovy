@@ -113,7 +113,7 @@ class LayeredMappingSpecBuilderTest extends LayeredMappingsSpecification {
 		}
 		def layers = spec.layers()
 		then:
-		spec.version == "layered+703ef728"
+		spec.version == "layered+634f9bd8"
 		layers.size() == 2
 		layers[0].class == IntermediaryMappingsSpec
 		layers[1].class == FileMappingsSpec
