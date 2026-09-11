@@ -32,6 +32,7 @@ import net.fabricmc.loom.test.util.GradleProjectTestTrait
 import static net.fabricmc.loom.test.LoomTestConstants.PRE_RELEASE_GRADLE
 import static net.fabricmc.loom.test.LoomTestConstants.STANDARD_TEST_VERSIONS
 import static org.gradle.testkit.runner.TaskOutcome.SUCCESS
+import static org.gradle.testkit.runner.TaskOutcome.UP_TO_DATE
 
 class DecompileTest extends Specification implements GradleProjectTestTrait {
 	@Unroll
@@ -104,7 +105,7 @@ class DecompileTest extends Specification implements GradleProjectTestTrait {
 		then:
 		result.task(":genSourcesWithVineflower").outcome == SUCCESS
 		result2.task(":genSourcesWithVineflower").outcome == SUCCESS
-		result3.task(":genSourcesWithVineflower").outcome == SUCCESS
+		result3.task(":genSourcesWithVineflower").outcome == UP_TO_DATE
 	}
 
 	// https://github.com/FabricMC/fabric-loom/issues/1362

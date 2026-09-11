@@ -19,6 +19,9 @@ dependencies {
 }
 
 loom {
+	interfaceInjection {
+		isEnabled = true
+	}
 	productionNamespace = "official"
 	useIntermediateMappings = false
 }
