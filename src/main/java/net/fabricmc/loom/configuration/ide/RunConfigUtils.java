@@ -141,10 +141,10 @@ public class RunConfigUtils {
 		return displayName;
 	}
 
-	public static String formatEnvVars(RunConfiguration run, String pattern) {
+	public static String formatEnvVars(RunConfiguration run, String pattern, String delimiter) {
 		return run.getEnvironmentVars().get().entrySet().stream()
 				.map(entry ->
 						pattern.formatted(entry.getKey(), entry.getValue().toString())
-				).collect(Collectors.joining());
+				).collect(Collectors.joining(delimiter));
 	}
 }

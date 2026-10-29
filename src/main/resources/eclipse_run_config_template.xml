@@ -9,12 +9,15 @@
 	<mapAttribute key="org.eclipse.debug.core.environmentVariables">
 		%ECLIPSE_ENV_VARS%
 	</mapAttribute>
+	<booleanAttribute key="org.eclipse.jdt.launching.ATTR_ATTR_USE_ARGFILE" value="true"/>
 	<booleanAttribute key="org.eclipse.jdt.launching.ATTR_USE_START_ON_FIRST_THREAD" value="true"/>
-	<stringAttribute key="org.eclipse.jdt.launching.CLASSPATH_PROVIDER" value="org.eclipse.buildship.core.classpathprovider"/>
+	<listAttribute key="org.eclipse.jdt.launching.CLASSPATH">
+		%CLASSPATH_ENTRIES%
+	</listAttribute>
+	<booleanAttribute key="org.eclipse.jdt.launching.DEFAULT_CLASSPATH" value="%DEFAULT_CLASSPATH%"/>
 	<stringAttribute key="org.eclipse.jdt.launching.MAIN_TYPE" value="%MAIN_CLASS%"/>
 	<stringAttribute key="org.eclipse.jdt.launching.PROGRAM_ARGUMENTS" value="%PROGRAM_ARGS%"/>
 	<stringAttribute key="org.eclipse.jdt.launching.PROJECT_ATTR" value="%ECLIPSE_PROJECT%"/>
 	<stringAttribute key="org.eclipse.jdt.launching.VM_ARGUMENTS" value="%VM_ARGS%"/>
 	<stringAttribute key="org.eclipse.jdt.launching.WORKING_DIRECTORY" value="%RUN_DIRECTORY%"/>
-	<booleanAttribute key="org.eclipse.jdt.launching.ATTR_ATTR_USE_ARGFILE" value="true"/>
 </launchConfiguration>

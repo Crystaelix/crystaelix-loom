@@ -53,8 +53,8 @@ public final class GradleTaskIntellijRunConfigWriter extends AbstractIntellijRun
 				? ":" + LoomTasks.getRunConfigTaskName(run)
 				: project.getPath() + ":" + LoomTasks.getRunConfigTaskName(run);
 
-		return xml.replace("%NAME%", RunConfigUtils.getDisplayName(run, project))
-				.replace("%TASK_NAME%", taskPath)
+		return xml.replace("%NAME%", XmlUtil.escapeXml(RunConfigUtils.getDisplayName(run, project)))
+				.replace("%TASK_NAME%", XmlUtil.escapeXml(taskPath))
 				.replace("%IDEA_FOLDER_NAME%", folderName == null ? "" : "folderName=\"" + XmlUtil.escapeXml(folderName) + "\"");
 	}
 

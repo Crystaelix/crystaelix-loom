@@ -32,19 +32,25 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.inject.Inject;
 
 import dev.architectury.loom.forge.dependency.ForgeModClassesService;
+import groovy.xml.XmlUtil;
 import org.gradle.api.Project;
+import org.gradle.api.file.FileCollection;
 import org.gradle.api.file.RegularFileProperty;
+import org.gradle.api.plugins.JavaPluginExtension;
 import org.gradle.api.provider.ListProperty;
 import org.gradle.api.provider.Property;
 import org.gradle.api.tasks.Input;
 import org.gradle.api.tasks.Nested;
 import org.gradle.api.tasks.Optional;
 import org.gradle.api.tasks.OutputFile;
+import org.gradle.api.tasks.SourceSet;
 import org.gradle.api.tasks.TaskAction;
 import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 import org.gradle.work.DisableCachingByDefault;
@@ -55,9 +61,11 @@ import net.fabricmc.loom.api.RunConfiguration;
 import net.fabricmc.loom.configuration.classpathgroups.ClasspathGroup;
 import net.fabricmc.loom.configuration.ide.DefaultRunConfigurationSettings;
 import net.fabricmc.loom.configuration.ide.RunConfigUtils;
+import net.fabricmc.loom.configuration.ide.RuntimeLibraries;
 import net.fabricmc.loom.configuration.ide.idea.IdeaSyncTask;
 import net.fabricmc.loom.util.Arguments;
 import net.fabricmc.loom.util.Constants;
+import net.fabricmc.loom.util.gradle.SourceSetHelper;
 import net.fabricmc.loom.util.service.ScopedServiceFactory;
 
 @DisableCachingByDefault
@@ -129,22 +137,70 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 	private static String fromTemplate(RunConfiguration run, Project project) throws IOException {
 		String dummyConfig;
 
-		try (InputStream input = IdeaSyncTask.class.getClassLoader().getResourceAsStream("eclipse_run_config_template.xml")) {
+		try (InputStream input = GenEclipseRunsTask.class.getClassLoader().getResourceAsStream("eclipse_run_config_template.xml")) {
 			dummyConfig = new String(input.readAllBytes(), StandardCharsets.UTF_8);
 		}
 
 		String runDir = RunConfigUtils.formatRunDir(run, project, File::getAbsolutePath, "${workspace_loc:%ECLIPSE_PROJECT%}/"::concat);
 		String eclipseProjectName = project.getExtensions().getByType(EclipseModel.class).getProject().getName();
 
-		dummyConfig = dummyConfig.replace("%NAME%", RunConfigUtils.getDisplayName(run, project));
 		dummyConfig = dummyConfig.replace("%MAIN_CLASS%", run.getDevLaunchMainClass().get());
-		dummyConfig = dummyConfig.replace("%RUN_DIRECTORY%", runDir);
-		dummyConfig = dummyConfig.replace("%ECLIPSE_PROJECT%", eclipseProjectName);
-		dummyConfig = dummyConfig.replace("%PROGRAM_ARGS%", Arguments.join(run.getProgramArguments().get()).replaceAll("\"", "&quot;"));
-		dummyConfig = dummyConfig.replace("%VM_ARGS%", Arguments.join(run.getJvmArguments().get()).replaceAll("\"", "&quot;"));
-		dummyConfig = dummyConfig.replace("%ECLIPSE_ENV_VARS%", RunConfigUtils.formatEnvVars(run, "<mapEntry key=\"%s\" value=\"%s\"/>"));
+		dummyConfig = dummyConfig.replace("%RUN_DIRECTORY%", XmlUtil.escapeXml(runDir));
+		dummyConfig = dummyConfig.replace("%ECLIPSE_PROJECT%", XmlUtil.escapeXml(eclipseProjectName));
+		dummyConfig = dummyConfig.replace("%PROGRAM_ARGS%", XmlUtil.escapeXml(Arguments.join(run.getProgramArguments().get())));
+		dummyConfig = dummyConfig.replace("%VM_ARGS%", XmlUtil.escapeXml(Arguments.join(run.getJvmArguments().get())));
+		dummyConfig = dummyConfig.replace("%ECLIPSE_ENV_VARS%", RunConfigUtils.formatEnvVars(run, "<mapEntry key=\"%s\" value=\"%s\"/>", "\n\t\t"));
+		dummyConfig = dummyConfig.replace("%DEFAULT_CLASSPATH%", "false");
+		dummyConfig = dummyConfig.replace("%CLASSPATH_ENTRIES%", String.join("\n\t\t", createClasspathEntries(run, project, eclipseProjectName)));
 
 		return dummyConfig;
+	}
+
+	private static List<String> createClasspathEntries(RunConfiguration run, Project project, String eclipseProjectName) {
+		JavaPluginExtension java = project.getExtensions().getByType(JavaPluginExtension.class);
+		SourceSet runSourceSet = SourceSetHelper.getSourceSetByName(run.getSourceSet().get(), project);
+		List<String> excludedLibraries = RuntimeLibraries.getExcludedLibraryPaths(project, run);
+		Set<File> projectOutputs = new HashSet<>();
+
+		for (SourceSet sourceSet : java.getSourceSets()) {
+			projectOutputs.addAll(sourceSet.getOutput().getFiles());
+		}
+
+		List<String> entries = new ArrayList<>();
+		entries.add(runtimeClasspathEntry(
+				"containerPath", "org.eclipse.jdt.launching.JRE_CONTAINER",
+				"javaProject", eclipseProjectName,
+				"path", "1",
+				"type", "4"
+		));
+		entries.add(runtimeClasspathEntry(
+				"path", "5",
+				"projectName", eclipseProjectName,
+				"type", "1"
+		));
+
+		FileCollection classpath = runSourceSet.getRuntimeClasspath()
+				.filter(file -> !excludedLibraries.contains(file.getAbsolutePath()) && !projectOutputs.contains(file));
+
+		for (File file : classpath) {
+			entries.add(runtimeClasspathEntry(
+					"externalArchive", file.getAbsolutePath().replace('\\', '/'),
+					"path", "5",
+					"type", "2"
+			));
+		}
+
+		return entries;
+	}
+
+	private static String runtimeClasspathEntry(String... keyValuePairs) {
+		StringBuilder sb = new StringBuilder("<runtimeClasspathEntry");
+
+		for (int i = 0; i < keyValuePairs.length; i += 2) {
+			sb.append(' ').append(keyValuePairs[i]).append("=\"").append(XmlUtil.escapeXml(keyValuePairs[i + 1])).append('"');
+		}
+
+		return "<listEntry value=\"" + XmlUtil.escapeXml(sb.append("/>").toString()) + "\"/>";
 	}
 
 	public interface EclipseRunConfig {
@@ -159,10 +215,7 @@ public abstract class GenEclipseRunsTask extends AbstractLoomTask {
 
 		default void writeLaunchFile() throws IOException {
 			Path launchFile = getLaunchFile().get().getAsFile().toPath();
-
-			if (Files.notExists(launchFile)) {
-				Files.writeString(launchFile, getLaunchContent().get(), StandardCharsets.UTF_8);
-			}
+			Files.writeString(launchFile, getLaunchContent().get(), StandardCharsets.UTF_8);
 		}
 	}
 }

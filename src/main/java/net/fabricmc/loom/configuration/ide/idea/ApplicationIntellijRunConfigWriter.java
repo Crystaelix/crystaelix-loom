@@ -60,13 +60,13 @@ public final class ApplicationIntellijRunConfigWriter extends AbstractIntellijRu
 		String folderName = run.getIdeConfigFolder().getOrNull();
 		SourceSet sourceSet = SourceSetHelper.getSourceSetByName(run.getSourceSet().get(), project);
 
-		final String runConfigXml = xml.replace("%NAME%", RunConfigUtils.getDisplayName(run, project))
+		final String runConfigXml = xml.replace("%NAME%", XmlUtil.escapeXml(RunConfigUtils.getDisplayName(run, project)))
 				.replace("%MAIN_CLASS%", run.getDevLaunchMainClass().get())
-				.replace("%IDEA_MODULE%", IdeaUtils.getIdeaModuleName(new SourceSetReference(sourceSet, project)))
-				.replace("%RUN_DIRECTORY%", runDir)
-				.replace("%PROGRAM_ARGS%", Arguments.join(run.getProgramArguments().get()).replace("\"", "&quot;"))
-				.replace("%VM_ARGS%", Arguments.join(run.getJvmArguments().get()).replace("\"", "&quot;"))
-				.replace("%IDEA_ENV_VARS%", RunConfigUtils.formatEnvVars(run, "<env name=\"%s\" value=\"%s\"/>"))
+				.replace("%IDEA_MODULE%", XmlUtil.escapeXml(IdeaUtils.getIdeaModuleName(new SourceSetReference(sourceSet, project))))
+				.replace("%RUN_DIRECTORY%", XmlUtil.escapeXml(runDir))
+				.replace("%PROGRAM_ARGS%", XmlUtil.escapeXml(Arguments.join(run.getProgramArguments().get())))
+				.replace("%VM_ARGS%", XmlUtil.escapeXml(Arguments.join(run.getJvmArguments().get())))
+				.replace("%IDEA_ENV_VARS%", RunConfigUtils.formatEnvVars(run, "<env name=\"%s\" value=\"%s\"/>", "\n\t\t\t"))
 				.replace("%IDEA_FOLDER_NAME%", folderName == null ? "" : "folderName=\"" + XmlUtil.escapeXml(folderName) + "\"")
 				.replaceAll("(?m)^[ \\t]+$", "");
 
