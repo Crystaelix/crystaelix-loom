@@ -37,6 +37,7 @@ import org.gradle.api.tasks.Sync;
 import org.gradle.api.tasks.TaskContainer;
 import org.gradle.api.tasks.TaskOutputs;
 import org.gradle.api.tasks.TaskProvider;
+import org.gradle.plugins.ide.eclipse.model.EclipseModel;
 
 import net.fabricmc.loom.LoomGradleExtension;
 import net.fabricmc.loom.api.RunConfiguration;
@@ -163,11 +164,13 @@ public abstract class LoomTasks implements Runnable {
 	}
 
 	private void registerIDETasks() {
-		getTasks().register("genEclipseRuns", GenEclipseRunsTask.class, t -> {
+		TaskProvider<?> genEclipseRuns = getTasks().register("genEclipseRuns", GenEclipseRunsTask.class, t -> {
 			t.setDescription("Generates Eclipse run configurations for this project.");
 			t.dependsOn(getIDELaunchConfigureTaskName(getProject()));
 			t.setGroup(Constants.TaskGroup.IDE);
 		});
+		EclipseModel eclipse = getProject().getExtensions().getByType(EclipseModel.class);
+		if (eclipse != null) eclipse.synchronizationTasks(genEclipseRuns);
 
 		getTasks().register("vscode", GenVsCodeProjectTask.class, t -> {
 			t.setDescription("Generates VSCode launch configurations.");
